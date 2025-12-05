@@ -1,506 +1,316 @@
-# ProxiTof - Multi-Sensor Proximity Detection System
+# ProxiTof Near-Miss Detection System
 
-**ESP32-S3 based sensor fusion system combining Time-of-Flight distance sensing with 9-DOF Inertial Measurement for enhanced spatial awareness and near-miss detection.**
+An ESP32-S3 based multi-sensor proximity detection system with machine learning capabilities for near-miss event detection and data logging.
 
-## System Overview
+## Overview
 
-### Hardware Components
-- **MCU**: ESP32-S3-WROOM-1 (Dual-core Xtensa LX7 @ 240MHz)
-- **ToF Sensor**: VL53L8CX (I2C) - 4x4 multizone ranging @ 60Hz
-- **IMU**: BNO08x (SPI) - 9-DOF with onboard sensor fusion
-- **Indicator**: WS2812 RGB LED for proximity feedback
-- **Communication**: I2C (ToF) + SPI (IMU) on separate buses
+The ProxiTof system combines a VL53L8CX Time-of-Flight sensor (4x4 distance grid at 60Hz) with a BNO08x 9-DOF IMU (orientation and motion at 100Hz) to detect and predict near-miss collision events. The system logs synchronized sensor data to an SD card and can deploy trained TensorFlow Lite models for real-time near-miss prediction.
 
-### Key Features
-- ✅ Real-time 4x4 distance grid @ 60Hz
-- ✅ Orientation tracking (Roll, Pitch, Yaw)
-- ✅ Linear acceleration monitoring
-- ✅ Visual proximity alerts (RGB LED)
-- ✅ Sensor fusion ready for ESP-NN integration
-- ✅ Non-blocking multi-sensor operation
+## Features
 
----
+- **Multi-sensor fusion**: ToF distance grid + IMU orientation/acceleration
+- **High-speed data logging**: 60Hz synchronized sensor data to SD card
+- **Manual event flagging**: Button-based annotation during data collection
+- **ML inference**: On-device TensorFlow Lite model execution with ESP-NN acceleration
+- **Visual feedback**: WS2812 RGB LED status indication
+- **Configurable parameters**: SD card-based configuration file
+- **Optional GNSS**: Location tracking support (future enhancement)
 
-## Pin Configuration
+## Hardware Requirements
 
-### ESP32-S3 Pin Assignments
+### Core Components
 
-```
-┌─────────────────────────────────────────────┐
-│ VL53L8CX ToF Sensor (I2C)                   │
-├─────────────────────────────────────────────┤
-│ GPIO8  →  SDA                               │
-│ GPIO9  →  SCL                               │
-│ GPIO4  →  LPN (Low Power/Reset)             │
-│ 3.3V   →  VDD                               │
-│ GND    →  GND                               │
-├─────────────────────────────────────────────┤
-│ BNO08x IMU (SPI)                            │
-├─────────────────────────────────────────────┤
-│ GPIO11 →  MOSI (DI pin on sensor)           │
-│ GPIO13 →  MISO (SDA pin on sensor) ⚠️       │
-│ GPIO12 →  SCK                               │
-│ GPIO10 →  CS                                │
-│ GPIO5  →  INT (interrupt)                   │
-│ GPIO6  →  RST (reset)                       │
-│ 3.3V   →  VDD                               │
-│ 3.3V   →  P0 (protocol select) ⚡           │
-│ 3.3V   →  P1 (protocol select) ⚡           │
-│ FLOAT  →  BT/BOOT (leave disconnected) ⚡   │
-│ GND    →  GND                               │
-├─────────────────────────────────────────────┤
-│ RGB LED (WS2812)                            │
-├─────────────────────────────────────────────┤
-│ GPIO48 →  DIN                               │
-│ 5V     →  VDD (or 3.3V with reduced brightness) │
-│ GND    →  GND                               │
-└─────────────────────────────────────────────┘
-```
+- **ESP32-S3-DevKitC-1** (or compatible ESP32-S3 board)
+- **VL53L8CX** Time-of-Flight sensor (4x4 zone, 8x8 capable)
+- **BNO08x** 9-DOF IMU (I2C or SPI)
+- **MicroSD card module** (SPI interface, FAT32 formatted)
+- **Push button** (for manual event flagging)
+- **WS2812 RGB LED** (built-in on most ESP32-S3 dev boards)
 
-### ⚠️ Critical Hardware Notes
+### Optional Components
 
-#### BNO08x Protocol Selection
-The BNO08x requires **both P0 and P1 at 3.3V** for SPI mode:
+- **Neo-M9N GNSS module** (for location tracking)
 
-| P1 | P0 | Mode |
-|----|----|----|
-| LOW | LOW | I2C |
-| LOW | HIGH | UART-RVC |
-| HIGH | LOW | UART-SHTP |
-| **HIGH** | **HIGH** | **SPI** ✓ |
-
-**Why SPI instead of I2C?**
-- The BNO08x I2C implementation violates I2C protocol specs (excessive clock stretching)
-- This causes **unreliable operation** with ESP32/ESP32-S3 I2C hardware
-- SPI provides **stable, reliable communication** at 3 MHz
-- **Separate buses**: ToF on I2C, IMU on SPI prevents bus conflicts
-
-#### BT/BOOT Pin Behavior
-- **Leave BT pin DISCONNECTED** (floating)
-- Internal pull-up defaults to normal operation mode
-- Connecting to GND forces bootloader mode (prevents initialization)
-
-#### Pin Label Confusion
-The BNO08x breakout board labels can be misleading:
-- **"SDA" on the board** = MISO (SPI data OUT from sensor)
-- **"SCL" on the board** = SCK (SPI clock)
-- These are **NOT** I2C pins when in SPI mode!
-
----
-
-## Sensor Specifications
-
-### VL53L8CX Time-of-Flight Sensor
-- **Technology**: Multi-zone ranging with SPAD array
-- **Range**: Up to 4 meters (400 cm)
-- **Resolution**: 4x4 zones (16 simultaneous measurements)
-- **Update Rate**: 60 Hz
-- **Field of View**: 65° diagonal
-- **Interface**: I2C @ 1 MHz
-- **Accuracy**: ±1% typical
-
-### BNO08x 9-DOF IMU
-- **Sensors**: 3-axis accelerometer, gyroscope, magnetometer
-- **Processor**: ARM Cortex-M0+ running sensor fusion algorithms
-- **Outputs**: 
-  - Rotation vector (quaternion)
-  - Euler angles (roll, pitch, yaw)
-  - Linear acceleration (gravity-compensated)
-  - Raw sensor data
-- **Update Rate**: 100 Hz (configurable)
-- **Interface**: SPI @ 3 MHz
-- **Accuracy**: 
-  - Dynamic heading: 2.5° RMS
-  - Static heading: 1.0° RMS
-
----
-
-## Sensor Fusion Methodology
-
-### Data Stream Characteristics
-
-**ToF Sensor (60 Hz)**:
-- Provides spatial awareness in 4x4 grid
-- Distance measurements in millimeters
-- Proximity zones: Close (< 500mm), Medium (< 2000mm), Far (> 2000mm)
-
-**IMU (100 Hz)**:
-- Orientation: Roll, Pitch, Yaw in degrees
-- Linear acceleration: X, Y, Z in m/s² (gravity removed)
-- Enables motion context for distance measurements
-
-### Integration Benefits
-
-1. **Directional Awareness**: Knowing device orientation enhances spatial context
-2. **Motion Compensation**: Accelerometer detects rapid movement (impacts, falls)
-3. **Near-Miss Detection**: Combine proximity + motion for collision prediction
-4. **Gesture Recognition**: Orientation changes + ToF can detect hand gestures
-
-### ESP-NN Integration Readiness
-
-This system provides **synchronized multi-sensor data** suitable for TinyML:
-
-```cpp
-// Data available for ML model input:
-struct SensorFusionData {
-    // ToF: 16 values (4x4 grid)
-    uint16_t distances[16];
-    
-    // IMU: 6 values (orientation + motion)
-    float roll, pitch, yaw;          // degrees
-    float accel_x, accel_y, accel_z; // m/s²
-    
-    // Total: 22 input features for neural network
-};
-```
-
-**Potential ML Applications**:
-- **Collision prediction** (combining distance + velocity)
-- **Activity recognition** (walking, running, falling)
-- **Gesture control** (hand movements in ToF field)
-- **Context-aware alerts** (different alerts based on activity)
-
----
-
-## Software Architecture
-
-### Multi-Sensor Task Structure
+### Pin Configuration
 
 ```
-Main Loop (60 Hz ToF-driven)
-├── Poll IMU data (non-blocking)
-│   └── data_available() checks internal queue
-├── Check ToF data ready
-│   ├── Get 4x4 distance grid
-│   ├── Calculate minimum distance
-│   └── Update LED indicator
-└── Display fusion data
-    ├── ToF grid visualization
-    ├── IMU orientation (if available)
-    └── Linear acceleration (if available)
+ESP32-S3 Pin Assignments:
+
+ToF Sensor (I2C):
+  - SDA: GPIO 8
+  - SCL: GPIO 9
+  - LPN: GPIO 4 (Low Power Enable)
+
+IMU Sensor (SPI):
+  - MOSI: GPIO 11
+  - MISO: GPIO 13
+  - SCK:  GPIO 12
+  - CS:   GPIO 10
+  - INT:  GPIO 5
+  - RST:  GPIO 6
+
+SD Card (SPI - shared bus with IMU):
+  - MOSI: GPIO 11
+  - MISO: GPIO 13
+  - SCK:  GPIO 12
+  - CS:   GPIO 7
+
+Button:
+  - Input: GPIO 3 (with internal pull-up)
+
+Status LED:
+  - WS2812: GPIO 48 (built-in on ESP32-S3-DevKitC-1)
 ```
 
-### Non-Blocking Design
-- **ToF**: Primary timing source (60 Hz)
-- **IMU**: Asynchronous updates via interrupt (100 Hz)
-- **Display**: Updates only when ToF data arrives
-- **No delays**: Maintains real-time responsiveness
+## Software Requirements
 
-### Error Handling
-- **IMU optional**: System runs with ToF-only if IMU fails
-- **Graceful degradation**: Continues operation with reduced functionality
-- **Detailed diagnostics**: Clear error messages for troubleshooting
+### Development Environment
 
----
+- **PlatformIO** (recommended) or Arduino IDE
+- **Python 3.7+** (for data analysis and ML training)
+- **Git** (for version control)
 
-## Build and Flash Instructions
+### PlatformIO Installation
 
-### Prerequisites
-- ESP-IDF v5.5.1 (or compatible)
-- Python 3.11+
-- USB driver for ESP32-S3
+1. Install [Visual Studio Code](https://code.visualstudio.com/)
+2. Install the [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode)
+3. Restart VS Code
 
-### Environment Setup
-```powershell
-# Set IDF path
-$env:IDF_PATH = 'D:/ESP32_Tools/Espressif/frameworks/esp-idf-v5.5.1/'
-
-# Navigate to project
-cd "d:/Master's Extension/Master's Thesis/Proximity Device/ProxiTof_AG"
-```
-
-### Build Process
+Alternatively, install PlatformIO Core CLI:
 ```bash
-# Clean build (recommended for first build)
-idf.py fullclean
-idf.py build
-
-# Flash to ESP32-S3
-idf.py -p COM5 flash
-
-# Monitor output
-idf.py -p COM5 monitor
-
-# Or combined:
-idf.py -p COM5 flash monitor
+pip install platformio
 ```
 
-### Expected Output (Success)
+## Building and Flashing
 
-```
-I (xxx) ProxiTof: ✓ BNO08x initialized successfully!
-I (xxx) ProxiTof: ✓ BNO08x IMU ready
-I (xxx) ProxiTof: ✓ VL53L8CX is alive!
-I (xxx) ProxiTof: ✓ VL53L8CX ready! (VL53L8CX_2.0.0)
-I (xxx) ProxiTof: ║   System Active - ToF Running @ 60Hz       ║
+### Using PlatformIO (Recommended)
 
-╔═══════════════════════════════════════════════╗
-║  ProxiTof ToF+IMU @ 60Hz | Frame 123          ║
-╚═══════════════════════════════════════════════╝
-  450  520  610  700 mm
-  380  420  510  650 mm
-  360  400  490  620 mm
-  420  450  530  680 mm
-
- Closest:  360 mm  |  LED: [RED]   
-───────────────────────────────────────────────
- IMU Orientation:
-   Roll:    -2.05°  Pitch:    0.72°  Yaw:  151.61°
- Linear Acceleration:
-   X:   0.00  Y:   0.01  Z:   0.00 m/s²
-```
-
----
-
-## Monitoring with PuTTY (Recommended)
-
-PuTTY provides better ANSI escape code support than the ESP-IDF monitor for real-time display with colors and in-place updates.
-
-### Finding Your COM Port
-
-**Option 1: Device Manager (Windows)**
-1. Press `Win + X` → Select **Device Manager**
-2. Expand **Ports (COM & LPT)**
-3. Look for **USB Serial Device (COMx)** or **Silicon Labs CP210x USB to UART Bridge (COMx)**
-4. Note the COM port number (e.g., `COM5`, `COM7`)
-
-**Option 2: ESP-IDF Command**
-```powershell
-# List all available serial ports
-idf.py -p list
-
-# Or use Windows PowerShell
-Get-PnPDevice -Class Ports | Where-Object {$_.Status -eq "OK"}
-```
-
-### PuTTY Configuration
-
-1. **Download PuTTY** (if not installed):
-   - Download from: https://www.putty.org/
-   - Or via `winget`: `winget install PuTTY.PuTTY`
-
-2. **Configure Connection**:
-   ```
-   Connection Type:  Serial
-   Serial line:      COM5    (replace with your actual COM port)
-   Speed:            115200  (baudrate - CRITICAL!)
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/yourusername/ProxiTof_Arduino_ESP32.git
+   cd ProxiTof_Arduino_ESP32
    ```
 
-3. **Configure Terminal Settings** (for optimal display):
-   - Go to **Terminal** → **Features**
-     - ✅ Enable "Disable application cursor keys mode"
-   - Go to **Window** → **Colours**
-     - ✅ Enable "Allow terminal to use xterm 256-colour mode"
-     - ✅ Enable "Bolded text is a different colour"
-   - Go to **Window** → **Translation**
-     - Set Remote character set to: **UTF-8**
-   - Go to **Session**
-     - Save as: **ProxiTof_Monitor** (for easy reuse)
+2. **Build the project**:
+   ```bash
+   pio run
+   ```
 
-4. **Start Monitoring**:
-   - Click **Open** to connect
-   - Press the **RESET** button on your ESP32-S3 to see boot messages
-   - You should see colorful, formatted output with live updates
+3. **Flash to ESP32-S3**:
+   ```bash
+   pio run -t upload
+   ```
 
-### Baudrate Settings
+4. **Monitor serial output**:
+   ```bash
+   pio device monitor
+   ```
+   Serial baud rate: 115200
 
-| Mode | Baudrate | Usage |
-|------|----------|-------|
-| **Standard** | **115200** | Default ESP32 serial output ✓ |
-| High-speed | 460800 | Optional (may cause stability issues) |
-| Debug | 921600 | Not recommended for this project |
+### Using Arduino IDE
 
-> **⚠️ CRITICAL**: Always use **115200** baud. This is the ESP32-S3 default.
+1. Install Arduino IDE 2.0+
+2. Add ESP32 board support:
+   - Go to File → Preferences
+   - Add to "Additional Board Manager URLs": 
+     ```
+     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+     ```
+   - Go to Tools → Board → Boards Manager
+   - Search for "esp32" and install "esp32 by Espressif Systems"
 
-### Expected PuTTY Display
+3. Install required libraries via Library Manager:
+   - Adafruit VL53L8CX
+   - SparkFun BNO08x Cortex Based IMU
+   - Adafruit NeoPixel
+   - TensorFlow Lite Micro
 
-When properly configured, you should see:
+4. Select board: Tools → Board → ESP32 Arduino → ESP32S3 Dev Module
+5. Configure settings:
+   - USB CDC On Boot: Enabled
+   - PSRAM: Enabled
+   - Upload Speed: 921600
+
+6. Open `src/main.cpp` and upload
+
+## SD Card Setup
+
+1. **Format SD card** as FAT32
+2. **Copy configuration file**:
+   - Copy `data/config.txt` to the root of the SD card
+3. **Insert SD card** into the module before powering on
+
+### Configuration Parameters
+
+Edit `config.txt` on the SD card to adjust system behavior:
 
 ```
-╔═══════════════════════════════════════════════════════════╗
-║         ProxiTof - Real-Time Sensor Fusion                ║
-╠═══════════════════════════════════════════════════════════╣
-║ Frame: 123    | Min Dist:  360 mm | Rate: 60 Hz          ║
-╚═══════════════════════════════════════════════════════════╝
-
-┌─────────────────────────────────────────────────┐
-│      VL53L8CX 4x4 Distance Grid (mm)            │
-├─────────────────────────────────────────────────┤
-│   450   520   610   700  │  ← Color-coded:
-│   380   420   510   650  │     🔴 Red    < 500mm
-│   360   400   490   620  │     🟡 Yellow < 2000mm
-│   420   450   530   680  │     🟢 Green  > 2000mm
-└─────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────┐
-│ LED: CLOSE    🔴 RED                             │
-└─────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────┐
-│         BNO08x IMU - Orientation (°)             │
-├─────────────────────────────────────────────────┤
-│ Roll:    -2.05° │ Pitch:    0.72° │ Yaw:  151.61° │
-├─────────────────────────────────────────────────┤
-│      BNO08x IMU - Linear Accel (m/s²)            │
-├─────────────────────────────────────────────────┤
-│   X:    0.00  │  Y:    0.01  │  Z:    0.00      │
-└─────────────────────────────────────────────────┘
-
-Press Ctrl+] to exit monitor
+log_interval_ms=16          # Logging rate (~60Hz)
+flag_window_ms=2000         # Time window around flagged events (ms)
+ml_threshold=0.70           # ML confidence threshold (0.0-1.0)
+approach_threshold_mm_s=500 # Approach rate for near-miss (mm/s)
+jerk_threshold_m_s3=2.0     # Jerk magnitude for near-miss (m/s³)
 ```
 
-### Keyboard Shortcuts in PuTTY
+## Usage
 
-| Key | Action |
-|-----|--------|
-| `Ctrl + Right-Click` | Copy selected text |
-| `Right-Click` | Paste from clipboard |
-| `Ctrl + C` | Send interrupt (restarts ESP32) |
-| Close window or `Alt+F4` | Exit PuTTY |
+### Data Collection Mode
 
-### PuTTY vs ESP-IDF Monitor
+1. Power on the system with SD card inserted
+2. Green breathing LED indicates active logging
+3. Press the flag button during near-miss events
+4. Yellow LED flash confirms button press
+5. Data is saved to `/YYYY-MM-DD/log_YYYYMMDD_HHMMSS.csv`
 
-| Feature | PuTTY | ESP-IDF Monitor |
-|---------|-------|-----------------|
-| ANSI colors | ✅ Full support | ⚠️ Limited |
-| Cursor positioning | ✅ Perfect | ❌ Scrolls |
-| Real-time display | ✅ Smooth 60Hz | ⚠️ Can jitter |
-| Auto-decode ESP logs | ❌ No | ✅ Shows file:line |
-| Crash decoding | ❌ No | ✅ Automatic |
+### LED Status Indicators
 
-**Recommendation**: 
-- Use **PuTTY** for real-time monitoring and demonstration
-- Use **ESP-IDF Monitor** (`idf.py monitor`) for debugging crashes
+| Color/Pattern | Meaning |
+|--------------|---------|
+| Blue solid | Initializing |
+| Green breathing | Logging active |
+| Yellow flash (500ms) | Button pressed |
+| Orange alert (1s) | ML near-miss detected |
+| Red solid | Critical proximity alert |
+| Red blinking (2Hz) | SD card error |
+| Purple tint | Buffer warning (>90% full) |
 
----
+### Serial Commands
+
+Connect via serial monitor (115200 baud) and send:
+
+- `config` - Display current configuration
+- `status` - Display system state and metrics
+- `errors` - Display error counters
+
+## Data Format
+
+CSV files contain synchronized sensor data with the following columns:
+
+```
+timestamp_ms, tof_00, tof_01, ..., tof_33, roll, pitch, yaw,
+accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z,
+min_distance_mm, approach_rate_mm_s, jerk_magnitude_m_s3, angular_velocity_deg_s,
+flag_manual, flag_auto, confidence
+```
+
+- **timestamp_ms**: Milliseconds since boot
+- **tof_00 to tof_33**: 16 distance values in mm (4x4 grid, row-major order)
+- **roll, pitch, yaw**: Orientation in degrees
+- **accel_x, accel_y, accel_z**: Linear acceleration in m/s²
+- **gyro_x, gyro_y, gyro_z**: Angular velocity in deg/s
+- **min_distance_mm**: Minimum distance across ToF grid
+- **approach_rate_mm_s**: Rate of distance change
+- **jerk_magnitude_m_s3**: Rate of acceleration change
+- **angular_velocity_deg_s**: Magnitude of rotation
+- **flag_manual**: Manual button flag (0 or 1)
+- **flag_auto**: ML detection flag (0 or 1)
+- **confidence**: ML confidence score (0.00 to 1.00)
+
+## Machine Learning
+
+### Training a Model
+
+1. **Collect training data**: Run system in data collection mode
+2. **Label events**: Use manual flags to mark near-miss events
+3. **Preprocess data**: Use provided Python scripts in `docs/ml_training/`
+4. **Train model**: TensorFlow/Keras model with 25 input features
+5. **Convert to TFLite**: Quantize and optimize for ESP32-S3
+6. **Flash model**: Include model in firmware build
+
+See `docs/ml_training/README.md` for detailed instructions (coming soon).
 
 ## Troubleshooting
 
-### BNO08x IMU Not Initializing
+### SD Card Not Detected
 
-**Symptoms**: `✗ BNO08x initialization failed!`
+- Verify SD card is FAT32 formatted
+- Check wiring connections (CS pin especially)
+- Try a different SD card (some cards are incompatible)
+- Check serial output for specific error codes
 
-**Checklist**:
-1. ✅ P0 pin at 3.3V (measure with multimeter)
-2. ✅ P1 pin at 3.3V (measure with multimeter)
-3. ✅ BT/BOOT pin floating (NOT connected)
-4. ✅ All SPI pins connected (MOSI, MISO, SCK, CS, INT, RST)
-5. ✅ VDD stable at 3.3V
-6. ✅ Good ground connection
+### Sensor Initialization Failed
 
-**Common Mistakes**:
-- ❌ P1 at GND instead of 3.3V → Wrong protocol mode!
-- ❌ BT pin grounded → Stuck in bootloader mode!
-- ❌ MISO connected to wrong pin → No data communication!
+- Verify I2C/SPI connections
+- Check power supply (sensors need stable 3.3V)
+- Ensure correct pin configuration in code
+- Check serial output for I2C/SPI error codes
 
-### VL53L8CX ToF Not Detected
+### Frame Rate Drops
 
-**Symptoms**: I2C NACK errors, device not found
+- Reduce logging frequency in config.txt
+- Use faster SD card (Class 10 or UHS-I)
+- Disable ML inference if not needed
+- Check buffer utilization in serial output
 
-**Checklist**:
-1. ✅ I2C wiring correct (SDA=GPIO8, SCL=GPIO9)
-2. ✅ Power stable (3.3V)
-3. ✅ Ground connected (check continuity)
-4. ✅ LPN pin connected to GPIO4
+### ML Inference Slow
 
-**Common Mistakes**:
-- ❌ Loose breadboard connections (most common!)
-- ❌ Ground not properly connected
-- ❌ I2C pullups missing (internal pullups enabled in code)
+- Verify ESP-NN is enabled in build
+- Check model size (should be <100KB)
+- Reduce model complexity if needed
+- Monitor inference latency in serial output
 
-### Serial Display Issues
+## Project Structure
 
-**Note**: The display uses ANSI escape codes for a fixed grid.
-
-**Best viewing**:
-- Use **PuTTY** or similar terminal that supports ANSI
-- ESP-IDF monitor works but may show artifacts
-- Avoid Arduino Serial Monitor (limited ANSI support)
-
----
-
-## Performance Metrics
-
-### Timing Analysis
-- **ToF Update**: 16.67 ms (60 Hz)
-- **IMU Update**: 10 ms (100 Hz)  
-- **Display Refresh**: 16.67 ms (synchronized with ToF)
-- **LED Update**: < 1 ms
-- **Total Latency**: < 20 ms (end-to-end)
-
-### Resource Usage
-- **CPU**: ~15% average (dual-core, 240 MHz)
-- **RAM**: ~45 KB (main variables + buffers)
-- **Flash**: ~850 KB (firmware + libraries)
-- **SPI Speed**: 3 MHz (BNO08x)
-- **I2C Speed**: 1 MHz (VL53L8CX)
-
----
-
-## Dependencies
-
-Managed via `main/idf_component.yml`:
-
-```yaml
-dependencies:
-  rjrp44/vl53l8cx:
-    version: "^4.0.0"
-  espressif/led_strip:
-    version: "^2.5.5"
-  myles-parfeniuk/esp32_BNO08x:
-    git: https://github.com/myles-parfeniuk/esp32_BNO08x.git
+```
+ProxiTof_Arduino_ESP32/
+├── src/                    # Source code
+│   └── main.cpp           # Main application
+├── include/               # Header files
+├── lib/                   # Custom libraries
+├── data/                  # Data files (config, models)
+│   └── config.txt        # Configuration template
+├── docs/                  # Documentation
+├── platformio.ini        # PlatformIO configuration
+├── README.md             # This file
+└── .gitignore           # Git ignore rules
 ```
 
----
+## Development
 
-## Future Enhancements
+### Code Organization
 
-### Immediate Next Steps (Thesis)
-1. **ESP-NN Integration**: Train model on sensor fusion data
-2. **Data Collection**: Log synchronized ToF+IMU data
-3. **Feature Engineering**: Extract meaningful patterns
-4. **Model Deployment**: Run inference on ESP32-S3
+The codebase follows a modular architecture:
 
-### Potential Improvements
-- [ ] Add magnetometer data (full 9-DOF)
-- [ ] Implement Kalman filter for smoother orientation
-- [ ] Add UART output for external logging
-- [ ] Web interface for real-time visualization
-- [ ] SD card logging for offline analysis
-- [ ] Battery power optimization
+- **Sensor Manager**: Hardware abstraction for ToF, IMU, button
+- **Data Processor**: Synchronization and feature extraction
+- **Storage Manager**: SD card operations and buffering
+- **ML Inference**: TensorFlow Lite model execution
+- **Status LED**: Visual feedback system
 
----
+### Contributing
 
-## References
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### Datasheets
-- [VL53L8CX Datasheet](https://www.st.com/resource/en/datasheet/vl53l8cx.pdf)
-- [BNO08x Datasheet](https://www.ceva-ip.com/wp-content/uploads/2019/10/BNO080_085-Datasheet.pdf)
-- [ESP32-S3 Technical Reference](https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf)
+### Coding Standards
 
-### Libraries Used
-- [VL53L8CX ESP-IDF Driver](https://github.com/rjrp44/vl53l8cx)
-- [BNO08x ESP32 Driver](https://github.com/myles-parfeniuk/esp32_BNO08x)
-- [ESP-IDF LED Strip](https://components.espressif.com/components/espressif/led_strip)
-
-### Related Work
-- [ESP-NN Documentation](https://github.com/espressif/esp-nn)
-- [TensorFlow Lite for Microcontrollers](https://www.tensorflow.org/lite/microcontrollers)
-
----
+- Follow Arduino/C++ style guidelines
+- Use descriptive variable and function names
+- Comment complex algorithms
+- Keep functions focused and modular
+- Test on hardware before committing
 
 ## License
 
-This project is developed for academic research purposes as part of a Master's thesis.
+[Specify your license here]
 
-## Contact
+## Acknowledgments
 
-For questions or collaboration:
-- **Project**: ProxiTof Multi-Sensor System
-- **Platform**: ESP32-S3 + ESP-IDF v5.5.1
-- **Sensors**: VL53L8CX (ToF) + BNO08x (IMU)
+- Adafruit for VL53L8CX and NeoPixel libraries
+- SparkFun for BNO08x library
+- TensorFlow team for TFLite Micro
+- Espressif for ESP32-S3 and ESP-NN
 
----
+## Support
 
-**Last Updated**: 2025-11-29  
-**Status**: ✅ Both sensors operational, ready for ESP-NN integration
+For issues, questions, or contributions:
+- Open an issue on GitHub
+- Check existing documentation in `docs/`
+- Review serial output for diagnostic information
+
+## Version History
+
+- **v0.1.0** - Initial project setup and structure
