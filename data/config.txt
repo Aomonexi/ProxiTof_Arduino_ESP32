@@ -1,0 +1,17 @@
+# ProxiTof System Configuration
+# This file should be copied to the SD card root directory
+
+# Logging interval in milliseconds (default: 16ms = ~60Hz)
+log_interval_ms=16
+
+# Flag window in milliseconds (time before and after button press to mark)
+flag_window_ms=2000
+
+# ML confidence threshold for near-miss detection (0.0 to 1.0)
+ml_threshold=0.70
+
+# Approach rate threshold in mm/s for near-miss detection
+approach_threshold_mm_s=500
+
+# Jerk magnitude threshold in m/s³ for near-miss detection
+jerk_threshold_m_s3=2.0
