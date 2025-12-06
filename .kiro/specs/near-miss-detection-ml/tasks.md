@@ -14,13 +14,22 @@
   - _Requirements: 16.1, 16.2, 16.3, 16.5, 16.9, 17.1_
 
 - [ ] 2. Implement core data structures and configuration
-  - [ ] 2.1 Create data model header files
+  - [x] 2.1 Create data model header files
+
+
+
+
     - Define ToFData, IMUData, SyncedData, FeatureVector, LogEntry structs
     - Define SystemConfig struct with default values
     - Define SystemState enum and LEDState enum
     - _Requirements: 15.1, 15.2_
 
   - [ ] 2.2 Implement configuration file parser
+
+
+
+
+
     - Write config.txt parser for key=value format
     - Implement parameter validation and range checking
     - Implement default value fallback for missing/invalid config
