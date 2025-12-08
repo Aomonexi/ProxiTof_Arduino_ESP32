@@ -1,0 +1,11 @@
+{
+  "name": "SensorManager",
+  "version": "1.0.0",
+  "description": "Sensor management for ProxiTof system",
+  "keywords": "sensor, tof, imu",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": {
+    "DataModels": "*"
+  }
+}

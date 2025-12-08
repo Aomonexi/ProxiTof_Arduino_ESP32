@@ -1,0 +1,8 @@
+{
+  "name": "DataModels",
+  "version": "1.0.0",
+  "description": "Core data structures for ProxiTof Near-Miss Detection System",
+  "keywords": "data, models, structures",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}
