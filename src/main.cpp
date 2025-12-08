@@ -11,9 +11,7 @@
 void setup() {
     // Initialize serial communication
     Serial.begin(115200);
-    while (!Serial && millis() < 3000) {
-        delay(10);
-    }
+    delay(2000);  // Give time for USB CDC to initialize
     
     Serial.println("\n=== ProxiTof Near-Miss Detection System ===");
     Serial.println("Initializing...");
