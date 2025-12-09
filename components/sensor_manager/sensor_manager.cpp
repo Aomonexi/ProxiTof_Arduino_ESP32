@@ -39,6 +39,7 @@ static bool imu_initialized = false;
 static uint32_t last_button_press_time = 0;
 static uint32_t last_button_read_time = 0;
 static bool last_button_state = false;
+static uint32_t button_press_start_time = 0;  // When button was first pressed
 
 // Health tracking
 static sensor_health_t health = {
@@ -326,6 +327,12 @@ static esp_err_t init_imu_sensor(void)
         ESP_LOGW(TAG, "Failed to enable linear accelerometer");
     }
 
+    // Enable calibrated gyroscope
+    ESP_LOGI(TAG, "Enabling calibrated gyroscope @ 100Hz...");
+    if (!imu->rpt.cal_gyro.enable(10000)) {
+        ESP_LOGW(TAG, "Failed to enable calibrated gyroscope");
+    }
+
     imu_initialized = true;
     health.imu_healthy = true;
     ESP_LOGI(TAG, "✓ BNO08x ready!");
@@ -472,11 +479,18 @@ esp_err_t sensor_manager_read_imu(imu_data_t *data)
         data->accel_z = accel.z;
     }
     
-    // Note: Gyroscope data not implemented in current BNO08x library usage
-    // Set to zero for now
-    data->gyro_x = 0.0f;
-    data->gyro_y = 0.0f;
-    data->gyro_z = 0.0f;
+    // Read calibrated gyroscope
+    if (imu->rpt.cal_gyro.has_new_data()) {
+        bno08x_gyro_t gyro = imu->rpt.cal_gyro.get();
+        data->gyro_x = gyro.x;
+        data->gyro_y = gyro.y;
+        data->gyro_z = gyro.z;
+    } else {
+        // No new gyro data, set to zero
+        data->gyro_x = 0.0f;
+        data->gyro_y = 0.0f;
+        data->gyro_z = 0.0f;
+    }
     
     return ESP_OK;
 }
@@ -492,6 +506,12 @@ bool sensor_manager_is_button_pressed(void)
     if (current_state != last_button_state) {
         last_button_read_time = current_time;
         last_button_state = current_state;
+        
+        // Track when button was first pressed
+        if (current_state) {
+            button_press_start_time = current_time;
+        }
+        
         return false;  // Don't trigger on state change, wait for stability
     }
     
@@ -502,7 +522,8 @@ bool sensor_manager_is_button_pressed(void)
         (current_time - last_button_press_time) >= 1000) {  // 1 second between presses
         
         last_button_press_time = current_time;
-        ESP_LOGI(TAG, "Button pressed at %lu ms", current_time);
+        uint32_t duration = current_time - button_press_start_time;
+        ESP_LOGI(TAG, "Button pressed at %lu ms (held for %lu ms)", current_time, duration);
         return true;
     }
     
@@ -524,4 +545,34 @@ void sensor_manager_get_health(sensor_health_t *health_out)
 uint32_t sensor_manager_get_last_button_press_time(void)
 {
     return last_button_press_time;
+}
+
+bool sensor_manager_is_button_held(void)
+{
+    // Read current button state (active low with pull-up)
+    return (gpio_get_level(FLAG_BUTTON_PIN) == 0);
+}
+
+uint32_t sensor_manager_get_button_duration(void)
+{
+    uint32_t current_time = sensor_manager_get_timestamp();
+    bool current_state = (gpio_get_level(FLAG_BUTTON_PIN) == 0);
+    
+    // If button just pressed and start time not set, set it now
+    if (current_state && button_press_start_time == 0) {
+        button_press_start_time = current_time;
+    }
+    
+    // If button released, reset start time
+    if (!current_state) {
+        button_press_start_time = 0;
+        return 0;
+    }
+    
+    // Button is pressed, calculate duration
+    if (button_press_start_time > 0) {
+        return current_time - button_press_start_time;
+    }
+    
+    return 0;
 }

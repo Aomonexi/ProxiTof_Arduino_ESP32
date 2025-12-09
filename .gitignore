@@ -4,6 +4,12 @@
 .clang_complete
 .gcc-flags.json
 
+# ESP-IDF Build artifacts
+build/
+sdkconfig.old
+dependencies.lock
+managed_components/
+
 # Build artifacts
 *.bin
 *.elf

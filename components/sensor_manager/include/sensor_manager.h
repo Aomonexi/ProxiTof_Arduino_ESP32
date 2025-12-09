@@ -151,6 +151,21 @@ void sensor_manager_get_health(sensor_health_t *health);
  */
 uint32_t sensor_manager_get_last_button_press_time(void);
 
+/**
+ * Check if button is currently being held down
+ * 
+ * @return true if button is currently pressed (LOW), false otherwise
+ */
+bool sensor_manager_is_button_held(void);
+
+/**
+ * Get button press duration in milliseconds
+ * Returns 0 if button is not currently pressed
+ * 
+ * @return Duration in milliseconds that button has been held
+ */
+uint32_t sensor_manager_get_button_duration(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -202,53 +202,77 @@ void app_main(void)
     uint32_t frame_count = 0;
     uint32_t tof_count = 0;
     uint32_t imu_count = 0;
+    uint32_t last_display_time = 0;
+    uint16_t last_min_dist = 9999;
     
     while (1) {
-        bool display_update = false;
+        uint32_t current_time = sensor_manager_get_timestamp();
+        bool should_display = (current_time - last_display_time) >= 500;  // 2Hz display
         
-        // Read ToF sensor
+        // Read ToF sensor at full speed (60Hz)
         err = sensor_manager_read_tof(&tof_data);
         if (err == ESP_OK) {
             tof_count++;
             
-            // Get minimum distance and update LED
+            // Get minimum distance and update LED IMMEDIATELY (real-time response)
             uint16_t min_dist = get_min_distance(&tof_data);
             if (led_strip != NULL) {
                 update_led(min_dist);
             }
-            
-            // Display ToF grid
-            print_tof_grid(&tof_data, min_dist);
-            display_update = true;
+            last_min_dist = min_dist;  // Store for display
         }
         
-        // Read IMU sensor
+        // Read IMU sensor at full speed (100Hz)
         err = sensor_manager_read_imu(&imu_data);
         if (err == ESP_OK) {
             imu_count++;
-            print_imu_data(&imu_data);
-            display_update = true;
         }
         
-        // Check button (only if GPIO3 is actually connected)
-        if (sensor_manager_is_button_pressed()) {
-            printf("\n");
-            printf("╔════════════════════════════════════════════════╗\n");
-            printf("║          ⚠️  BUTTON PRESSED - FLAG EVENT       ║\n");
-            printf("║   Timestamp: %lu ms                            ║\n", 
-                   sensor_manager_get_last_button_press_time());
-            printf("╚════════════════════════════════════════════════╝\n");
-        }
-        
-        // Print frame counter
-        if (display_update) {
+        // Display update at 2Hz (only when enough time has passed)
+        if (should_display && (tof_count > 0 || imu_count > 0)) {
+            last_display_time = current_time;
+            
+            // Display ToF grid if we have data
+            if (tof_count > 0) {
+                print_tof_grid(&tof_data, last_min_dist);
+            }
+            
+            // Display IMU data if we have data
+            if (imu_count > 0) {
+                print_imu_data(&imu_data);
+            }
+            
+            // Print frame counter
             frame_count++;
-            printf("\n[Frame: %lu | ToF: %lu | IMU: %lu]\n", 
+            printf("\n[Frame: %lu | ToF: %lu @ 60Hz | IMU: %lu @ 100Hz]\n", 
                    frame_count, tof_count, imu_count);
+            printf("LED Response: Real-time | Display: 2Hz\n");
             printf("Press Ctrl+] to exit monitor\n\n");
         }
         
-        // Small delay
-        vTaskDelay(pdMS_TO_TICKS(50));  // 20Hz display update
+        // Check button - show while held down (only during display updates to avoid spam)
+        if (should_display) {
+            if (sensor_manager_is_button_held()) {
+                uint32_t duration = sensor_manager_get_button_duration();
+                printf("\n");
+                printf("╔════════════════════════════════════════════════╗\n");
+                printf("║       ⚠️  BUTTON HELD - FLAGGING EVENT        ║\n");
+                printf("║   Duration: %lu ms (%.1f seconds)              ║\n", 
+                       duration, duration / 1000.0f);
+                printf("║   Keep holding to mark entire near-miss event  ║\n");
+                printf("╚════════════════════════════════════════════════╝\n");
+            } else if (sensor_manager_is_button_pressed()) {
+                // Button was just released after being held
+                printf("\n");
+                printf("╔════════════════════════════════════════════════╗\n");
+                printf("║      ✓ EVENT FLAGGED - Button Released        ║\n");
+                printf("║   Timestamp: %lu ms                            ║\n", 
+                       sensor_manager_get_last_button_press_time());
+                printf("╚════════════════════════════════════════════════╝\n");
+            }
+        }
+        
+        // Small delay to prevent CPU spinning (check sensors frequently)
+        vTaskDelay(pdMS_TO_TICKS(5));  // 200Hz loop rate for responsive LED
     }
 }
