@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "proxitof",
-    "project_version":    "57abde8-dirty",
+    "project_version":    "940e097-dirty",
     "project_path":       "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32",
     "idf_path":           "D:/ESP32_Tools/Espressif/frameworks/esp-idf-v5.5.1",
     "build_dir":          "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build",
@@ -1250,12 +1250,12 @@
             "dir": "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/main",
             "type": "LIBRARY",
             "lib": "__idf_main",
-            "reqs": [ "rjrp44__vl53l8cx", "esp_timer", "driver", "espressif__led_strip" ],
-            "priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
+            "reqs": [ "sensor_manager", "espressif__led_strip", "driver" ],
+            "priv_reqs": [],
             "managed_reqs": [],
-            "managed_priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
+            "managed_priv_reqs": [],
             "file": "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/libmain.a",
-            "sources": [ "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/main/main.cpp" ],
+            "sources": [ "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/main/main.c" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {
@@ -1475,12 +1475,12 @@
             "dir": "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/components/sensor_manager",
             "type": "LIBRARY",
             "lib": "__idf_sensor_manager",
-            "reqs": [ "driver", "esp_timer", "rjrp44__vl53l8cx" ],
-            "priv_reqs": [ "rjrp44__vl53l8cx" ],
+            "reqs": [ "driver", "esp_timer", "rjrp44__vl53l8cx", "espressif__led_strip" ],
+            "priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
             "managed_reqs": [],
-            "managed_priv_reqs": [ "rjrp44__vl53l8cx" ],
+            "managed_priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
             "file": "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sensor_manager/libsensor_manager.a",
-            "sources": [ "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/components/sensor_manager/sensor_manager.c" ],
+            "sources": [ "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/components/sensor_manager/sensor_manager.cpp" ],
             "include_dirs": [ "include" ]
         },
         "soc": {
@@ -2982,10 +2982,10 @@
             "prefix": "idf",
             "dir": "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/main",
             "lib": "__idf_main",
-            "reqs": [ "rjrp44__vl53l8cx", "esp_timer", "driver", "espressif__led_strip" ],
-            "priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
+            "reqs": [ "sensor_manager", "espressif__led_strip", "driver" ],
+            "priv_reqs": [],
             "managed_reqs": [],
-            "managed_priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
+            "managed_priv_reqs": [],
             "include_dirs": [ "." ]
         },
         "sensor_manager": {
@@ -2994,10 +2994,10 @@
             "prefix": "idf",
             "dir": "D:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/components/sensor_manager",
             "lib": "__idf_sensor_manager",
-            "reqs": [ "driver", "esp_timer", "rjrp44__vl53l8cx" ],
-            "priv_reqs": [ "rjrp44__vl53l8cx" ],
+            "reqs": [ "driver", "esp_timer", "rjrp44__vl53l8cx", "espressif__led_strip" ],
+            "priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
             "managed_reqs": [],
-            "managed_priv_reqs": [ "rjrp44__vl53l8cx" ],
+            "managed_priv_reqs": [ "esp32_BNO08x", "espressif__led_strip", "rjrp44__vl53l8cx" ],
             "include_dirs": [ "include" ]
         },
         "esp32_BNO08x": {

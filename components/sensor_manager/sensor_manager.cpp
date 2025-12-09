@@ -1,19 +1,25 @@
 /**
- * sensor_manager.c
+ * sensor_manager.cpp
  * 
  * ESP-IDF Sensor Manager Implementation
+ * C++ implementation for BNO08x IMU support
  */
 
+extern "C" {
 #include "sensor_manager.h"
 #include "driver/i2c_master.h"
-#include "driver/spi_master.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+}
+
 #include <string.h>
 
 // VL53L8CX library (RJRP44)
 #include "vl53l8cx_api.h"
+
+// BNO08x IMU library
+#include "BNO08x.hpp"
 
 static const char *TAG = "SENSOR_MGR";
 
@@ -21,14 +27,12 @@ static const char *TAG = "SENSOR_MGR";
 // Private State
 // =============================================================================
 
-// SPI bus handle
-static spi_device_handle_t spi_imu = NULL;
-
 // VL53L8CX ToF sensor
 static VL53L8CX_Configuration tof_dev;
 static bool tof_initialized = false;
 
-// IMU state (placeholder - will implement BNO08x driver)
+// BNO08x IMU sensor
+static BNO08x *imu = nullptr;
 static bool imu_initialized = false;
 
 // Button state
@@ -73,44 +77,6 @@ static esp_err_t init_i2c_bus(void)
     ESP_LOGI(TAG, "I2C bus initialized (SDA=%d, SCL=%d)", 
              TOF_SDA_PIN, TOF_SCL_PIN);
     ESP_LOGI(TAG, "  Internal pullups: ENABLED");
-    return ESP_OK;
-}
-
-/**
- * Initialize SPI bus for IMU sensor
- */
-static esp_err_t init_spi_bus(void)
-{
-    spi_bus_config_t buscfg = {
-        .mosi_io_num = IMU_MOSI_PIN,
-        .miso_io_num = IMU_MISO_PIN,
-        .sclk_io_num = IMU_SCK_PIN,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 4096,
-    };
-    
-    esp_err_t err = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "SPI bus init failed: %s", esp_err_to_name(err));
-        return err;
-    }
-    
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = SPI_MASTER_FREQ_HZ,
-        .mode = 0,
-        .spics_io_num = IMU_CS_PIN,
-        .queue_size = 7,
-    };
-    
-    err = spi_bus_add_device(SPI2_HOST, &devcfg, &spi_imu);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "SPI device add failed: %s", esp_err_to_name(err));
-        return err;
-    }
-    
-    ESP_LOGI(TAG, "SPI bus initialized (MOSI=%d, MISO=%d, SCK=%d, CS=%d)", 
-             IMU_MOSI_PIN, IMU_MISO_PIN, IMU_SCK_PIN, IMU_CS_PIN);
     return ESP_OK;
 }
 
@@ -284,46 +250,86 @@ static esp_err_t init_tof_sensor(void)
 }
 
 /**
- * Initialize BNO08x IMU sensor
- * TODO: Implement BNO08x SPI driver
+ * Initialize BNO08x IMU sensor (Optional - non-fatal)
+ * Based on working implementation from ProxiTof_AG
  */
 static esp_err_t init_imu_sensor(void)
 {
-    ESP_LOGI(TAG, "Initializing BNO08x IMU sensor...");
-    
-    // Configure RST pin
-    gpio_config_t rst_conf = {
-        .pin_bit_mask = (1ULL << IMU_RST_PIN),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&rst_conf);
-    
-    // Configure INT pin
-    gpio_config_t int_conf = {
-        .pin_bit_mask = (1ULL << IMU_INT_PIN),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&int_conf);
-    
-    // Reset IMU
-    gpio_set_level(IMU_RST_PIN, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    gpio_set_level(IMU_RST_PIN, 1);
-    vTaskDelay(pdMS_TO_TICKS(100));  // Wait for IMU to boot
-    
-    // TODO: Implement BNO08x initialization via SPI
-    // For now, mark as not initialized
-    imu_initialized = false;
-    health.imu_healthy = false;
-    
-    ESP_LOGW(TAG, "BNO08x IMU initialization not yet implemented");
-    return ESP_ERR_NOT_SUPPORTED;
+    ESP_LOGI(TAG, "");
+    ESP_LOGI(TAG, "=== BNO08x IMU Initialization ===");
+    ESP_LOGI(TAG, "Protocol: SPI");
+    ESP_LOGI(TAG, "SPI Host: SPI2_HOST (FSPI)");
+    ESP_LOGI(TAG, "Pins:");
+    ESP_LOGI(TAG, "  MOSI (DI): GPIO%d", IMU_MOSI_PIN);
+    ESP_LOGI(TAG, "  MISO (SDA): GPIO%d", IMU_MISO_PIN);
+    ESP_LOGI(TAG, "  SCK: GPIO%d", IMU_SCK_PIN);
+    ESP_LOGI(TAG, "  CS: GPIO%d", IMU_CS_PIN);
+    ESP_LOGI(TAG, "  INT: GPIO%d", IMU_INT_PIN);
+    ESP_LOGI(TAG, "  RST: GPIO%d", IMU_RST_PIN);
+    ESP_LOGI(TAG, "");
+    ESP_LOGI(TAG, "✓ Protocol Config: P0=3.3V, P1=3.3V, BT=floating");
+    ESP_LOGI(TAG, "");
+
+    // Create BNO08x config using full constructor
+    bno08x_config_t imu_config(SPI2_HOST,     // SPI peripheral (FSPI on ESP32-S3)
+                               IMU_MOSI_PIN,  // MOSI pin
+                               IMU_MISO_PIN,  // MISO pin
+                               IMU_SCK_PIN,   // SCK pin
+                               IMU_CS_PIN,    // CS pin
+                               IMU_INT_PIN,   // INT pin
+                               IMU_RST_PIN,   // RST pin
+                               3000000,       // 3 MHz SPI clock
+                               true           // Install ISR service
+    );
+
+    ESP_LOGI(TAG, "Creating BNO08x object...");
+    imu = new BNO08x(imu_config);
+
+    if (imu == nullptr) {
+        ESP_LOGE(TAG, "✗ Failed to create BNO08x object");
+        health.imu_healthy = false;
+        health.imu_error_count++;
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Initializing (takes ~2s)...");
+
+    if (!imu->initialize()) {
+        ESP_LOGE(TAG, "");
+        ESP_LOGE(TAG, "✗ BNO08x initialization FAILED!");
+        ESP_LOGE(TAG, "");
+        ESP_LOGE(TAG, "Troubleshoot:");
+        ESP_LOGE(TAG, "  1. Verify BOTH P0 AND P1 are at 3.3V (use multimeter)");
+        ESP_LOGE(TAG, "  2. Verify BT pin is FLOATING (disconnected)");
+        ESP_LOGE(TAG, "  3. Check breadboard connections");
+        ESP_LOGE(TAG, "  4. Check MISO wiring (GPIO%d)", IMU_MISO_PIN);
+        ESP_LOGE(TAG, "");
+
+        delete imu;
+        imu = nullptr;
+        health.imu_healthy = false;
+        health.imu_error_count++;
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "✓ BNO08x initialized successfully!");
+
+    // Enable rotation vector reports (orientation)
+    ESP_LOGI(TAG, "Enabling rotation vector @ 100Hz...");
+    if (!imu->rpt.rv.enable(10000)) { // 10000us = 10ms = 100Hz
+        ESP_LOGW(TAG, "Failed to enable rotation vector");
+    }
+
+    // Enable linear accelerometer
+    ESP_LOGI(TAG, "Enabling linear accelerometer @ 100Hz...");
+    if (!imu->rpt.linear_accelerometer.enable(10000)) {
+        ESP_LOGW(TAG, "Failed to enable linear accelerometer");
+    }
+
+    imu_initialized = true;
+    health.imu_healthy = true;
+    ESP_LOGI(TAG, "✓ BNO08x ready!");
+    return ESP_OK;
 }
 
 // =============================================================================
@@ -342,13 +348,6 @@ esp_err_t sensor_manager_init(void)
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize I2C bus");
         return err;
-    }
-    
-    // Initialize SPI bus
-    err = init_spi_bus();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize SPI bus");
-        // Continue - ToF might still work
     }
     
     // Initialize button GPIO
@@ -440,7 +439,7 @@ esp_err_t sensor_manager_read_tof(tof_data_t *data)
 
 esp_err_t sensor_manager_read_imu(imu_data_t *data)
 {
-    if (!imu_initialized || !health.imu_healthy) {
+    if (!imu_initialized || !health.imu_healthy || imu == nullptr) {
         return ESP_ERR_INVALID_STATE;
     }
     
@@ -448,9 +447,38 @@ esp_err_t sensor_manager_read_imu(imu_data_t *data)
         return ESP_ERR_INVALID_ARG;
     }
     
-    // TODO: Implement BNO08x data reading
-    // For now, return not supported
-    return ESP_ERR_NOT_SUPPORTED;
+    // Check if new data is available
+    if (!imu->data_available()) {
+        return ESP_ERR_NOT_FOUND;  // No new data
+    }
+    
+    // Fill timestamp
+    data->timestamp_ms = sensor_manager_get_timestamp();
+    data->valid = true;
+    
+    // Read rotation vector (orientation)
+    if (imu->rpt.rv.has_new_data()) {
+        bno08x_euler_angle_t euler = imu->rpt.rv.get_euler(true);
+        data->roll = euler.x;
+        data->pitch = euler.y;
+        data->yaw = euler.z;
+    }
+    
+    // Read linear accelerometer
+    if (imu->rpt.linear_accelerometer.has_new_data()) {
+        bno08x_accel_t accel = imu->rpt.linear_accelerometer.get();
+        data->accel_x = accel.x;
+        data->accel_y = accel.y;
+        data->accel_z = accel.z;
+    }
+    
+    // Note: Gyroscope data not implemented in current BNO08x library usage
+    // Set to zero for now
+    data->gyro_x = 0.0f;
+    data->gyro_y = 0.0f;
+    data->gyro_z = 0.0f;
+    
+    return ESP_OK;
 }
 
 bool sensor_manager_is_button_pressed(void)
@@ -460,16 +488,18 @@ bool sensor_manager_is_button_pressed(void)
     // Read button state (active low with pull-up)
     bool current_state = (gpio_get_level(FLAG_BUTTON_PIN) == 0);
     
-    // Debouncing logic
+    // Debouncing logic - track state changes
     if (current_state != last_button_state) {
         last_button_read_time = current_time;
         last_button_state = current_state;
+        return false;  // Don't trigger on state change, wait for stability
     }
     
-    // Check if button has been stable for debounce period
+    // Check if button has been stable LOW for debounce period
+    // AND enough time has passed since last press (prevent repeat triggers)
     if (current_state && 
         (current_time - last_button_read_time) >= BUTTON_DEBOUNCE_MS &&
-        (current_time - last_button_press_time) >= BUTTON_DEBOUNCE_MS) {
+        (current_time - last_button_press_time) >= 1000) {  // 1 second between presses
         
         last_button_press_time = current_time;
         ESP_LOGI(TAG, "Button pressed at %lu ms", current_time);

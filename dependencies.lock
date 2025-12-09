@@ -35,6 +35,6 @@ direct_dependencies:
 - esp32_BNO08x
 - espressif/led_strip
 - rjrp44/vl53l8cx
-manifest_hash: c4d0de418b7d1393ede0ce61cb9c05cc889d7f15329a87d404ca9d2e17f98bfb
+manifest_hash: 7165dbd6cebffef243a5e0d163a7a69480fdacbbb6e013d8f8429d62849b9f48
 target: esp32s3
 version: 2.0.0

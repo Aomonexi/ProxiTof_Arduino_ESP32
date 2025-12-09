@@ -22,24 +22,24 @@ extern "C" {
 // Pin Definitions
 // =============================================================================
 
-#define TOF_SDA_PIN         8
-#define TOF_SCL_PIN         9
-#define TOF_LPN_PIN         4
+#define TOF_SDA_PIN         GPIO_NUM_8
+#define TOF_SCL_PIN         GPIO_NUM_9
+#define TOF_LPN_PIN         GPIO_NUM_4
 
-#define IMU_MOSI_PIN        11
-#define IMU_MISO_PIN        13
-#define IMU_SCK_PIN         12
-#define IMU_CS_PIN          10
-#define IMU_INT_PIN         5
-#define IMU_RST_PIN         6
+#define IMU_MOSI_PIN        GPIO_NUM_11
+#define IMU_MISO_PIN        GPIO_NUM_13
+#define IMU_SCK_PIN         GPIO_NUM_12
+#define IMU_CS_PIN          GPIO_NUM_10
+#define IMU_INT_PIN         GPIO_NUM_5
+#define IMU_RST_PIN         GPIO_NUM_6
 
-#define FLAG_BUTTON_PIN     3
+#define FLAG_BUTTON_PIN     GPIO_NUM_3
 
 // =============================================================================
 // Configuration Constants
 // =============================================================================
 
-#define BUTTON_DEBOUNCE_MS  50
+#define BUTTON_DEBOUNCE_MS  200  // Increased to reduce false triggers
 #define I2C_MASTER_FREQ_HZ  400000
 #define SPI_MASTER_FREQ_HZ  1000000
 

@@ -1,5 +1,0 @@
-dependencies:
-  rjrp44/vl53l8cx: "^4.0.0"
-  espressif/led_strip: "^2.5.5"
-  esp32_BNO08x:
-    git: https://github.com/myles-parfeniuk/esp32_BNO08x.git
