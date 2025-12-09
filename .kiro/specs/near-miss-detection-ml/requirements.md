@@ -210,15 +210,15 @@ A near-miss event is characterized by rapid distance closure detected by the ToF
 
 ### Requirement 15
 
-**User Story:** As a developer, I want the system built on Arduino framework with PlatformIO, so that I can leverage Arduino libraries and have a streamlined development workflow.
+**User Story:** As a developer, I want the system built on ESP-IDF framework with PlatformIO, so that I can leverage native ESP32 drivers and achieve optimal performance for ML inference.
 
 #### Acceptance Criteria
 
-1. WHEN developing the ProxiTof_System THEN the system SHALL use Arduino framework for ESP32-S3
-2. WHEN using Arduino libraries THEN the ProxiTof_System SHALL utilize Arduino-compatible libraries for VL53L8CX, BNO08x, SD card, and WS2812 LED
+1. WHEN developing the ProxiTof_System THEN the system SHALL use ESP-IDF framework for ESP32-S3
+2. WHEN using sensor libraries THEN the ProxiTof_System SHALL utilize ESP-IDF native components for VL53L8CX (RJRP44 library), BNO08x, SD card (VFS), and WS2812 LED (RMT driver)
 3. WHEN building firmware THEN the ProxiTof_System SHALL use PlatformIO as the primary build system with platformio.ini configuration
-4. WHEN configuring PlatformIO THEN the platformio.ini SHALL specify esp32-s3-devkitc-1 board and Arduino framework
-5. WHEN integrating TFLite_Micro THEN the ProxiTof_System SHALL use Arduino-compatible TensorFlow Lite library
+4. WHEN configuring PlatformIO THEN the platformio.ini SHALL specify esp32-s3-devkitc-1 board and espidf framework
+5. WHEN integrating TFLite_Micro THEN the ProxiTof_System SHALL use ESP-IDF TensorFlow Lite component with ESP-NN acceleration
 6. WHEN compiling THEN the build process SHALL support both PlatformIO CLI and PlatformIO IDE
 7. WHEN uploading firmware THEN the system SHALL support serial upload via USB connection
 
@@ -228,25 +228,25 @@ A near-miss event is characterized by rapid distance closure detected by the ToF
 
 #### Acceptance Criteria
 
-1. WHEN initializing the repository THEN the Git_Repository SHALL be named "ProxiTof_Arduino_ESP32"
-2. WHEN organizing project structure THEN the Git_Repository SHALL follow Arduino/PlatformIO conventions with src/, lib/, include/, and data/ directories
-3. WHEN creating .gitignore THEN the Git_Repository SHALL exclude build artifacts (.pio/, .vscode/, *.bin), IDE files, and OS-specific files
+1. WHEN initializing the repository THEN the Git_Repository SHALL be named "ProxiTof_ESP32"
+2. WHEN organizing project structure THEN the Git_Repository SHALL follow ESP-IDF conventions with main/, components/, include/, and data/ directories
+3. WHEN creating .gitignore THEN the Git_Repository SHALL exclude build artifacts (.pio/, build/, .vscode/, *.bin), IDE files, and OS-specific files
 4. WHEN documenting the project THEN the Git_Repository SHALL include README.md with hardware setup, pin configuration, build instructions, and usage guide
-5. WHEN managing dependencies THEN the Git_Repository SHALL specify all library dependencies in platformio.ini with version constraints
-6. WHEN organizing code THEN the Git_Repository SHALL separate concerns into modules: sensors/, logging/, ml_inference/, and config/
+5. WHEN managing dependencies THEN the Git_Repository SHALL specify all component dependencies in idf_component.yml files or platformio.ini
+6. WHEN organizing code THEN the Git_Repository SHALL separate concerns into ESP-IDF components: sensor_manager/, data_processor/, storage_manager/, ml_inference/, and config_parser/
 7. WHEN committing changes THEN the Git_Repository SHALL use descriptive commit messages following conventional commits format
 8. WHEN creating branches THEN the Git_Repository SHALL maintain main branch for stable releases and develop branch for active development
 9. WHEN including documentation THEN the Git_Repository SHALL provide docs/ directory with wiring diagrams, data format specifications, and ML model training guide
 
 ### Requirement 17
 
-**User Story:** As a developer, I want clear build and flash instructions for Arduino framework, so that I can quickly set up the development environment and deploy firmware.
+**User Story:** As a developer, I want clear build and flash instructions for ESP-IDF framework, so that I can quickly set up the development environment and deploy firmware.
 
 #### Acceptance Criteria
 
-1. WHEN setting up development environment THEN the documentation SHALL provide step-by-step PlatformIO installation instructions
-2. WHEN installing dependencies THEN the ProxiTof_System SHALL automatically download required libraries via PlatformIO Library Manager
-3. WHEN building firmware THEN the developer SHALL execute "pio run" command to compile the project
+1. WHEN setting up development environment THEN the documentation SHALL provide step-by-step PlatformIO installation instructions with ESP-IDF framework support
+2. WHEN installing dependencies THEN the ProxiTof_System SHALL automatically download required ESP-IDF components and libraries via PlatformIO
+3. WHEN building firmware THEN the developer SHALL execute "pio run" command to compile the project with ESP-IDF toolchain
 4. WHEN flashing firmware THEN the developer SHALL execute "pio run -t upload" to flash ESP32-S3 via USB
 5. WHEN monitoring serial output THEN the developer SHALL execute "pio device monitor" to view real-time logs at 115200 baud
-6. WHEN using Arduino IDE THEN the documentation SHALL provide alternative instructions for Arduino IDE setup and compilation
+6. WHEN using ESP-IDF directly THEN the documentation SHALL provide alternative instructions for native ESP-IDF build system (idf.py)

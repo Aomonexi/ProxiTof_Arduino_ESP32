@@ -1,0 +1,40 @@
+dependencies:
+  esp32_BNO08x:
+    component_hash: ebbb836bc9f6c921c10fe392dbc84c39ba9c944c57dde13820506ccdbc15d3d9
+    dependencies: []
+    source:
+      git: https://github.com/myles-parfeniuk/esp32_BNO08x.git
+      path: .
+      type: git
+    version: d78f6e5c47f54fe45833b6735ad91e0c08b402dd
+  espressif/led_strip:
+    component_hash: 28c6509a727ef74925b372ed404772aeedf11cce10b78c3f69b3c66799095e2d
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.4'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 2.5.5
+  idf:
+    source:
+      type: idf
+    version: 5.5.1
+  rjrp44/vl53l8cx:
+    component_hash: 453314712a3e36ae9c6c4c169943f3be9cc15579071f4afb2bb662faed669f7f
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.4'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 4.0.0
+direct_dependencies:
+- esp32_BNO08x
+- espressif/led_strip
+- rjrp44/vl53l8cx
+manifest_hash: c4d0de418b7d1393ede0ce61cb9c05cc889d7f15329a87d404ca9d2e17f98bfb
+target: esp32s3
+version: 2.0.0

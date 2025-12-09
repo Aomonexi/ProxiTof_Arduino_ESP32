@@ -74,13 +74,18 @@ bool SensorManager::initialize() {
 bool SensorManager::initializeToF() {
     Serial.println("Initializing VL53L8CX ToF sensor...");
     
-    // Configure I2C pins
+    // Configure LPN (Low Power/Enable) pin FIRST
+    pinMode(TOF_LPN_PIN, OUTPUT);
+    digitalWrite(TOF_LPN_PIN, LOW);   // Disable sensor first
+    delay(10);
+    
+    // Configure I2C pins for ESP32
     Wire.begin(TOF_SDA_PIN, TOF_SCL_PIN);
     Wire.setClock(400000);  // 400kHz I2C
+    delay(10);
     
-    // Configure LPN (Low Power) pin
-    pinMode(TOF_LPN_PIN, OUTPUT);
-    digitalWrite(TOF_LPN_PIN, HIGH);  // Enable sensor
+    // Enable sensor
+    digitalWrite(TOF_LPN_PIN, HIGH);
     delay(100);  // Wait for sensor to power up
     
     // Create ToF sensor object
@@ -97,14 +102,13 @@ bool SensorManager::initializeToF() {
         
         // Initialize VL53L8CX
         if (tofSensor->begin() == 0) {
-            // Sensor initialized successfully
+            Serial.println("ToF sensor detected!");
+            
             if (tofSensor->init() == 0) {
                 // Configure sensor for 4x4 mode at 60Hz
                 tofSensor->set_resolution(VL53L8CX_RESOLUTION_4X4);
                 tofSensor->set_ranging_frequency_hz(60);
                 tofSensor->set_ranging_mode(VL53L8CX_RANGING_MODE_CONTINUOUS);
-                
-                // Start ranging
                 tofSensor->start_ranging();
                 
                 Serial.println("ToF sensor configured: 4x4 mode, 60Hz");
@@ -207,7 +211,6 @@ bool SensorManager::readToFData(ToFData& data) {
     data.valid = true;
     
     // Copy distance data (4x4 grid in row-major order)
-    // VL53L8CX provides data per zone
     for (int i = 0; i < 16; i++) {
         data.distances[i] = results.distance_mm[i];
     }

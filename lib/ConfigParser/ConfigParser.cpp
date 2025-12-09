@@ -53,8 +53,9 @@ bool ConfigParser::parseConfigFile(SystemConfig& config, const char* filename) {
     }
     
     return success;
-}b
-ool ConfigParser::parseConfigString(SystemConfig& config, const String& content) {
+}
+
+bool ConfigParser::parseConfigString(SystemConfig& config, const String& content) {
     bool allValid = true;
     int lineNumber = 1;
     int startIndex = 0;
@@ -104,8 +105,9 @@ ool ConfigParser::parseConfigString(SystemConfig& config, const String& content)
     }
     
     return allValid;
-}bo
-ol ConfigParser::setConfigParameter(SystemConfig& config, const String& key, const String& value) {
+}
+
+bool ConfigParser::setConfigParameter(SystemConfig& config, const String& key, const String& value) {
     if (key == "log_interval_ms") {
         long val = value.toInt();
         if (val >= MIN_LOG_INTERVAL_MS && val <= MAX_LOG_INTERVAL_MS) {
@@ -182,8 +184,9 @@ ol ConfigParser::setConfigParameter(SystemConfig& config, const String& key, con
     }
     
     return false;
-}bool C
-onfigParser::validateConfig(const SystemConfig& config) {
+}
+
+bool ConfigParser::validateConfig(const SystemConfig& config) {
     bool valid = true;
     
     // Validate log_interval_ms

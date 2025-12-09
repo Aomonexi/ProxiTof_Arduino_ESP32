@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ProxiTof Near-Miss Detection System is an Arduino-based embedded application for ESP32-S3 that performs real-time sensor fusion, data logging, and machine learning inference. The system combines a VL53L8CX Time-of-Flight sensor (4x4 distance grid at 60Hz) with a BNO08x 9-DOF IMU (orientation and motion at 100Hz) to detect and predict near-miss collision events.
+The ProxiTof Near-Miss Detection System is an ESP-IDF-based embedded application for ESP32-S3 that performs real-time sensor fusion, data logging, and machine learning inference. The system combines a VL53L8CX Time-of-Flight sensor (4x4 distance grid at 60Hz) with a BNO08x 9-DOF IMU (orientation and motion at 100Hz) to detect and predict near-miss collision events.
 
 The design follows a modular architecture with clear separation between sensor acquisition, data processing, storage, and ML inference. The system operates in two primary modes:
 
@@ -10,10 +10,10 @@ The design follows a modular architecture with clear separation between sensor a
 2. **ML Inference Mode**: Runs trained TensorFlow Lite model for automated near-miss detection
 
 Key design principles:
-- Non-blocking sensor operations maintaining 60Hz ToF timing
+- Non-blocking sensor operations maintaining 60Hz ToF timing using FreeRTOS tasks
 - Circular buffering for reliable SD card writes without frame drops
-- Modular architecture enabling independent testing and future enhancements
-- Arduino framework for accessibility with PlatformIO for professional tooling
+- Modular ESP-IDF component architecture enabling independent testing and future enhancements
+- ESP-IDF framework for native hardware access, ESP-NN ML acceleration, and production-grade reliability
 
 ## Architecture
 
@@ -98,6 +98,8 @@ Sensor Data → Synchronization → Feature Extraction → Buffering → SD Writ
 
 **Purpose**: Abstracts sensor hardware and provides unified data interface
 
+**ESP-IDF Components**: sensor_manager
+
 **Classes**:
 
 ```cpp
@@ -132,9 +134,9 @@ struct IMUData {
 ```
 
 **Dependencies**:
-- `Adafruit_VL53L8CX` library for ToF sensor
-- `SparkFun_BNO08x_Arduino_Library` for IMU
-- GPIO library for button input
+- RJRP44 `VL53L8CX-Library` (ESP-IDF native) for ToF sensor
+- ESP-IDF SPI driver for BNO08x IMU communication
+- ESP-IDF GPIO driver for button input
 
 **Pin Configuration**:
 ```cpp
@@ -167,6 +169,8 @@ struct IMUData {
 ### 2. Data Processor Component
 
 **Purpose**: Synchronizes sensors, extracts features, and prepares data for logging/ML
+
+**ESP-IDF Components**: data_processor
 
 **Classes**:
 
@@ -233,6 +237,8 @@ angular_velocity = sqrt(gyro_x² + gyro_y² + gyro_z²)
 
 **Purpose**: Handles SD card operations with buffering for non-blocking writes
 
+**ESP-IDF Components**: storage_manager
+
 **Classes**:
 
 ```cpp
@@ -294,6 +300,8 @@ jerk_threshold_m_s3=2.0
 
 **Purpose**: Runs TensorFlow Lite model for near-miss prediction
 
+**ESP-IDF Components**: ml_inference
+
 **Classes**:
 
 ```cpp
@@ -333,7 +341,9 @@ resolver.AddSoftmax();
 
 ### 5. Status LED Component
 
-**Purpose**: Provides visual feedback via WS2812 RGB LED
+**Purpose**: Provides visual feedback via WS2812 RGB LED using ESP-IDF RMT driver
+
+**ESP-IDF Components**: status_led
 
 **Classes**:
 
@@ -769,7 +779,7 @@ ERROR_SD → READY (SD recovered)
 
 ### Unit Testing
 
-**Test Framework**: Arduino Unit Testing with PlatformIO
+**Test Framework**: ESP-IDF Unity Test Framework with PlatformIO
 
 **Unit Test Coverage**:
 
@@ -805,7 +815,7 @@ ERROR_SD → READY (SD recovered)
 
 **Example Unit Test**:
 ```cpp
-void test_approach_rate_calculation() {
+TEST_CASE("Approach rate calculation", "[data_processor]") {
     DataProcessor processor;
     
     // Setup: Two ToF readings 16ms apart
@@ -822,7 +832,7 @@ void test_approach_rate_calculation() {
 
 ### Property-Based Testing
 
-**Test Framework**: We will use a custom property testing implementation for Arduino, as standard PBT libraries (QuickCheck, Hypothesis) are not available for embedded systems.
+**Test Framework**: We will use a custom property testing implementation for ESP-IDF, as standard PBT libraries (QuickCheck, Hypothesis) are not available for embedded systems.
 
 **Property Test Implementation Strategy**:
 - Generate random test inputs within valid ranges
@@ -837,15 +847,15 @@ Each correctness property from the design document will be implemented as a prop
 **Example Property Test**:
 ```cpp
 // Feature: near-miss-detection-ml, Property 27: Approach rate calculation correctness
-void property_test_approach_rate_calculation() {
+TEST_CASE("Property: Approach rate calculation correctness", "[data_processor][property]") {
     DataProcessor processor;
     
     for (int i = 0; i < 100; i++) {
         // Generate random distances and timestamps
-        uint16_t dist1 = random(100, 4000);  // 100-4000mm
-        uint16_t dist2 = random(100, 4000);
-        uint32_t time1 = random(1000, 100000);
-        uint32_t time2 = time1 + random(10, 50);  // 10-50ms later
+        uint16_t dist1 = esp_random() % 3900 + 100;  // 100-4000mm
+        uint16_t dist2 = esp_random() % 3900 + 100;
+        uint32_t time1 = esp_random() % 99000 + 1000;
+        uint32_t time2 = time1 + (esp_random() % 40 + 10);  // 10-50ms later
         
         ToFData frame1 = {time1, {dist1, dist1, ...}, true};
         ToFData frame2 = {time2, {dist2, dist2, ...}, true};
@@ -932,22 +942,33 @@ void property_test_approach_rate_calculation() {
 
 ## Implementation Notes
 
-### Arduino Library Dependencies
+### ESP-IDF Component Dependencies
 
-**Required Libraries** (specified in platformio.ini):
+**Required Components** (specified in platformio.ini):
 ```ini
 [env:esp32-s3-devkitc-1]
 platform = espressif32
 board = esp32-s3-devkitc-1
-framework = arduino
+framework = espidf
 
 lib_deps =
-    adafruit/Adafruit VL53L8CX @ ^1.0.0
-    sparkfun/SparkFun BNO08x @ ^1.0.0
-    adafruit/Adafruit NeoPixel @ ^1.11.0
-    arduino-libraries/SD @ ^1.2.4
-    tensorflow/TensorFlowLite_ESP32 @ ^1.0.0
+    https://github.com/RJRP44/VL53L8CX-Library.git
+    
+platform_packages =
+    platformio/framework-espidf @ ~3.50000.0
+
+build_flags =
+    -DCONFIG_ESP_NN_ENABLE=1
 ```
+
+**ESP-IDF Native Components**:
+- `esp_vfs_fat` - SD card filesystem
+- `driver/gpio` - GPIO control
+- `driver/i2c` - I2C communication for ToF
+- `driver/spi_master` - SPI communication for IMU and SD
+- `driver/rmt` - RMT driver for WS2812 LED
+- `esp-tflite-micro` - TensorFlow Lite with ESP-NN
+- `esp_timer` - High-resolution timing
 
 ### Memory Considerations
 
@@ -977,11 +998,13 @@ lib_deps =
 2. LED updates (must not block sensor reading)
 3. SD writes (must be asynchronous via buffering)
 
-**Non-Blocking Design**:
-- Use `millis()` for timing instead of `delay()`
-- Check sensor data availability before reading
-- Flush SD buffer in background when not reading sensors
-- ML inference runs after sensor reading completes
+**FreeRTOS Task Design**:
+- **Sensor Task** (Priority: High): Reads ToF and IMU at 60Hz, uses `vTaskDelay()` for timing
+- **Storage Task** (Priority: Medium): Flushes circular buffer to SD card asynchronously
+- **ML Task** (Priority: Medium): Runs inference on queued sensor data
+- **LED Task** (Priority: Low): Updates LED patterns without blocking sensors
+- Use FreeRTOS queues for inter-task communication
+- Use `esp_timer_get_time()` for microsecond-precision timestamps
 
 ### Future Enhancements
 

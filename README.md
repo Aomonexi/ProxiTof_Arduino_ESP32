@@ -66,9 +66,12 @@ Status LED:
 
 ### Development Environment
 
-- **PlatformIO** (recommended) or Arduino IDE
+- **PlatformIO** with ESP-IDF framework (recommended)
+- **ESP-IDF v5.x** (managed by PlatformIO)
 - **Python 3.7+** (for data analysis and ML training)
 - **Git** (for version control)
+
+**Note:** This project uses ESP-IDF framework (not Arduino) for better sensor support and ML performance.
 
 ### PlatformIO Installation
 
@@ -107,31 +110,15 @@ pip install platformio
    ```
    Serial baud rate: 115200
 
-### Using Arduino IDE
+### ESP-IDF Components
 
-1. Install Arduino IDE 2.0+
-2. Add ESP32 board support:
-   - Go to File → Preferences
-   - Add to "Additional Board Manager URLs": 
-     ```
-     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-     ```
-   - Go to Tools → Board → Boards Manager
-   - Search for "esp32" and install "esp32 by Espressif Systems"
+The project uses the following ESP-IDF components:
+- **VL53L8CX Library** - RJRP44's ESP-IDF native driver
+- **TensorFlow Lite Micro** - Official ESP-IDF component with ESP-NN
+- **FreeRTOS** - Built-in task management
+- **ESP-IDF VFS** - Virtual file system for SD card
 
-3. Install required libraries via Library Manager:
-   - Adafruit VL53L8CX
-   - SparkFun BNO08x Cortex Based IMU
-   - Adafruit NeoPixel
-   - TensorFlow Lite Micro
-
-4. Select board: Tools → Board → ESP32 Arduino → ESP32S3 Dev Module
-5. Configure settings:
-   - USB CDC On Boot: Enabled
-   - PSRAM: Enabled
-   - Upload Speed: 921600
-
-6. Open `src/main.cpp` and upload
+All dependencies are managed automatically by PlatformIO.
 
 ## SD Card Setup
 

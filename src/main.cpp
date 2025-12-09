@@ -48,50 +48,90 @@ void loop() {
     static uint32_t lastToFRead = 0;
     static uint32_t lastIMURead = 0;
     static uint32_t lastStatusPrint = 0;
+    static uint32_t tofReadCount = 0;
+    static uint32_t lastFPSCheck = 0;
     uint32_t currentTime = millis();
     
-    // Read ToF sensor at ~60Hz (every 16ms)
+    // Read ToF sensor at 60Hz (every 16.67ms ≈ 16ms)
     if (currentTime - lastToFRead >= 16) {
         ToFData tofData;
         if (sensorManager.readToFData(tofData)) {
-            // Successfully read ToF data
-            // Find minimum distance
-            uint16_t minDist = 4000;
-            for (int i = 0; i < 16; i++) {
-                if (tofData.distances[i] < minDist) {
-                    minDist = tofData.distances[i];
-                }
-            }
+            tofReadCount++;
             
-            // Print status every second
+            // Print detailed status every second
             if (currentTime - lastStatusPrint >= 1000) {
-                Serial.print("[ToF] Time: ");
+                // Calculate actual frame rate
+                float actualFPS = tofReadCount * 1000.0f / (currentTime - lastFPSCheck);
+                
+                Serial.println("\n╔════════════════════════════════════════════════════════╗");
+                Serial.print("║ ToF 4x4 Distance Grid (mm) - Time: ");
                 Serial.print(tofData.timestamp_ms);
-                Serial.print(" ms, Min Distance: ");
+                Serial.println(" ms");
+                Serial.print("║ Actual Frame Rate: ");
+                Serial.print(actualFPS, 1);
+                Serial.println(" Hz");
+                Serial.println("╠════════════════════════════════════════════════════════╣");
+                
+                // Display 4x4 grid
+                for (int row = 0; row < 4; row++) {
+                    Serial.print("║  ");
+                    for (int col = 0; col < 4; col++) {
+                        int index = row * 4 + col;
+                        uint16_t dist = tofData.distances[index];
+                        
+                        // Format: 4 digits, right-aligned
+                        if (dist < 1000) Serial.print(" ");
+                        if (dist < 100) Serial.print(" ");
+                        if (dist < 10) Serial.print(" ");
+                        Serial.print(dist);
+                        Serial.print("  ");
+                    }
+                    Serial.println("║");
+                }
+                
+                // Find and display min/max
+                uint16_t minDist = 4000;
+                uint16_t maxDist = 0;
+                for (int i = 0; i < 16; i++) {
+                    if (tofData.distances[i] < minDist) minDist = tofData.distances[i];
+                    if (tofData.distances[i] > maxDist) maxDist = tofData.distances[i];
+                }
+                
+                Serial.println("╠════════════════════════════════════════════════════════╣");
+                Serial.print("║ Min: ");
                 Serial.print(minDist);
+                Serial.print(" mm  |  Max: ");
+                Serial.print(maxDist);
                 Serial.println(" mm");
+                Serial.println("╚════════════════════════════════════════════════════════╝");
+                
                 lastStatusPrint = currentTime;
+                lastFPSCheck = currentTime;
+                tofReadCount = 0;
             }
         }
         lastToFRead = currentTime;
     }
     
-    // Read IMU sensor at ~100Hz (every 10ms)
+    // Read IMU sensor at 100Hz (every 10ms)
     if (currentTime - lastIMURead >= 10) {
         IMUData imuData;
         if (sensorManager.readIMUData(imuData)) {
             // Successfully read IMU data
             // Data is available for processing
+            // (Not displayed to avoid cluttering serial output)
         }
         lastIMURead = currentTime;
     }
     
     // Check button press
     if (sensorManager.isButtonPressed()) {
-        Serial.print("\n[BUTTON] Button pressed at ");
+        Serial.println("\n╔════════════════════════════════════════════════════════╗");
+        Serial.print("║ [BUTTON] Pressed at ");
         Serial.print(sensorManager.getLastButtonPressTime());
         Serial.println(" ms");
-        Serial.println("         Flag event recorded!\n");
+        Serial.println("║ Flag event recorded!");
+        Serial.println("╚════════════════════════════════════════════════════════╝\n");
     }
     
     // Small delay to prevent watchdog issues

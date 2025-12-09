@@ -1,15 +1,10 @@
 # Implementation Plan
 
 - [x] 1. Set up project structure and Git repository
-
-
-
-
-
-  - Create PlatformIO project with ESP32-S3 configuration
+  - Create PlatformIO project with ESP32-S3 and ESP-IDF framework configuration
   - Initialize Git repository with proper .gitignore
-  - Create directory structure: src/, lib/, include/, data/, docs/
-  - Configure platformio.ini with board settings and library dependencies
+  - Create directory structure: main/, components/, include/, data/, docs/
+  - Configure platformio.ini with ESP-IDF framework, board settings, and component dependencies
   - Create README.md with hardware setup and build instructions
   - _Requirements: 16.1, 16.2, 16.3, 16.5, 16.9, 17.1_
 
@@ -55,13 +50,14 @@
 
 
 
-  - [x] 3.1 Create SensorManager class with initialization
+  - [x] 3.1 Create SensorManager ESP-IDF component with initialization
 
 
-    - Initialize VL53L8CX ToF sensor on I2C (GPIO 8, 9)
-    - Initialize BNO08x IMU sensor on SPI (GPIO 10, 11, 12, 13)
+
+    - Initialize VL53L8CX ToF sensor using RJRP44 library on I2C (GPIO 8, 9)
+    - Initialize BNO08x IMU sensor using ESP-IDF SPI driver (GPIO 10, 11, 12, 13)
     - Implement sensor health checks and error reporting
-    - Implement timestamp generation using millis()
+    - Implement timestamp generation using esp_timer_get_time()
     - _Requirements: 1.1, 15.1, 15.2_
 
   - [x] 3.2 Implement ToF sensor data reading
@@ -92,7 +88,7 @@
     - **Property 15: Button debouncing**
     - **Validates: Requirements 2.2, 2.3, 3.1, 3.4**
 
-- [ ] 4. Implement Data Processor component
+- [ ] 4. Implement Data Processor component (ESP-IDF component)
   - [ ] 4.1 Create DataProcessor class with synchronization
     - Implement sensor synchronization within 10ms window
     - Implement IMU interpolation for ToF frame alignment
@@ -124,7 +120,7 @@
     - **Property 58: Angular velocity derivation**
     - **Validates: Requirements 2.4, 2.5, 7.1, 7.3, 14.1, 14.2, 14.3, 14.4**
 
-- [ ] 5. Implement Storage Manager component
+- [ ] 5. Implement Storage Manager component (ESP-IDF component)
   - [ ] 5.1 Create CircularBuffer template class
     - Implement push, pop, size, capacity, isFull methods
     - Implement fillPercentage calculation
@@ -132,7 +128,7 @@
     - _Requirements: 5.2_
 
   - [ ] 5.2 Create StorageManager class with SD card initialization
-    - Initialize SD card with FAT32 filesystem
+    - Initialize SD card with FAT32 filesystem using ESP-IDF VFS
     - Verify card presence and report errors
     - Create date-based directory structure (YYYY-MM-DD)
     - _Requirements: 1.1, 1.2_
@@ -165,9 +161,9 @@
     - **Property 24: Buffer flush trigger**
     - **Validates: Requirements 1.2, 1.3, 4.1, 4.2, 5.2, 5.3**
 
-- [ ] 6. Implement Status LED component
+- [ ] 6. Implement Status LED component (ESP-IDF component)
   - [ ] 6.1 Create StatusLED class with WS2812 control
-    - Initialize WS2812 LED on GPIO 48
+    - Initialize WS2812 LED on GPIO 48 using ESP-IDF RMT driver
     - Implement color and pattern generation for all states
     - Implement priority-based state override system
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
@@ -184,12 +180,12 @@
     - **Property 14: Button press LED feedback**
     - **Validates: Requirements 10.1-10.7, 3.3**
 
-- [ ] 7. Implement ML Inference component
+- [ ] 7. Implement ML Inference component (ESP-IDF component)
   - [ ] 7.1 Create MLInference class with TFLite initialization
-    - Load TensorFlow Lite model from flash memory
+    - Load TensorFlow Lite model from flash memory using ESP-IDF partition API
     - Allocate 50KB tensor arena
     - Verify model integrity
-    - Register ESP-NN optimized operations
+    - Register ESP-NN optimized operations (native ESP-IDF support)
     - _Requirements: 8.1, 8.2, 8.4_
 
   - [ ] 7.2 Implement input tensor preparation
@@ -214,24 +210,22 @@
     - **Property 37: ML confidence threshold alerting**
     - **Validates: Requirements 8.2, 8.3, 8.4, 8.6**
 
-- [ ] 8. Implement main application loop
-  - [ ] 8.1 Create main setup function
-    - Initialize serial communication at 115200 baud
-    - Initialize all components (sensors, storage, LED, ML)
+- [ ] 8. Implement main application with FreeRTOS tasks
+  - [ ] 8.1 Create app_main() initialization function
+    - Initialize UART for logging at 115200 baud
+    - Initialize all ESP-IDF components (sensors, storage, LED, ML)
     - Load configuration from SD card
-    - Output system status and configuration to serial
+    - Output system status and configuration via ESP_LOGI
     - Handle initialization errors with graceful degradation
     - _Requirements: 11.1, 11.2, 11.5, 12.4_
 
-  - [ ] 8.2 Create main loop with 60Hz timing
-    - Poll ToF sensor at 60Hz (primary timing source)
-    - Poll IMU sensor asynchronously
-    - Check button state with debouncing
-    - Synchronize sensor data
-    - Extract features and detect near-miss conditions
-    - Buffer data for SD writing
-    - Update LED status
-    - Run ML inference if enabled
+  - [ ] 8.2 Create FreeRTOS tasks for concurrent operation
+    - Create Sensor Task (high priority) to poll ToF at 60Hz and IMU at 100Hz
+    - Create Storage Task (medium priority) to flush buffer to SD asynchronously
+    - Create ML Task (medium priority) to run inference on queued data
+    - Create LED Task (low priority) to update LED patterns
+    - Use FreeRTOS queues for inter-task communication
+    - Use vTaskDelay() for timing control
     - _Requirements: 1.4, 1.5, 5.1, 9.4_
 
   - [ ] 8.3 Implement event handling
@@ -295,10 +289,11 @@
 - [ ] 11. Create documentation and examples
   - [ ] 11.1 Write comprehensive README.md
     - Document hardware setup and pin connections
-    - Document build and flash instructions for PlatformIO
+    - Document build and flash instructions for PlatformIO with ESP-IDF
+    - Document alternative build with native ESP-IDF (idf.py)
     - Document serial commands and configuration options
     - Include troubleshooting guide
-    - _Requirements: 16.4, 17.2, 17.3, 17.4, 17.5_
+    - _Requirements: 16.4, 17.2, 17.3, 17.4, 17.5, 17.6_
 
   - [ ] 11.2 Create wiring diagrams
     - Create Fritzing or similar diagram for all connections
@@ -346,7 +341,7 @@
   - [ ] 12.4 Create initial Git commit and push to GitHub
     - Commit all source code with descriptive message
     - Create develop branch for active development
-    - Push to GitHub repository "ProxiTof_Arduino_ESP32"
+    - Push to GitHub repository "ProxiTof_ESP32"
     - _Requirements: 16.7, 16.8_
 
 - [ ] 13. Checkpoint - Ensure all tests pass
