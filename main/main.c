@@ -10,6 +10,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "sensor_manager.h"
+#include "storage_manager.h"
 #include "led_strip.h"
 #include "driver/gpio.h"
 
@@ -191,6 +192,74 @@ void app_main(void)
     ESP_LOGI(TAG, "  IMU: %s (errors: %lu)", 
              health.imu_healthy ? "✓ HEALTHY" : "✗ FAILED", health.imu_error_count);
     ESP_LOGI(TAG, "");
+    
+    // =========================================================================
+    // SD CARD INITIALIZATION (SDIO)
+    // =========================================================================
+    // TEMPORARY: Disable SD card init until SDIO hardware is connected
+    // The SDIO initialization takes 5-10 seconds to timeout when hardware
+    // is not present, which blocks the main loop and prevents sensors from working
+    // =========================================================================
+    
+#ifdef ENABLE_SD_CARD  // Set this in platformio.ini or sdkconfig when hardware is ready
+    ESP_LOGI(TAG, "Initializing SD card storage...");
+    err = storage_manager_init();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "SD card initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "Continuing without data logging");
+        ESP_LOGW(TAG, "");
+        ESP_LOGW(TAG, "Troubleshooting:");
+        ESP_LOGW(TAG, "  1. Check SD card is inserted");
+        ESP_LOGW(TAG, "  2. Format SD card as FAT32");
+        ESP_LOGW(TAG, "  3. Check wiring: CLK=39, CMD=38, D0=40, D1=41, D2=42, D3=43");
+        ESP_LOGW(TAG, "  4. Verify 3.3V power to SD card");
+    } else {
+        ESP_LOGI(TAG, "✓ SD card initialized successfully");
+        
+        // Start logging
+        err = storage_manager_start_logging();
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "✓ Data logging started");
+        } else {
+            ESP_LOGW(TAG, "Failed to start logging: %s", esp_err_to_name(err));
+        }
+    }
+#else
+    ESP_LOGW(TAG, "");
+    ESP_LOGW(TAG, "╔════════════════════════════════════════════════╗");
+    ESP_LOGW(TAG, "║  ⚠️  SD CARD DISABLED (SDIO hardware not ready) ║");
+    ESP_LOGW(TAG, "╠════════════════════════════════════════════════╣");
+    ESP_LOGW(TAG, "║  System will run WITHOUT data logging          ║");
+    ESP_LOGW(TAG, "║  Sensors and LED will work normally            ║");
+    ESP_LOGW(TAG, "║                                                ║");
+    ESP_LOGW(TAG, "║  To enable SD card:                            ║");
+    ESP_LOGW(TAG, "║  1. Connect SDIO breakout board                ║");
+    ESP_LOGW(TAG, "║  2. Add -DENABLE_SD_CARD to build flags        ║");
+    ESP_LOGW(TAG, "║  3. Rebuild and flash                          ║");
+    ESP_LOGW(TAG, "╚════════════════════════════════════════════════╝");
+    ESP_LOGW(TAG, "");
+#endif
+    
+    ESP_LOGI(TAG, "");
+    
+    // Final sensor health check before starting main loop
+    sensor_manager_get_health(&health);
+    if (!health.tof_healthy) {
+        ESP_LOGE(TAG, "╔════════════════════════════════════════════════╗");
+        ESP_LOGE(TAG, "║  ⚠️  ToF SENSOR FAILED TO INITIALIZE           ║");
+        ESP_LOGE(TAG, "╠════════════════════════════════════════════════╣");
+        ESP_LOGE(TAG, "║  System will continue with IMU only            ║");
+        ESP_LOGE(TAG, "║  LED will not work (no distance data)          ║");
+        ESP_LOGE(TAG, "║                                                ║");
+        ESP_LOGE(TAG, "║  Troubleshooting:                              ║");
+        ESP_LOGE(TAG, "║  1. Check I2C wiring (SDA=8, SCL=9, LPN=4)     ║");
+        ESP_LOGE(TAG, "║  2. Check 3.3V power to ToF sensor             ║");
+        ESP_LOGE(TAG, "║  3. Check I2C scan results above               ║");
+        ESP_LOGE(TAG, "║  4. Try external 2.2k pullups on SDA/SCL       ║");
+        ESP_LOGE(TAG, "╚════════════════════════════════════════════════╝");
+        ESP_LOGE(TAG, "");
+    }
+    
     ESP_LOGI(TAG, "Starting real-time sensor display in 2 seconds...");
     vTaskDelay(pdMS_TO_TICKS(2000));
     
@@ -220,12 +289,42 @@ void app_main(void)
                 update_led(min_dist);
             }
             last_min_dist = min_dist;  // Store for display
+        } else if (frame_count < 5) {
+            // Log ToF errors during first few frames for debugging
+            ESP_LOGW(TAG, "ToF read failed: %s", esp_err_to_name(err));
         }
         
         // Read IMU sensor at full speed (100Hz)
         err = sensor_manager_read_imu(&imu_data);
         if (err == ESP_OK) {
             imu_count++;
+        }
+        
+        // Log to SD card if both sensors have data
+        if (storage_manager_is_logging() && tof_count > 0 && imu_count > 0) {
+            log_entry_t log_entry = {
+                .timestamp_ms = current_time,
+                .flag_manual = sensor_manager_is_button_held() ? 1 : 0
+            };
+            
+            // Copy ToF data
+            for (int i = 0; i < 16; i++) {
+                log_entry.tof[i] = tof_data.distances[i];
+            }
+            
+            // Copy IMU data
+            log_entry.roll = imu_data.roll;
+            log_entry.pitch = imu_data.pitch;
+            log_entry.yaw = imu_data.yaw;
+            log_entry.accel_x = imu_data.accel_x;
+            log_entry.accel_y = imu_data.accel_y;
+            log_entry.accel_z = imu_data.accel_z;
+            log_entry.gyro_x = imu_data.gyro_x;
+            log_entry.gyro_y = imu_data.gyro_y;
+            log_entry.gyro_z = imu_data.gyro_z;
+            
+            // Write to buffer (non-blocking)
+            storage_manager_write(&log_entry);
         }
         
         // Display update at 2Hz (only when enough time has passed)
@@ -242,11 +341,32 @@ void app_main(void)
                 print_imu_data(&imu_data);
             }
             
-            // Print frame counter
+            // Print frame counter and storage stats
             frame_count++;
             printf("\n[Frame: %lu | ToF: %lu @ 60Hz | IMU: %lu @ 100Hz]\n", 
                    frame_count, tof_count, imu_count);
             printf("LED Response: Real-time | Display: 2Hz\n");
+            
+            // Storage statistics
+            if (storage_manager_is_logging()) {
+                storage_stats_t stats;
+                storage_manager_get_stats(&stats);
+                printf("SD Card: Logging | Entries: %lu | Buffer: %.1f%% | Dropped: %lu\n",
+                       stats.entries_logged, stats.buffer_fill_percent, stats.entries_dropped);
+            } else {
+                printf("SD Card: Not logging\n");
+            }
+            
+            // Sensor health status
+            sensor_manager_get_health(&health);
+            if (!health.tof_healthy) {
+                printf("\n⚠️  WARNING: ToF sensor not healthy (errors: %lu)\n", health.tof_error_count);
+                printf("   Check I2C wiring: SDA=GPIO8, SCL=GPIO9, LPN=GPIO4\n");
+            }
+            if (!health.imu_healthy) {
+                printf("\n⚠️  WARNING: IMU sensor not healthy (errors: %lu)\n", health.imu_error_count);
+            }
+            
             printf("Press Ctrl+] to exit monitor\n\n");
         }
         

@@ -236,10 +236,39 @@ static esp_err_t init_tof_sensor(void)
     
     ESP_LOGI(TAG, "✓ Configuration complete");
     
-    // Start ranging
-    status = vl53l8cx_start_ranging(&tof_dev);
+    // Wait for sensor to stabilize after configuration
+    ESP_LOGI(TAG, "Waiting for sensor to stabilize...");
+    vTaskDelay(pdMS_TO_TICKS(200));  // Increased delay
+    
+    // Verify sensor is still alive before starting ranging
+    ESP_LOGI(TAG, "Verifying sensor before starting ranging...");
+    is_alive = 0;
+    status = vl53l8cx_is_alive(&tof_dev, &is_alive);
+    if (status != VL53L8CX_STATUS_OK || !is_alive) {
+        ESP_LOGE(TAG, "Sensor not responding after configuration (status=%d, alive=%d)", status, is_alive);
+        health.tof_error_count++;
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "✓ Sensor still alive");
+    
+    // Start ranging with retry logic
+    ESP_LOGI(TAG, "Starting ranging...");
+    for (int retry = 0; retry < 3; retry++) {
+        status = vl53l8cx_start_ranging(&tof_dev);
+        if (status == VL53L8CX_STATUS_OK) {
+            break;
+        }
+        ESP_LOGW(TAG, "Start ranging attempt %d/3 failed (status=%d)", retry + 1, status);
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    
     if (status != VL53L8CX_STATUS_OK) {
-        ESP_LOGE(TAG, "✗ Start ranging failed (status=%d)", status);
+        ESP_LOGE(TAG, "✗ Start ranging failed after 3 attempts (status=%d)", status);
+        ESP_LOGE(TAG, "This usually indicates:");
+        ESP_LOGE(TAG, "  - I2C communication timeout");
+        ESP_LOGE(TAG, "  - Power supply issue (check 3.3V stability with multimeter)");
+        ESP_LOGE(TAG, "  - Insufficient current (ToF needs ~20mA during ranging)");
+        ESP_LOGE(TAG, "  - Try adding 10uF capacitor near VCC pin");
         health.tof_error_count++;
         return ESP_FAIL;
     }
