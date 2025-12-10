@@ -33,9 +33,9 @@ The primary goal was to implement **Task 3: Implement Sensor Manager component**
 - **WS2812 RGB LED**: Status indicator (not implemented in this session)
 
 ### Development Environment
-- **Framework**: Arduino for ESP32
-- **Build System**: PlatformIO
-- **Language**: C++
+- **Framework**: ESP-IDF (Espressif IoT Development Framework)
+- **Build System**: ESP-IDF native build system (CMake)
+- **Language**: C++ (with C compatibility)
 - **Platform**: Windows with PowerShell
 
 ---
@@ -56,12 +56,12 @@ Based on the design document, the SensorManager was architected with the followi
 
 **Challenge**: PlatformIO's library dependency system required proper organization.
 
-**Solution**: Created separate library directories with proper metadata:
-- `lib/DataModels/` - Core data structures shared across components
-- `lib/SensorManager/` - Sensor management implementation
-- Added `library.json` files to enable dependency resolution
+**Solution**: Created ESP-IDF components with proper structure:
+- `components/sensor_manager/` - Sensor management implementation
+- `components/sensor_manager/include/` - Public headers
+- Added `CMakeLists.txt` and `idf_component.yml` files for dependency management
 
-**Key Learning**: In PlatformIO, libraries in the `lib/` directory need explicit dependency declarations through `library.json` files for proper linking.
+**Key Learning**: In ESP-IDF, components need proper CMakeLists.txt files and can declare dependencies through idf_component.yml for external libraries from the ESP Component Registry.
 
 ### Phase 3: Sensor API Integration
 
@@ -219,19 +219,18 @@ void loop() {
 
 **Problem**: `DataModels.h` couldn't be found by the SensorManager library.
 
-**Root Cause**: PlatformIO's Library Dependency Finder (LDF) doesn't automatically scan the `include/` directory for library dependencies.
+**Root Cause**: ESP-IDF's component system requires explicit component structure and proper CMakeLists.txt configuration.
 
 **Solution**:
-1. Moved `DataModels.h` from `include/` to `lib/DataModels/`
-2. Created `library.json` for DataModels library
-3. Declared dependency in SensorManager's `library.json`:
-```json
-{
-  "name": "SensorManager",
-  "dependencies": {
-    "DataModels": "*"
-  }
-}
+1. Moved data structures to `components/sensor_manager/include/sensor_manager.h`
+2. Created proper ESP-IDF component structure with CMakeLists.txt
+3. Declared external dependencies in `idf_component.yml`:
+```yaml
+dependencies:
+  rjrp44/vl53l8cx:
+    version: ">=1.0.0"
+  espressif/esp32_bno08x:
+    version: ">=1.0.0"
 ```
 
 ### Challenge 2: Compilation Errors
@@ -239,12 +238,12 @@ void loop() {
 **Problem**: Multiple compilation errors due to API mismatches.
 
 **Debugging Process**:
-1. Read actual library header files in `.pio/libdeps/`
-2. Identified correct constructor signatures
-3. Updated implementation to match actual APIs
-4. Changed from value-based to pointer-based sensor objects
+1. Read actual library header files in `managed_components/`
+2. Identified correct API functions for ESP-IDF
+3. Updated implementation to use ESP-IDF I2C master API
+4. Integrated with ESP-IDF logging and error handling
 
-**Final Result**: Clean compilation with no errors or warnings (except for TensorFlow Lite library warnings, which are expected).
+**Final Result**: Clean compilation with ESP-IDF build system with no errors or warnings.
 
 ---
 
@@ -260,16 +259,16 @@ void loop() {
 ### Code Organization
 
 ```
-lib/
-├── DataModels/
-│   ├── DataModels.h          # Shared data structures
-│   └── library.json          # Library metadata
-├── SensorManager/
-│   ├── SensorManager.h       # Interface definition
-│   ├── SensorManager.cpp     # Implementation
-│   └── library.json          # Library metadata with dependencies
-└── ConfigParser/
-    └── ConfigParser.cpp      # Configuration parsing (from previous session)
+components/
+├── sensor_manager/
+│   ├── include/
+│   │   └── sensor_manager.h     # Public interface and data structures
+│   ├── sensor_manager.cpp       # Implementation
+│   ├── CMakeLists.txt           # Build configuration
+│   └── idf_component.yml        # Component dependencies
+main/
+├── main.c                       # Application entry point
+└── CMakeLists.txt              # Main component build config
 ```
 
 ### Pin Configuration
@@ -311,8 +310,8 @@ Centralized pin definitions in header file:
 ✅ **Requirement 3.1**: Button press timestamp recording  
 ✅ **Requirement 3.4**: Button debouncing (50ms)  
 ✅ **Requirement 11.1**: Detailed error messages with sensor names and error codes  
-✅ **Requirement 15.1**: Arduino framework usage  
-✅ **Requirement 15.2**: Arduino-compatible sensor libraries  
+✅ **Requirement 15.1**: ESP-IDF framework usage  
+✅ **Requirement 15.2**: ESP-IDF compatible sensor libraries  
 
 ### Design Properties Supported
 
@@ -328,15 +327,15 @@ The implementation supports the following correctness properties from the design
 
 ### 1. Library Dependency Management in PlatformIO
 
-**Insight**: PlatformIO's LDF requires explicit dependency declarations for libraries in the `lib/` directory.
+**Insight**: ESP-IDF's component system requires proper CMakeLists.txt files and can use the ESP Component Registry for external dependencies.
 
-**Best Practice**: Always create `library.json` files for custom libraries with proper dependency chains.
+**Best Practice**: Always create proper CMakeLists.txt files for ESP-IDF components and use idf_component.yml for external dependencies.
 
 ### 2. Sensor Library API Variations
 
 **Insight**: Sensor libraries often have different APIs than documented examples suggest.
 
-**Best Practice**: Always read the actual header files in `.pio/libdeps/` to understand the true API before implementation.
+**Best Practice**: Always read the actual header files in `managed_components/` to understand the true API before implementation.
 
 ### 3. Pointer vs. Value Semantics
 
@@ -414,12 +413,14 @@ The implementation demonstrates professional embedded systems development practi
 
 **Final Build Status**:
 ```
-Linking .pio\build\esp32-s3-devkitc-1\firmware.elf
-Checking size .pio\build\esp32-s3-devkitc-1\firmware.elf
+Executing action: build
+Running ninja in directory: build
+[1/1] Generating binary image from built executable
+esptool.py v4.7.0
+Creating esp32s3 image...
+Merged 2 ELF sections
 Successfully created esp32s3 image.
-========================= [SUCCESS] Took 8.87 seconds =========================
-esp32-s3-devkitc-1  SUCCESS   00:00:08.874
-========================= 1 succeeded in 00:00:08.874 =========================
+Project build complete. To flash, run: idf.py flash
 ```
 
 **Firmware Size**:
@@ -434,8 +435,8 @@ esp32-s3-devkitc-1  SUCCESS   00:00:08.874
 1. VL53L8CX Datasheet - STMicroelectronics
 2. BNO08x Datasheet - CEVA/Hillcrest Labs
 3. ESP32-S3 Technical Reference Manual - Espressif Systems
-4. PlatformIO Documentation - Library Dependency Finder
-5. Arduino Framework for ESP32 - Espressif Arduino Core
+4. ESP-IDF Programming Guide - Component System
+5. ESP Component Registry - External Dependencies
 
 ---
 
