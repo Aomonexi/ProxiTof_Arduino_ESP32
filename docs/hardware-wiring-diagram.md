@@ -12,7 +12,7 @@
 |-----------|-----------|-----------|--------|
 | VL53L8CX ToF | I2C | 8 (SDA), 9 (SCL), 4 (LPn) | ✅ Wired |
 | BNO08x IMU | SPI | 11 (MOSI), 13 (MISO), 12 (SCK), 10 (CS), 5 (INT), 6 (RST) | ✅ Wired |
-| SD Card | SPI (shared) | 11 (MOSI), 13 (MISO), 12 (SCK), 7 (CS) | ✅ Wired |
+| SD Card | SDIO (4-bit) | 39 (CLK), 38 (CMD), 40 (D0), 41 (D1), 42 (D2), 43 (D3) | 🔄 SDIO Hardware Needed |
 | Flag Button | GPIO | 3 (Input with Pull-up) | 🔄 In Progress |
 | WS2812 LED | GPIO | 48 (Data) | ✅ Built-in (on board) |
 
@@ -97,43 +97,46 @@ BNO08x Module            ESP32-S3 DevKitC-1
 
 ---
 
-### 3. SD Card Module (SPI - Shared Bus)
+### 3. SD Card Module (SDIO - 4-bit Mode)
 
-**Purpose**: Data logging storage
+**Purpose**: High-speed data logging storage
 
 ```
-SD Card Module           ESP32-S3 DevKitC-1
+SD Card SDIO Module      ESP32-S3 DevKitC-1
 ┌─────────────┐          ┌──────────────────┐
 │             │          │                  │
 │  VCC (3.3V) │─────────▶│ 3.3V             │
 │  GND        │─────────▶│ GND              │
-│  MOSI       │◀─────────│ GPIO 11 (MOSI)   │ ◀─ Shared with IMU
-│  MISO       │─────────▶│ GPIO 13 (MISO)   │ ◀─ Shared with IMU
-│  SCK        │◀─────────│ GPIO 12 (SCK)    │ ◀─ Shared with IMU
-│  CS         │◀─────────│ GPIO 7 (CS)      │ ◀─ Unique CS pin
+│  CLK        │◀─────────│ GPIO 39 (CLK)    │ ◀─ SDMMC Clock
+│  CMD        │◀────────▶│ GPIO 38 (CMD)    │ ◀─ Command/Response
+│  D0         │◀────────▶│ GPIO 40 (D0)     │ ◀─ Data Line 0
+│  D1         │◀────────▶│ GPIO 41 (D1)     │ ◀─ Data Line 1
+│  D2         │◀────────▶│ GPIO 42 (D2)     │ ◀─ Data Line 2
+│  D3         │◀────────▶│ GPIO 43 (D3)     │ ◀─ Data Line 3
 │             │          │                  │
 └─────────────┘          └──────────────────┘
 ```
 
 **Pin Functions**:
-- **VCC**: 3.3V power supply (some modules have onboard regulator for 5V)
+- **VCC**: 3.3V power supply
 - **GND**: Ground
-- **MOSI**: SPI data to SD card (shared with IMU)
-- **MISO**: SPI data from SD card (shared with IMU)
-- **SCK**: SPI clock (shared with IMU)
-- **CS**: Chip Select for SD card (GPIO 7, unique)
+- **CLK**: SDMMC clock signal (up to 40MHz)
+- **CMD**: Command and response line (bidirectional)
+- **D0-D3**: 4-bit data bus (bidirectional)
 
-**SPI Bus Sharing**:
-- IMU and SD card share MOSI, MISO, SCK lines
-- Each device has its own CS pin
-- Only one device active at a time (controlled by CS)
+**SDIO Advantages**:
+- **4x faster** than SPI (4-bit parallel vs 1-bit serial)
+- **Dedicated pins** - no sharing with other devices
+- **Higher throughput** - up to 40MB/s vs 10MB/s SPI
+- **Native SD protocol** - more reliable than SPI emulation
 
 **SD Card Format**: FAT32 (required)
 
 **Notes**:
-- Ensure SD card is formatted as FAT32 before use
-- Some SD modules have level shifters (can use 5V)
-- Check your module's voltage requirements!
+- ⚠️ **Requires SDIO breakout board** (not standard SPI SD module)
+- Uses dedicated SDMMC pins (GPIO 38-43)
+- No conflicts with IMU SPI bus
+- Internal pull-ups enabled on all data lines
 - Use quality SD cards (Class 10 or better) for reliable logging
 
 ---
@@ -243,40 +246,55 @@ ESP32-S3 DevKitC-1 (Built-in LED)
 
 ---
 
-## SPI Bus Architecture
+## Bus Architecture
 
-The system uses a shared SPI bus for IMU and SD card:
+### SPI Bus (IMU Only)
+
+The BNO08x IMU uses a dedicated SPI bus:
 
 ```
                     ESP32-S3 SPI Master
                     ┌─────────────────┐
-                    │  GPIO 11 (MOSI) │────┬─────────────┐
-                    │  GPIO 13 (MISO) │────┼──────┐      │
-                    │  GPIO 12 (SCK)  │────┼──┐   │      │
-                    │  GPIO 10 (CS1)  │────│──│───│──┐   │
-                    │  GPIO 7  (CS2)  │────│──│───│──│───│──┐
-                    └─────────────────┘    │  │   │  │   │  │
-                                           │  │   │  │   │  │
-                    ┌──────────────────────┘  │   │  │   │  │
-                    │  ┌──────────────────────┘   │  │   │  │
-                    │  │  ┌───────────────────────┘  │   │  │
-                    │  │  │                          │   │  │
-                    ▼  ▼  ▼                          ▼   ▼  ▼
-              ┌──────────────┐                ┌──────────────┐
-              │  BNO08x IMU  │                │  SD Card     │
-              │              │                │              │
-              │  MOSI  MISO  │                │  MOSI  MISO  │
-              │  SCK   CS    │                │  SCK   CS    │
-              └──────────────┘                └──────────────┘
-                   CS=LOW                          CS=LOW
-                  (GPIO 10)                       (GPIO 7)
+                    │  GPIO 11 (MOSI) │──────────────┐
+                    │  GPIO 13 (MISO) │──────────┐   │
+                    │  GPIO 12 (SCK)  │──────┐   │   │
+                    │  GPIO 10 (CS)   │──┐   │   │   │
+                    └─────────────────┘  │   │   │   │
+                                         ▼   ▼   ▼   ▼
+                                   ┌──────────────────┐
+                                   │   BNO08x IMU     │
+                                   │                  │
+                                   │  CS  SCK  MISO  │
+                                   │  MOSI  INT  RST  │
+                                   └──────────────────┘
 ```
 
-**Key Points**:
-- MOSI, MISO, SCK are shared between devices
-- Each device has unique CS (Chip Select) pin
-- Only one device can be active at a time
-- CS is active LOW (device selected when CS=LOW)
+### SDMMC Bus (SD Card Only)
+
+The SD card uses dedicated SDMMC pins:
+
+```
+                    ESP32-S3 SDMMC Host
+                    ┌─────────────────┐
+                    │  GPIO 39 (CLK)  │──────────────┐
+                    │  GPIO 38 (CMD)  │──────────┐   │
+                    │  GPIO 40 (D0)   │──────┐   │   │
+                    │  GPIO 41 (D1)   │──┐   │   │   │
+                    │  GPIO 42 (D2)   │──│───│───│───│───┐
+                    │  GPIO 43 (D3)   │──│───│───│───│───│──┐
+                    └─────────────────┘  │   │   │   │   │  │
+                                         ▼   ▼   ▼   ▼   ▼  ▼
+                                   ┌──────────────────────────┐
+                                   │       SD Card SDIO       │
+                                   │                          │
+                                   │  D3  D2  D1  D0  CMD CLK │
+                                   └──────────────────────────┘
+```
+
+**Key Advantages**:
+- **No bus sharing conflicts** - each interface is independent
+- **Higher performance** - SDIO 4-bit parallel vs SPI 1-bit serial
+- **Dedicated pins** - no CS arbitration needed
 
 ---
 
@@ -312,22 +330,28 @@ Currently only the ToF sensor uses I2C:
 | 4 | ToF LPn | Output | VL53L8CX |
 | 5 | IMU Interrupt | Input | BNO08x |
 | 6 | IMU Reset | Output | BNO08x |
-| 7 | SD CS | Output | SD Card |
+| 38 | SDMMC CMD | Bidirectional | SD Card |
+| 39 | SDMMC CLK | Output | SD Card |
+| 40 | SDMMC D0 | Bidirectional | SD Card |
+| 41 | SDMMC D1 | Bidirectional | SD Card |
+| 42 | SDMMC D2 | Bidirectional | SD Card |
+| 43 | SDMMC D3 | Bidirectional | SD Card |
 | 8 | I2C SDA | Bidirectional | VL53L8CX |
 | 9 | I2C SCL | Output | VL53L8CX |
 | 10 | IMU CS | Output | BNO08x |
-| 11 | SPI MOSI | Output | IMU + SD |
-| 12 | SPI SCK | Output | IMU + SD |
-| 13 | SPI MISO | Input | IMU + SD |
+| 11 | SPI MOSI | Output | BNO08x IMU |
+| 12 | SPI SCK | Output | BNO08x IMU |
+| 13 | SPI MISO | Input | BNO08x IMU |
 | 48 | LED Data | Output | WS2812 |
 
 ### Available Pins (for future expansion)
 
 ESP32-S3 has many available GPIOs. Some good candidates for expansion:
 - GPIO 1, 2: Available
+- GPIO 7: Available (was SD CS, now free)
 - GPIO 14-21: Available
 - GPIO 35-37: Available
-- GPIO 38-42: Available (but check strapping pins)
+- GPIO 44-47: Available
 
 **Note**: Avoid GPIO 0, 45, 46 (strapping pins used during boot)
 

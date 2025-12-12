@@ -10,7 +10,7 @@ This document shows the complete wiring for all components in the ProxiTof Near-
 |-----------|-----------|-----------|-------|
 | VL53L8CX ToF | I2C | SDA=8, SCL=9, LPN=4 | Dedicated I2C bus |
 | BNO08x IMU | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | SPI2_HOST |
-| SD Card | SPI | MOSI=11, MISO=13, SCK=12, CS=7 | **Shared SPI bus with IMU** |
+| SD Card | SDIO | CLK=39, CMD=38, D0=40, D1=41, D2=42, D3=43 | **Dedicated SDMMC interface** |
 | Button | GPIO | GPIO 3 (with internal pull-up) | Active low |
 | RGB LED | GPIO | GPIO 48 | WS2812 LED |
 
@@ -57,24 +57,27 @@ FLOATING       --> BT (Boot Mode - leave disconnected)
 - **BT = FLOATING** (disconnected)
 - This configures SPI mode
 
-### 3. SD Card Module (SPI - Shared Bus)
+### 3. SD Card Module (SDIO - 4-bit Mode)
 
 ```
-ESP32-S3          SD Card
---------          -------
-GPIO 11 (MOSI) --> DI/MOSI   (SHARED with IMU)
-GPIO 13 (MISO) --> DO/MISO   (SHARED with IMU)
-GPIO 12 (SCK)  --> CLK       (SHARED with IMU)
-GPIO 7  (CS)   --> CS        (UNIQUE - different from IMU)
+ESP32-S3          SD Card SDIO
+--------          ------------
+GPIO 39 (CLK)  --> CLK       (SDMMC Clock)
+GPIO 38 (CMD)  --> CMD       (Command/Response)
+GPIO 40 (D0)   --> D0        (Data Line 0)
+GPIO 41 (D1)   --> D1        (Data Line 1)
+GPIO 42 (D2)   --> D2        (Data Line 2)
+GPIO 43 (D3)   --> D3        (Data Line 3)
 3.3V           --> VCC
 GND            --> GND
 ```
 
 **Important:**
-- **Shares SPI bus with IMU** (MOSI, MISO, SCK)
-- **Different CS pin** (GPIO 7 vs IMU's GPIO 10)
+- **Dedicated SDMMC interface** (no sharing with other devices)
+- **4-bit parallel data** for high-speed transfers
+- **Native SD protocol** (not SPI emulation)
 - SD card must be **FAT32 formatted**
-- Use **3.3V compatible** SD card module
+- Requires **SDIO breakout board** (not standard SPI SD module)
 
 ### 4. Button (GPIO)
 
@@ -111,23 +114,16 @@ GND            --> GND
                     ESP32-S3-DevKitC-1
                     ==================
                     
-I2C Bus:            SPI Bus (Shared):           GPIO:
---------            ------------------          -----
-GPIO 8  ────────────> VL53L8CX ToF    GPIO 3  ────> Button
-GPIO 9  ────────────>                  GPIO 48 ────> WS2812 LED
-GPIO 4  ────────────>                  
-                    GPIO 11 ──┬──────> BNO08x IMU (MOSI)
-                              └──────> SD Card (MOSI)
-                              
-                    GPIO 13 ──┬──────> BNO08x IMU (MISO)
-                              └──────> SD Card (MISO)
-                              
-                    GPIO 12 ──┬──────> BNO08x IMU (SCK)
-                              └──────> SD Card (SCK)
-                              
-                    GPIO 10 ──────────> BNO08x IMU (CS)
-                    GPIO 7  ──────────> SD Card (CS)
-                    GPIO 5  ──────────> BNO08x IMU (INT)
+I2C Bus:            SPI Bus (IMU):              SDMMC Bus (SD):         GPIO:
+--------            ---------------              ----------------        -----
+GPIO 8  ────────────> VL53L8CX ToF    GPIO 39 ──────────> SD Card CLK   GPIO 3  ────> Button
+GPIO 9  ────────────>                  GPIO 38 ──────────> SD Card CMD   GPIO 48 ────> WS2812 LED
+GPIO 4  ────────────>                  GPIO 40 ──────────> SD Card D0    
+                    GPIO 11 ──────────> BNO08x IMU (MOSI) GPIO 41 ──────────> SD Card D1
+                    GPIO 13 ──────────> BNO08x IMU (MISO) GPIO 42 ──────────> SD Card D2
+                    GPIO 12 ──────────> BNO08x IMU (SCK)  GPIO 43 ──────────> SD Card D3
+                    GPIO 10 ──────────> BNO08x IMU (CS)   
+                    GPIO 5  ──────────> BNO08x IMU (INT)  
                     GPIO 6  ──────────> BNO08x IMU (RST)
 
 Power:
@@ -140,32 +136,37 @@ Power:
 GND  ──┴──> All components
 ```
 
-## SPI Bus Sharing Explained
+## Bus Architecture Explained
 
-### How It Works
+### SPI Bus (IMU Only)
 
-The SPI bus uses **Chip Select (CS)** pins to control which device is active:
+The BNO08x IMU uses a dedicated SPI interface:
 
-1. **When IMU CS is LOW (active):**
-   - IMU listens to MOSI/MISO/SCK
-   - SD card ignores the bus (CS is HIGH)
+- **GPIO 11**: MOSI (Master Out, Slave In)
+- **GPIO 13**: MISO (Master In, Slave Out)  
+- **GPIO 12**: SCK (Serial Clock)
+- **GPIO 10**: CS (Chip Select)
 
-2. **When SD Card CS is LOW (active):**
-   - SD card listens to MOSI/MISO/SCK
-   - IMU ignores the bus (CS is HIGH)
+### SDMMC Bus (SD Card Only)
 
-### Benefits
+The SD card uses dedicated SDMMC pins for high-speed access:
 
-- ✅ **Saves 3 GPIO pins** (MOSI, MISO, SCK shared)
-- ✅ **Standard practice** for SPI devices
-- ✅ **No performance impact** (devices take turns)
-- ✅ **Automatic arbitration** by SPI protocol
+- **GPIO 39**: CLK (Clock up to 40MHz)
+- **GPIO 38**: CMD (Command/Response line)
+- **GPIO 40-43**: D0-D3 (4-bit parallel data)
+
+### Benefits of SDIO vs SPI
+
+- ✅ **4x faster throughput** (4-bit parallel vs 1-bit serial)
+- ✅ **No bus conflicts** (dedicated pins for each device)
+- ✅ **Higher reliability** (native SD protocol vs SPI emulation)
+- ✅ **Better performance** (up to 40MB/s vs 10MB/s)
 
 ### Timing
 
-- IMU reads: ~100Hz (10ms intervals)
-- SD card writes: Batched every 500ms
-- No conflicts because operations are fast (<1ms each)
+- IMU reads: ~100Hz (10ms intervals) via SPI
+- SD card writes: Batched every 500ms via SDMMC
+- No interference between interfaces
 
 ## Power Requirements
 
@@ -196,10 +197,11 @@ The SPI bus uses **Chip Select (CS)** pins to control which device is active:
 
 ### SD Card Not Mounting
 - Verify SD card is FAT32 formatted
-- Check SPI wiring (shared with IMU)
-- Verify CS pin is GPIO 7 (not GPIO 10)
-- Try different SD card
+- Check SDMMC wiring (CLK, CMD, D0-D3)
+- Verify all SDMMC pins (GPIO 38-43) are connected
+- Try different SD card (Class 10 recommended)
 - Check 3.3V power supply
+- Ensure using SDIO breakout (not SPI SD module)
 
 ### Button False Triggers
 - Verify internal pull-up is enabled
