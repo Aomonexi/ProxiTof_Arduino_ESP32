@@ -15,12 +15,37 @@
    - Follow: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/
 
 2. **Set up environment**
-   ```bash
-   # Windows (PowerShell)
-   . $HOME/esp/esp-idf/export.ps1
    
+   **⚠️ IMPORTANT: Must run EVERY TIME before using idf.py commands**
+   
+   ```powershell
+   # Windows (PowerShell) - Replace [USERNAME] with your actual username
+   C:\Users\[USERNAME]\esp\v5.5.1\esp-idf\export.ps1
+   
+   # Alternative if ESP-IDF is in different location
+   $env:IDF_PATH\export.ps1
+   ```
+   
+   ```bash
    # Linux/Mac
    . $HOME/esp/esp-idf/export.sh
+   ```
+   
+   **Expected Output:**
+   ```
+   Activating ESP-IDF 5.5
+   Setting IDF_PATH to 'C:\Users\[USERNAME]\esp\v5.5.1\esp-idf'.
+   * Checking python version ... 3.13.11
+   * Checking python dependencies ... OK
+   * Deactivating the current ESP-IDF environment (if any) ... OK
+   * Establishing a new ESP-IDF environment ... OK
+   * Identifying shell ... powershell.exe
+   * Detecting outdated tools in system ... OK - no outdated tools found
+   
+   Done! You can now compile ESP-IDF projects.
+   Go to the project directory and run:
+   
+     idf.py build
    ```
 
 ## Build Commands
@@ -94,6 +119,18 @@ slot_config.gpio_cs = GPIO_NUM_XX;  // Your CS pin (must be different from IMU C
 - **Voltage:** 3.3V compatible
 
 ## Troubleshooting
+
+### Environment Not Activated
+**Error:** `idf.py : The term 'idf.py' is not recognized`
+
+**Solution:** Run the export script first:
+```powershell
+# Windows - Replace [USERNAME] with your actual username
+C:\Users\[USERNAME]\esp\v5.5.1\esp-idf\export.ps1
+
+# Then verify it worked
+idf.py --version
+```
 
 ### SD Card Not Detected
 1. Check wiring (MOSI, MISO, CLK, CS, VCC, GND)

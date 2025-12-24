@@ -1,6 +1,6 @@
 /* Automatically generated file; DO NOT EDIT */
 /* Espressif IoT Development Framework Linker Script */
-/* Generated from: D:\Master's_Extension\Master's_Thesis\Proximity_Device\ProxiTof_Arduino_ESP32\build\esp-idf\esp_system\ld\sections.ld.in */
+/* Generated from: F:\Master's_Extension\Master's_Thesis\Proximity_Device\ProxiTof_Arduino_ESP32\build\esp-idf\esp_system\ld\sections.ld.in */
 
 /*
 

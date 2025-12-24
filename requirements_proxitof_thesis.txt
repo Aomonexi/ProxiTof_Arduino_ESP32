@@ -1,0 +1,82 @@
+# ProxiTof Near-Miss Detection System - Thesis Project Requirements
+# ESP32-S3 Multi-Sensor Machine Learning for Collision Prediction
+# Updated: December 2024 - Latest versions compatible with Python 3.13
+# 
+# CORE ML FRAMEWORKS
+tensorflow==2.20.0              # Latest stable with Python 3.13 support and improved ESP-NN
+# Note: TensorFlow Lite is built into tensorflow 2.20+ (Google migrating to ai-edge-litert)
+# ai-edge-litert                # Google's new LiteRT - not yet available on PyPI
+scikit-learn==1.8.0            # Latest stable version (was 1.5.2)
+numpy==2.3.5                   # Latest stable version (was 1.26.4)
+pandas==2.3.3                  # Latest stable version (was 2.2.3)
+
+# DATA SCIENCE & VISUALIZATION
+matplotlib==3.10.8             # Latest stable version (was 3.9.2)
+seaborn==0.13.2                # Latest statistical visualization
+plotly==5.24.1                 # Latest interactive plots for thesis presentation
+bokeh==3.6.0                   # Latest web-based visualization
+scipy==1.14.1                  # Latest statistical analysis and signal processing
+
+# JUPYTER ENVIRONMENT
+jupyter==1.1.1                 # Latest meta-package for Jupyter ecosystem
+jupyterlab==4.5.1              # Latest stable version (was 4.3.3)
+ipykernel==6.29.5              # Latest kernel with better virtual environment support
+notebook==7.3.1                # Latest classic notebook interface
+
+# SENSOR DATA PROCESSING
+pyserial==3.5                  # ESP32 serial communication for data collection
+filterpy==1.4.5                # Kalman filtering for sensor fusion
+imbalanced-learn==0.12.4       # Latest with improved SMOTE and ensemble methods
+
+# MODEL OPTIMIZATION & DEPLOYMENT
+tensorflow-model-optimization==0.8.0  # Latest with better quantization for ESP32-S3
+onnx==1.17.0                   # Latest ONNX format support
+onnx-tf==1.10.0                # ONNX to TensorFlow conversion
+
+# THESIS DOCUMENTATION & REPORTING
+reportlab==4.2.5               # Latest with improved PDF generation
+openpyxl==3.1.5                # Latest Excel file handling
+xlsxwriter==3.2.0              # Latest Excel report generation
+
+# DEVELOPMENT & TESTING
+pytest==8.3.4                  # Latest testing framework
+pytest-cov==6.0.0              # Latest test coverage reporting
+black==24.10.0                 # Latest code formatter
+flake8==7.1.1                  # Latest linter
+mypy==1.13.0                   # Latest type checker
+
+# ESP32 DEVELOPMENT TOOLS
+esptool==4.8.1                 # Latest ESP32 flashing tool for ESP-IDF
+# Note: Using ESP-IDF directly, no PlatformIO needed
+
+# SIGNAL PROCESSING (for sensor data)
+pywavelets==1.7.0              # Latest wavelet transforms
+spectrum==0.8.1                # Spectral analysis tools
+
+# HYPERPARAMETER TUNING
+optuna==4.6.0                  # Latest version (was 4.1.0) - major improvements
+keras-tuner==1.4.7             # Latest Keras hyperparameter tuning
+
+# TIME SERIES ANALYSIS (for sensor sequences)
+statsmodels==0.14.4            # Latest time series models
+tsfresh==0.20.3                # Latest automated feature extraction
+
+# UTILITIES
+tqdm==4.67.1                   # Latest progress bars
+python-dotenv==1.0.1           # Environment variable management
+pyyaml==6.0.2                  # Configuration file handling
+click==8.1.7                   # Command-line interface creation
+
+# OPTIONAL: ADVANCED ML TOOLS
+xgboost==3.1.2                 # Latest version (was 2.1.2) - major update
+lightgbm==4.5.0                # Latest fast gradient boosting
+catboost==1.2.7                # Latest categorical boosting
+
+# OPTIONAL: DEEP LEARNING EXTENSIONS
+# Note: keras is integrated into tensorflow 2.20+
+tensorflow-addons==0.23.0      # Additional TensorFlow operations
+tensorflow-probability==0.25.0 # Latest probabilistic modeling
+
+# PERFORMANCE & MONITORING
+psutil==6.1.0                  # Latest system monitoring
+memory-profiler==0.61.0        # Memory usage profiling

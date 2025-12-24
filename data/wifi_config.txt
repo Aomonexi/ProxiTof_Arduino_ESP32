@@ -1,0 +1,20 @@
+# WiFi Configuration for Time Synchronization
+# Edit this file with your WiFi credentials
+
+# WiFi Network Name (SSID)
+WIFI_SSID=YourWiFiNetwork
+
+# WiFi Password
+WIFI_PASSWORD=YourWiFiPassword
+
+# Timezone (examples):
+# UTC: UTC0
+# US Eastern: EST5EDT,M3.2.0,M11.1.0
+# US Pacific: PST8PDT,M3.2.0,M11.1.0  
+# Europe/Berlin: CET-1CEST,M3.5.0,M10.5.0/3
+# Asia/Jakarta: WIB-7
+# Your timezone:
+TIMEZONE=UTC0
+
+# Note: After time sync, WiFi will be disconnected to save power
+# The ESP32 internal RTC will maintain accurate time

@@ -108,29 +108,39 @@ esp_err_t storage_manager_init(void) {
     };
     
     // Use SDMMC host (native SD protocol - much faster and more reliable than SPI)
-    // ESP32-S3 SDMMC pins:
-    //   CLK:  GPIO 39
-    //   CMD:  GPIO 38
-    //   D0:   GPIO 40
-    //   D1:   GPIO 41 (4-bit mode)
-    //   D2:   GPIO 42 (4-bit mode)
-    //   D3:   GPIO 43 (4-bit mode)
+    // ESP32-S3 SDMMC pins (flexible GPIO assignment via GPIO matrix):
+    // Using conflict-free GPIOs that don't interfere with existing sensors
+    //   CLK:  GPIO 14  (Clock)
+    //   CMD:  GPIO 15  (Command/Response)
+    //   D0:   GPIO 2   (Data Line 0)
+    //   D1:   GPIO 16  (Data Line 1)
+    //   D2:   GPIO 17  (Data Line 2)
+    //   D3:   GPIO 18  (Data Line 3)
     
-    ESP_LOGI(TAG, "Using SDMMC host (dedicated pins, no sharing with IMU)");
-    ESP_LOGI(TAG, "Pins: CLK=39, CMD=38, D0=40, D1=41, D2=42, D3=43");
+    ESP_LOGI(TAG, "Using SDMMC host with conflict-free GPIO assignment");
+    ESP_LOGI(TAG, "Pins: CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18");
+    ESP_LOGI(TAG, "No conflicts with ToF (GPIO 4,8,9), IMU (GPIO 5,6,10,11,12,13), Button (GPIO 3), LED (GPIO 48)");
     
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
     
     // Reduce frequency for better compatibility
-    host.max_freq_khz = SDMMC_FREQ_DEFAULT;  // 20MHz (can go up to 40MHz later)
+    host.max_freq_khz = SDMMC_FREQ_PROBING;  // Start very slow (400kHz)
     
-    // Configure SDMMC slot (4-bit mode for maximum speed)
+    // Configure SDMMC slot with custom GPIO assignment
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    
+    // Custom GPIO assignment to avoid conflicts with all existing components
+    slot_config.clk = GPIO_NUM_14;   // Clock
+    slot_config.cmd = GPIO_NUM_15;   // Command/Response  
+    slot_config.d0 = GPIO_NUM_2;     // Data 0
+    slot_config.d1 = GPIO_NUM_16;    // Data 1
+    slot_config.d2 = GPIO_NUM_17;    // Data 2
+    slot_config.d3 = GPIO_NUM_18;    // Data 3
     
     // Use 4-bit mode for faster transfers
     slot_config.width = 4;
     
-    // Enable internal pull-ups (Adafruit board also has pull-ups, so this is safe)
+    // Enable internal pull-ups (your board also has pull-ups, so this is safe)
     slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
     
     ESP_LOGI(TAG, "Attempting to mount filesystem (this may take a few seconds)...");
@@ -180,7 +190,20 @@ static esp_err_t create_date_directory(char *dir_path, size_t max_len) {
     struct tm timeinfo;
     
     time(&now);
-    localtime_r(&now, &timeinfo);
+    
+    // Check if time is valid (after year 2020)
+    if (now < 1577836800) {  // Jan 1, 2020
+        ESP_LOGW(TAG, "System time not synchronized");
+        ESP_LOGW(TAG, "💡 Smart time system will handle time management");
+        // Set to current date as fallback
+        timeinfo.tm_year = 2024 - 1900;  // Years since 1900
+        timeinfo.tm_mon = 12 - 1;        // Month (0-11)
+        timeinfo.tm_mday = 24;           // Day of month
+    } else {
+        localtime_r(&now, &timeinfo);
+        ESP_LOGI(TAG, "Using system time: %04d-%02d-%02d", 
+                 timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
+    }
     
     // Format: /sdcard/YYYY-MM-DD
     snprintf(dir_path, max_len, "/sdcard/%04d-%02d-%02d",
@@ -386,6 +409,25 @@ esp_err_t storage_manager_flush(void) {
             ESP_LOGI(TAG, "File size limit reached, rotating...");
             fclose(log_file);
             create_log_file();
+        }
+        
+        // Check SD card health periodically
+        static uint32_t last_health_check = 0;
+        uint32_t now_ms = esp_timer_get_time() / 1000;
+        if (now_ms - last_health_check > 30000) {  // Every 30 seconds
+            last_health_check = now_ms;
+            
+            // Try to create a test file to verify SD card is still working
+            FILE *test_file = fopen("/sdcard/.health_check", "w");
+            if (test_file) {
+                fprintf(test_file, "ok");
+                fclose(test_file);
+                remove("/sdcard/.health_check");
+            } else {
+                ESP_LOGW(TAG, "⚠️  SD card health check failed - card may be removed");
+                ESP_LOGW(TAG, "💡 Data logging will resume when SD card is reinserted");
+                // Note: System continues running, just stops logging
+            }
         }
     }
     

@@ -7,6 +7,9 @@ idf_component_register(
         sensor_manager
         storage_manager
         data_processor
+        smart_time
+        config_manager
+        usb_interface
         led_strip
         driver
 )

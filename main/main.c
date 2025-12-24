@@ -11,6 +11,9 @@
 #include "esp_log.h"
 #include "sensor_manager.h"
 #include "storage_manager.h"
+#include "smart_time.h"
+#include "config_manager.h"
+#include "usb_interface.h"
 #include "led_strip.h"
 #include "driver/gpio.h"
 
@@ -183,6 +186,85 @@ void app_main(void)
     ESP_LOGI(TAG, "✓ Sensor manager initialized successfully");
     ESP_LOGI(TAG, "");
     
+    // =========================================================================
+    // CONFIGURATION MANAGEMENT (SD CARD)
+    // =========================================================================
+    ESP_LOGI(TAG, "Loading system configuration...");
+    
+    system_config_t config;
+    esp_err_t config_err = config_load_from_sd(&config);
+    
+    if (config_err != ESP_OK) {
+        ESP_LOGW(TAG, "Using default configuration");
+        config_load_defaults(&config);
+        
+        // Save default config to SD card for user to edit
+        if (config_save_to_sd(&config) == ESP_OK) {
+            ESP_LOGI(TAG, "✓ Default config saved to /sdcard/config.txt");
+            ESP_LOGI(TAG, "💡 Edit config.txt on SD card to change WiFi settings");
+        }
+    }
+    
+    config_print(&config);
+    ESP_LOGI(TAG, "");
+    
+    // =========================================================================
+    // SMART TIME MANAGEMENT SYSTEM
+    // =========================================================================
+    ESP_LOGI(TAG, "Initializing Smart Time Management...");
+    ESP_LOGI(TAG, "Multi-tier time keeping: DS3231 + Internal RTC + WiFi/NTP");
+    ESP_LOGI(TAG, "");
+    
+    err = smart_time_init(
+        config.ds3231_enabled ? config.ds3231_sda_pin : -1,
+        config.ds3231_enabled ? config.ds3231_scl_pin : -1,
+        config.wifi_enabled ? config.wifi_ssid : NULL,
+        config.wifi_enabled ? config.wifi_password : NULL,
+        config.timezone,
+        config.sync_interval_hours
+    );
+    
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "✓ Smart Time Management initialized");
+        
+        // Get time status
+        time_status_t time_status;
+        smart_time_get_status(&time_status);
+        
+        ESP_LOGI(TAG, "Time Status:");
+        ESP_LOGI(TAG, "  DS3231: %s", time_status.ds3231_available ? "✓ Available" : "✗ Not available");
+        ESP_LOGI(TAG, "  Current source: %s", smart_time_source_name(time_status.current_source));
+        ESP_LOGI(TAG, "  Sync count: %lu", time_status.sync_count);
+        
+        if (smart_time_is_valid()) {
+            ESP_LOGI(TAG, "✓ Time is valid and reliable");
+        } else {
+            ESP_LOGW(TAG, "⚠️  Time may not be accurate");
+            ESP_LOGW(TAG, "💡 To set time manually: smart_time_set_manual(\"2024-12-24 15:30:00\")");
+        }
+    } else {
+        ESP_LOGW(TAG, "❌ Smart Time Management failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "System will use default time");
+    }
+    
+    ESP_LOGI(TAG, "");
+    
+    // =========================================================================
+    // USB INTERFACE INITIALIZATION
+    // =========================================================================
+    ESP_LOGI(TAG, "Initializing USB interface...");
+    
+    err = usb_interface_init();
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "✓ USB interface initialized");
+        ESP_LOGI(TAG, "💻 Connect USB cable for configuration access");
+        ESP_LOGI(TAG, "📝 Use serial terminal or Python tool for commands");
+    } else {
+        ESP_LOGW(TAG, "USB interface initialization failed: %s", esp_err_to_name(err));
+    }
+    
+    ESP_LOGI(TAG, "");
+    
     // Get sensor health status
     sensor_health_t health;
     sensor_manager_get_health(&health);
@@ -194,14 +276,8 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
-    // SD CARD INITIALIZATION (SDIO)
+    // SD CARD INITIALIZATION (SDMMC)
     // =========================================================================
-    // TEMPORARY: Disable SD card init until SDIO hardware is connected
-    // The SDIO initialization takes 5-10 seconds to timeout when hardware
-    // is not present, which blocks the main loop and prevents sensors from working
-    // =========================================================================
-    
-#ifdef ENABLE_SD_CARD  // Set this in platformio.ini or sdkconfig when hardware is ready
     ESP_LOGI(TAG, "Initializing SD card storage...");
     err = storage_manager_init();
     if (err != ESP_OK) {
@@ -211,7 +287,7 @@ void app_main(void)
         ESP_LOGW(TAG, "Troubleshooting:");
         ESP_LOGW(TAG, "  1. Check SD card is inserted");
         ESP_LOGW(TAG, "  2. Format SD card as FAT32");
-        ESP_LOGW(TAG, "  3. Check wiring: CLK=39, CMD=38, D0=40, D1=41, D2=42, D3=43");
+        ESP_LOGW(TAG, "  3. Check wiring: CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18");
         ESP_LOGW(TAG, "  4. Verify 3.3V power to SD card");
     } else {
         ESP_LOGI(TAG, "✓ SD card initialized successfully");
@@ -224,21 +300,6 @@ void app_main(void)
             ESP_LOGW(TAG, "Failed to start logging: %s", esp_err_to_name(err));
         }
     }
-#else
-    ESP_LOGW(TAG, "");
-    ESP_LOGW(TAG, "╔════════════════════════════════════════════════╗");
-    ESP_LOGW(TAG, "║  ⚠️  SD CARD DISABLED (SDIO hardware not ready) ║");
-    ESP_LOGW(TAG, "╠════════════════════════════════════════════════╣");
-    ESP_LOGW(TAG, "║  System will run WITHOUT data logging          ║");
-    ESP_LOGW(TAG, "║  Sensors and LED will work normally            ║");
-    ESP_LOGW(TAG, "║                                                ║");
-    ESP_LOGW(TAG, "║  To enable SD card:                            ║");
-    ESP_LOGW(TAG, "║  1. Connect SDIO breakout board                ║");
-    ESP_LOGW(TAG, "║  2. Add -DENABLE_SD_CARD to build flags        ║");
-    ESP_LOGW(TAG, "║  3. Rebuild and flash                          ║");
-    ESP_LOGW(TAG, "╚════════════════════════════════════════════════╝");
-    ESP_LOGW(TAG, "");
-#endif
     
     ESP_LOGI(TAG, "");
     
@@ -394,5 +455,11 @@ void app_main(void)
         
         // Small delay to prevent CPU spinning (check sensors frequently)
         vTaskDelay(pdMS_TO_TICKS(5));  // 200Hz loop rate for responsive LED
+        
+        // Smart time maintenance (every ~60 seconds)
+        smart_time_maintenance();
+        
+        // USB interface processing (handle commands from computer)
+        usb_interface_process();
     }
 }
