@@ -9,6 +9,7 @@
 
 #include "esp_err.h"
 #include <time.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +19,8 @@ typedef enum {
     TIME_SOURCE_NONE = 0,
     TIME_SOURCE_INTERNAL_RTC,
     TIME_SOURCE_DS3231,
-    TIME_SOURCE_NTP
+    TIME_SOURCE_NTP,
+    TIME_SOURCE_MANUAL
 } time_source_t;
 
 typedef struct {

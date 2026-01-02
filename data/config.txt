@@ -1,17 +1,25 @@
 # ProxiTof System Configuration
-# This file should be copied to the SD card root directory
+# Edit this file to change settings without recompiling
+# Remove SD card, edit on computer, insert back
 
-# Logging interval in milliseconds (default: 16ms = ~60Hz)
-log_interval_ms=16
+# WiFi Configuration
+WIFI_ENABLED=true
+WIFI_SSID=Vibe of Hate
+WIFI_PASSWORD=YourWiFiPassword
 
-# Flag window in milliseconds (time before and after button press to mark)
-flag_window_ms=2000
+# Time Configuration
+TIMEZONE=CST-8
+SYNC_INTERVAL_HOURS=24
 
-# ML confidence threshold for near-miss detection (0.0 to 1.0)
-ml_threshold=0.70
+# DS3231 RTC Configuration
+DS3231_ENABLED=true
+DS3231_SDA_PIN=8
+DS3231_SCL_PIN=9
 
-# Approach rate threshold in mm/s for near-miss detection
-approach_threshold_mm_s=500
-
-# Jerk magnitude threshold in m/s³ for near-miss detection
-jerk_threshold_m_s3=2.0
+# Common Timezone Examples:
+# UTC: UTC0
+# US Eastern: EST5EDT,M3.2.0,M11.1.0
+# US Pacific: PST8PDT,M3.2.0,M11.1.0
+# Europe/Berlin: CET-1CEST,M3.5.0,M10.5.0/3
+# Asia/Tokyo: JST-9
+# China: CST-8

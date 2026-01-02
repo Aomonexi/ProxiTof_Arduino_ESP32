@@ -6,5 +6,6 @@ idf_component_register(
     REQUIRES 
         rtc_ds3231
         time_sync
+        sensor_manager
         driver
 )

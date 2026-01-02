@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
+#include "driver/i2c_master.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +41,7 @@ extern "C" {
 // =============================================================================
 
 #define BUTTON_DEBOUNCE_MS  200  // Increased to reduce false triggers
-#define I2C_MASTER_FREQ_HZ  400000
+#define I2C_MASTER_FREQ_HZ  100000  // Reduced from 400kHz to 100kHz for stability
 #define SPI_MASTER_FREQ_HZ  1000000
 
 // =============================================================================
@@ -165,6 +166,13 @@ bool sensor_manager_is_button_held(void);
  * @return Duration in milliseconds that button has been held
  */
 uint32_t sensor_manager_get_button_duration(void);
+
+/**
+ * Get shared I2C bus handle for other components (e.g., DS3231 RTC)
+ * 
+ * @return I2C master bus handle, or NULL if not initialized
+ */
+i2c_master_bus_handle_t sensor_manager_get_i2c_bus(void);
 
 #ifdef __cplusplus
 }

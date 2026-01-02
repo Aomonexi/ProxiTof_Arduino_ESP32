@@ -17,12 +17,12 @@ static const char *TAG = "CONFIG";
 void config_load_defaults(system_config_t *config) {
     if (!config) return;
     
-    // Default configuration
+    // Default configuration - Edit these or use SD card config.txt
     strcpy(config->wifi_ssid, "YourWiFiNetwork");
     strcpy(config->wifi_password, "YourWiFiPassword");
-    strcpy(config->timezone, "UTC0");
-    config->ds3231_sda_pin = 21;
-    config->ds3231_scl_pin = 22;
+    strcpy(config->timezone, "CST-8");  // China Standard Time (UTC+8)
+    config->ds3231_sda_pin = 8;   // Updated to match I2C bus with ToF sensor
+    config->ds3231_scl_pin = 9;   // Updated to match I2C bus with ToF sensor
     config->sync_interval_hours = 24;
     config->wifi_enabled = true;
     config->ds3231_enabled = true;

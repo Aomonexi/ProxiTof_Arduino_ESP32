@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
+#include "sdmmc_cmd.h"  // For sdmmc_card_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,6 +111,18 @@ void storage_manager_get_stats(storage_stats_t *stats);
  * @return true if logging, false otherwise
  */
 bool storage_manager_is_logging(void);
+
+/**
+ * Check if storage manager is initialized
+ * @return true if initialized, false otherwise
+ */
+bool storage_manager_is_initialized(void);
+
+/**
+ * Get SD card handle for USB MSC integration
+ * @return Pointer to SD card structure, NULL if not initialized
+ */
+sdmmc_card_t* storage_manager_get_card(void);
 
 #ifdef __cplusplus
 }

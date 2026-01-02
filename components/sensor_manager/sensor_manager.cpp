@@ -117,6 +117,8 @@ static void scan_i2c_bus(void)
             .dev_addr_length = I2C_ADDR_BIT_LEN_7,
             .device_address = addr,
             .scl_speed_hz = I2C_MASTER_FREQ_HZ,
+            .scl_wait_us = 0,
+            .flags = {0}
         };
         
         i2c_master_dev_handle_t dev_handle;
@@ -150,6 +152,36 @@ static void scan_i2c_bus(void)
 }
 
 /**
+ * Try to recover ToF sensor if it becomes unresponsive
+ */
+static esp_err_t recover_tof_sensor(void) {
+    ESP_LOGW(TAG, "Attempting ToF sensor recovery...");
+    
+    // Reset sensor using library function
+    VL53L8CX_Reset_Sensor(&(tof_dev.platform));
+    vTaskDelay(pdMS_TO_TICKS(200));  // Wait longer for sensor to power up
+    
+    // Check if sensor is alive
+    uint8_t is_alive = 0;
+    uint8_t status = vl53l8cx_is_alive(&tof_dev, &is_alive);
+    if (status != VL53L8CX_STATUS_OK || !is_alive) {
+        ESP_LOGE(TAG, "ToF sensor recovery failed (status=%d, alive=%d)", status, is_alive);
+        return ESP_FAIL;
+    }
+    
+    // Restart ranging
+    status = vl53l8cx_start_ranging(&tof_dev);
+    if (status != VL53L8CX_STATUS_OK) {
+        ESP_LOGE(TAG, "Failed to restart ranging after recovery (status=%d)", status);
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "✓ ToF sensor recovery successful");
+    health.tof_healthy = true;
+    return ESP_OK;
+}
+
+/**
  * Initialize VL53L8CX ToF sensor (ESP-IDF 5.x API)
  * Based on working implementation from proxitof_ag_main.cpp
  */
@@ -169,6 +201,8 @@ static esp_err_t init_tof_sensor(void)
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = VL53L8CX_DEFAULT_I2C_ADDRESS >> 1,  // Convert 8-bit to 7-bit address
         .scl_speed_hz = VL53L8CX_MAX_CLK_SPEED,
+        .scl_wait_us = 0,
+        .flags = {0}
     };
     
     esp_err_t err = i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &tof_dev.platform.handle);
@@ -444,11 +478,43 @@ esp_err_t sensor_manager_read_tof(tof_data_t *data)
         return ESP_ERR_INVALID_ARG;
     }
     
+    // Static variables for error tracking
+    static uint32_t last_error_log = 0;
+    static uint32_t consecutive_errors = 0;
+    
     // Check if data is ready
     uint8_t is_ready = 0;
     uint8_t status = vl53l8cx_check_data_ready(&tof_dev, &is_ready);
-    if (status != VL53L8CX_STATUS_OK || !is_ready) {
-        return ESP_ERR_NOT_FOUND;  // No new data available
+    if (status != VL53L8CX_STATUS_OK) {
+        // Log error but don't increment error count for every failed check
+        // Status 133 might indicate I2C communication issues
+        uint32_t now = sensor_manager_get_timestamp();
+        
+        consecutive_errors++;
+        
+        if (now - last_error_log > 1000) {  // Log error once per second
+            ESP_LOGE(TAG, "Failed to check ToF data ready (status=%d, consecutive_errors=%lu)", status, consecutive_errors);
+            last_error_log = now;
+            
+            // Try recovery if we have many consecutive errors
+            if (consecutive_errors > 50) {  // About 1 second of errors at high poll rate
+                ESP_LOGW(TAG, "Too many consecutive ToF errors, attempting recovery...");
+                if (recover_tof_sensor() == ESP_OK) {
+                    consecutive_errors = 0;  // Reset error count on successful recovery
+                } else {
+                    health.tof_healthy = false;
+                    health.tof_error_count++;
+                }
+            }
+        }
+        return ESP_FAIL;
+    }
+    
+    // Reset consecutive error count on successful status check
+    consecutive_errors = 0;
+    
+    if (!is_ready) {
+        return ESP_ERR_NOT_FOUND;  // No new data available (normal at high polling rates)
     }
     
     // Get ranging data
@@ -604,4 +670,9 @@ uint32_t sensor_manager_get_button_duration(void)
     }
     
     return 0;
+}
+
+i2c_master_bus_handle_t sensor_manager_get_i2c_bus(void)
+{
+    return i2c_bus_handle;
 }

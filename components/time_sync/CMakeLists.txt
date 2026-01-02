@@ -9,4 +9,5 @@ idf_component_register(
         esp_event
         nvs_flash
         lwip
+        esp_netif_stack
 )

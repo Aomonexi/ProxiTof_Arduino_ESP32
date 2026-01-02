@@ -13,32 +13,30 @@
 
 ## DS3231 Module Wiring
 
-### Standard Wiring:
-```
-DS3231 Module     ESP32-S3
--------------     --------
-VCC            -> 3.3V (or 5V)
-GND            -> GND
-SDA            -> GPIO 21
-SCL            -> GPIO 22
-```
-
-### Alternative Pins (if GPIO 21/22 are used):
+### Standard Wiring (Shared I2C Bus):
 ```
 DS3231 Module     ESP32-S3
 -------------     --------
 VCC            -> 3.3V
 GND            -> GND
-SDA            -> GPIO 19  (change RTC_SDA_PIN in main.c)
-SCL            -> GPIO 20  (change RTC_SCL_PIN in main.c)
+SDA            -> GPIO 8  (Shared with VL53L8CX ToF)
+SCL            -> GPIO 9  (Shared with VL53L8CX ToF)
+SQW            -> NOT CONNECTED (optional)
+32K            -> NOT CONNECTED (optional)
 ```
+
+**I2C Bus Sharing:**
+- DS3231 RTC: I2C address **0x68**
+- VL53L8CX ToF: I2C address **0x29**
+- Both devices use the same SDA/SCL pins (GPIO 8/9)
+- No conflicts - different I2C addresses
 
 ### Pin Configuration in Code:
 Edit `main/main.c`:
 ```c
-// DS3231 RTC Configuration
-#define RTC_SDA_PIN GPIO_NUM_21  // Change to your SDA pin
-#define RTC_SCL_PIN GPIO_NUM_22  // Change to your SCL pin
+// DS3231 RTC Configuration (shared I2C bus with ToF sensor)
+#define RTC_SDA_PIN GPIO_NUM_8   // Shared with VL53L8CX ToF
+#define RTC_SCL_PIN GPIO_NUM_9   // Shared with VL53L8CX ToF
 ```
 
 ## Initial Time Setup
@@ -82,7 +80,7 @@ If you want to set time via internet once:
 ### Success Case:
 ```
 I (1234) DS3231: Initializing DS3231 RTC...
-I (1235) DS3231: I2C pins: SDA=21, SCL=22
+I (1235) DS3231: I2C pins: SDA=8, SCL=9 (shared with ToF)
 I (1236) DS3231: ✓ DS3231 RTC initialized successfully
 I (1237) DS3231: ✓ System time synced: 2024-12-24 15:30:45
 I (1238) MAIN: ✓ DS3231 RTC initialized successfully
@@ -98,9 +96,10 @@ E (1234) DS3231: DS3231 not responding at address 0x68
 E (1235) DS3231: Failed to add DS3231 device: ESP_ERR_NOT_FOUND
 W (1236) MAIN: ❌ DS3231 RTC initialization failed: ESP_ERR_NOT_FOUND
 W (1237) MAIN: Troubleshooting:
-W (1238) MAIN:   1. Check DS3231 wiring: SDA=21, SCL=22
-W (1239) MAIN:   2. Verify DS3231 power (3.3V or 5V)
+W (1238) MAIN:   1. Check DS3231 wiring: SDA=8, SCL=9 (shared with ToF)
+W (1239) MAIN:   2. Verify DS3231 power (3.3V)
 W (1240) MAIN:   3. Check I2C pull-up resistors (4.7kΩ)
+W (1241) MAIN:   4. Verify ToF sensor is also working (shared I2C bus)
 ```
 
 ## Troubleshooting

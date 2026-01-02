@@ -174,14 +174,24 @@ Sync Sources:
 ### USB Interface
 ```
 Physical: USB-C connector (ESP32-S3 built-in)
-Protocol: USB Serial JTAG (CDC)
-Speed: 115200 baud
+Protocols: 
+├── USB Serial JTAG (Programming + Commands)
+└── USB Mass Storage Class (SD card as USB drive)
+
 Features:
-├── Real-time configuration
-├── Status monitoring
-├── Time synchronization
+├── Real-time configuration via serial commands
+├── SD card access as USB drive (MSC)
+├── Automatic switching between logging and USB access
+├── Time synchronization from computer
+├── System status monitoring
 ├── Command-line interface
-└── Python tool automation
+├── Python tool automation
+└── Dual USB functionality (Serial + MSC)
+
+USB MSC Commands:
+├── msc start (Enable USB drive mode)
+├── msc stop (Resume data logging)
+└── msc status (Check current mode)
 ```
 
 ### SD Card Interface

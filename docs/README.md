@@ -21,6 +21,7 @@ Welcome to the ProxiTof Near-Miss Detection System documentation. This index pro
 ### Configuration & Access
 - **[Field Configuration Guide](field-configuration-guide.md)** - SD card-based configuration
 - **[USB Interface Guide](usb-interface-guide.md)** - Computer access via USB
+- **[USB Mass Storage Guide](usb-mass-storage-guide.md)** - SD card as USB drive
 - **[SD Card Enable Guide](sd-card-enable-guide.md)** - Storage system setup
 
 ---
@@ -76,6 +77,7 @@ Sensors → Circular Buffer → SD Card → CSV Files → ML Training → TFLite
 |-------|-------------|--------|
 | [Field Configuration Guide](field-configuration-guide.md) | **SD card configuration system** | ✅ **Primary** |
 | [USB Interface Guide](usb-interface-guide.md) | **Computer access via USB** | ✅ **Primary** |
+| [USB Mass Storage Guide](usb-mass-storage-guide.md) | **SD card as USB drive** | ✅ **Primary** |
 | [SD Card Enable Guide](sd-card-enable-guide.md) | Storage system activation | ✅ Complete |
 
 ### Data & Storage

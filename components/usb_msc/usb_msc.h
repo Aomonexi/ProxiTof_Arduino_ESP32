@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include "esp_err.h"
 
 #ifdef __cplusplus
@@ -52,6 +53,14 @@ bool usb_msc_is_active(void);
  * @return true if USB cable detected
  */
 bool usb_msc_is_connected(void);
+
+/**
+ * Deinitialize USB MSC
+ * Cleans up TinyUSB resources
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t usb_msc_deinit(void);
 
 #ifdef __cplusplus
 }

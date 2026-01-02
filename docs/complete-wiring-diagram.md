@@ -13,6 +13,7 @@
 | **VL53L8CX ToF** | I2C | SDA=8, SCL=9, LPN=4 | ✅ Ready | 4x4 distance grid @ 60Hz |
 | **BNO08x IMU** | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | ✅ Ready | 9-DOF @ 100Hz |
 | **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Ready | **Conflict-free pins** |
+| **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Ready | Battery-backed time |
 | **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Ready | Manual event flagging |
 | **WS2812 LED** | GPIO | GPIO 48 | ✅ Built-in | Status indicator |
 
@@ -30,6 +31,9 @@
 VL53L8CX ToF ──────╫── GPIO 8  (SDA)                  ║
              ──────╫── GPIO 9  (SCL)                  ║
              ──────╫── GPIO 4  (LPN)                  ║
+                    ║                                  ║
+DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
+            ───────╫── GPIO 9  (SCL) ← Shared I2C     ║
                     ║                                  ║
                     ║              BNO08x IMU          ║
                     ║              -----------          ║
@@ -76,6 +80,26 @@ LPN                 ←    GPIO 4  (Low Power Enable)
 - Operating Mode: 4x4 zone array
 - Sample Rate: 60Hz
 - Range: 0-4000mm
+
+### 1.5. DS3231 RTC Module (I2C) - Battery-Backed Time
+
+```
+DS3231 RTC Breakout  →    ESP32-S3
+───────────────────        ─────────
+VCC (3.3V)          →    3.3V
+GND                 →    GND
+SDA                 ↔    GPIO 8  (I2C Data - Shared)
+SCL                 ↔    GPIO 9  (I2C Clock - Shared)
+SQW                 →    NOT CONNECTED (optional)
+32K                 →    NOT CONNECTED (optional)
+```
+
+**Configuration:**
+- I2C Address: 0x68 (7-bit)
+- **Shares I2C bus with VL53L8CX** (different addresses)
+- Battery: CR2032 (keeps time when power off)
+- Accuracy: ±2ppm (±1 minute/year)
+- SQW/32K pins not needed for basic timekeeping
 
 ### 2. BNO08x IMU Sensor (SPI) - Motion Sensing
 
@@ -184,12 +208,17 @@ USB 5V Input
 
 ## 🚌 Bus Architecture - No Conflicts!
 
-### I2C Bus (ToF Only)
+### I2C Bus (ToF + RTC)
 ```
 ESP32-S3 I2C Master
-├── GPIO 8 (SDA) ↔ VL53L8CX ToF (0x29)
-└── GPIO 9 (SCL) → VL53L8CX ToF
+├── GPIO 8 (SDA) ↔ VL53L8CX ToF (0x29) + DS3231 RTC (0x68)
+└── GPIO 9 (SCL) → VL53L8CX ToF + DS3231 RTC
 ```
+
+**I2C Device Addresses:**
+- VL53L8CX ToF: 0x29 (7-bit)
+- DS3231 RTC: 0x68 (7-bit)
+- No address conflicts - both devices can share the same bus
 
 ### SPI Bus (IMU Only)
 ```
@@ -268,7 +297,7 @@ idf.py build flash monitor
 
 ## 📊 GPIO Pin Usage Summary
 
-### Used Pins (15 total)
+### Used Pins (17 total)
 | GPIO | Function | Component |
 |------|----------|-----------|
 | 2 | SDMMC D0 | SD Card |
@@ -276,8 +305,8 @@ idf.py build flash monitor
 | 4 | ToF LPN | VL53L8CX |
 | 5 | IMU INT | BNO08x |
 | 6 | IMU RST | BNO08x |
-| 8 | I2C SDA | VL53L8CX |
-| 9 | I2C SCL | VL53L8CX |
+| 8 | I2C SDA | VL53L8CX + DS3231 |
+| 9 | I2C SCL | VL53L8CX + DS3231 |
 | 10 | SPI CS | BNO08x |
 | 11 | SPI MOSI | BNO08x |
 | 12 | SPI SCK | BNO08x |
@@ -326,6 +355,26 @@ GND           --> GND
 - I2C address: 0x29 (7-bit)
 - Internal pull-ups enabled
 - External 2.2kΩ pull-ups recommended for long wires
+
+### 1.5. DS3231 RTC Module (I2C) - SHARED BUS
+
+```
+ESP32-S3          DS3231 RTC
+--------          ----------
+GPIO 8  (SDA) --> SDA (shared with ToF)
+GPIO 9  (SCL) --> SCL (shared with ToF)
+3.3V          --> VCC
+GND           --> GND
+NOT CONNECTED --> SQW (Square Wave - optional)
+NOT CONNECTED --> 32K (32kHz output - optional)
+```
+
+**Critical Notes:**
+- **I2C address: 0x68** (different from ToF sensor 0x29)
+- **Shares I2C bus** with VL53L8CX ToF sensor
+- **Requires CR2032 battery** for backup power
+- **SQW and 32K pins** can be left unconnected for basic timekeeping
+- **Pull-ups already provided** by ToF sensor connection
 
 ### 2. BNO08x IMU Sensor (SPI)
 
@@ -410,12 +459,12 @@ GND            --> GND
                     
 I2C Bus:            SPI Bus (IMU):              SDMMC Bus (SD):         GPIO:
 --------            ---------------              ----------------        -----
-GPIO 8  ────────────> VL53L8CX ToF    GPIO 39 ──────────> SD Card CLK   GPIO 3  ────> Button
-GPIO 9  ────────────>                  GPIO 38 ──────────> SD Card CMD   GPIO 48 ────> WS2812 LED
-GPIO 4  ────────────>                  GPIO 40 ──────────> SD Card D0    
-                    GPIO 11 ──────────> BNO08x IMU (MOSI) GPIO 41 ──────────> SD Card D1
-                    GPIO 13 ──────────> BNO08x IMU (MISO) GPIO 42 ──────────> SD Card D2
-                    GPIO 12 ──────────> BNO08x IMU (SCK)  GPIO 43 ──────────> SD Card D3
+GPIO 8  ────────────> VL53L8CX ToF    GPIO 14 ──────────> SD Card CLK   GPIO 3  ────> Button
+GPIO 9  ────────────> DS3231 RTC      GPIO 15 ──────────> SD Card CMD   GPIO 48 ────> WS2812 LED
+GPIO 4  ────────────> (ToF LPN)       GPIO 2  ──────────> SD Card D0    
+                    GPIO 11 ──────────> BNO08x IMU (MOSI) GPIO 16 ──────────> SD Card D1
+                    GPIO 13 ──────────> BNO08x IMU (MISO) GPIO 17 ──────────> SD Card D2
+                    GPIO 12 ──────────> BNO08x IMU (SCK)  GPIO 18 ──────────> SD Card D3
                     GPIO 10 ──────────> BNO08x IMU (CS)   
                     GPIO 5  ──────────> BNO08x IMU (INT)  
                     GPIO 6  ──────────> BNO08x IMU (RST)
@@ -423,6 +472,7 @@ GPIO 4  ────────────>                  GPIO 40 ───
 Power:
 ------
 3.3V ──┬──> VL53L8CX
+       ├──> DS3231 RTC
        ├──> BNO08x (VCC, P0, P1)
        ├──> SD Card
        └──> WS2812 LED
@@ -468,10 +518,11 @@ The SD card uses dedicated SDMMC pins for high-speed access:
 |-----------|---------|-------------------|----------------|
 | ESP32-S3 | 3.3V | 80mA | 500mA |
 | VL53L8CX ToF | 3.3V | 20mA | 40mA |
+| DS3231 RTC | 3.3V | 0.1mA | 1mA |
 | BNO08x IMU | 3.3V | 10mA | 15mA |
 | SD Card | 3.3V | 50mA | 200mA |
 | WS2812 LED | 3.3V | 20mA | 60mA |
-| **Total** | **3.3V** | **~180mA** | **~815mA** |
+| **Total** | **3.3V** | **~180mA** | **~816mA** |
 
 **Recommendation:** Use USB power (5V → 3.3V regulator on DevKit) or external 3.3V supply capable of 1A.
 

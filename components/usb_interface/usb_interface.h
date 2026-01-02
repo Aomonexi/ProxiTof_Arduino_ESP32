@@ -8,6 +8,7 @@
 #pragma once
 
 #include "esp_err.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,11 +29,19 @@ esp_err_t usb_interface_init(void);
 void usb_interface_process(void);
 
 /**
- * Check if USB is connected to computer
+ * Check if USB is connected to computer (not just power)
+ * Detects actual data connection vs power-only
  * 
  * @return true if USB cable connected and computer detected
  */
 bool usb_interface_is_connected(void);
+
+/**
+ * Handle USB connection changes and auto-MSC switching
+ * Call this regularly from main loop to detect connection changes
+ * Automatically starts/stops USB MSC based on computer connection
+ */
+void usb_interface_handle_connection_changes(void);
 
 /**
  * Sync time from computer via USB

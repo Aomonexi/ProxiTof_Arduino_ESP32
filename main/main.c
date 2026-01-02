@@ -14,6 +14,8 @@
 #include "smart_time.h"
 #include "config_manager.h"
 #include "usb_interface.h"
+#include "usb_msc.h"
+#include "display_manager.h"
 #include "led_strip.h"
 #include "driver/gpio.h"
 
@@ -90,76 +92,6 @@ static uint16_t get_min_distance(tof_data_t *tof_data)
     return min_dist;
 }
 
-/**
- * Print 4x4 ToF grid with color coding
- */
-static void print_tof_grid(tof_data_t *tof_data, uint16_t min_dist)
-{
-    printf("\n");
-    printf("╔════════════════════════════════════════════════╗\n");
-    printf("║     VL53L8CX 4x4 Distance Grid (mm)           ║\n");
-    printf("╠════════════════════════════════════════════════╣\n");
-    
-    for (int row = 0; row < 4; row++) {
-        printf("║ ");
-        for (int col = 0; col < 4; col++) {
-            int idx = row * 4 + col;
-            uint16_t dist = tof_data->distances[idx];
-            
-            // Color code based on distance
-            if (dist < CLOSE_THRESHOLD) {
-                printf("\033[1;31m"); // Bold red
-            } else if (dist < MEDIUM_THRESHOLD) {
-                printf("\033[1;33m"); // Bold yellow
-            } else {
-                printf("\033[1;32m"); // Bold green
-            }
-            
-            printf("%5u\033[0m ", dist);
-        }
-        printf("║\n");
-    }
-    
-    printf("╠════════════════════════════════════════════════╣\n");
-    printf("║ Min Distance: %5u mm                          ║\n", min_dist);
-    
-    // LED status
-    const char *led_status;
-    if (min_dist < CLOSE_THRESHOLD) {
-        led_status = "\033[1;31m🔴 RED (CLOSE)\033[0m";
-    } else if (min_dist < MEDIUM_THRESHOLD) {
-        led_status = "\033[1;33m🟡 YELLOW (MEDIUM)\033[0m";
-    } else {
-        led_status = "\033[1;32m🟢 GREEN (FAR)\033[0m";
-    }
-    printf("║ LED Status: %s                    ║\n", led_status);
-    printf("╚════════════════════════════════════════════════╝\n");
-}
-
-/**
- * Print IMU data (orientation + acceleration)
- */
-static void print_imu_data(imu_data_t *imu_data)
-{
-    printf("\n");
-    printf("╔════════════════════════════════════════════════╗\n");
-    printf("║         BNO08x IMU Sensor Data                ║\n");
-    printf("╠════════════════════════════════════════════════╣\n");
-    printf("║ Orientation (degrees):                         ║\n");
-    printf("║   Roll:  %8.2f°                              ║\n", imu_data->roll);
-    printf("║   Pitch: %8.2f°                              ║\n", imu_data->pitch);
-    printf("║   Yaw:   %8.2f°                              ║\n", imu_data->yaw);
-    printf("╠════════════════════════════════════════════════╣\n");
-    printf("║ Linear Acceleration (m/s²):                    ║\n");
-    printf("║   X: %7.2f  Y: %7.2f  Z: %7.2f          ║\n", 
-           imu_data->accel_x, imu_data->accel_y, imu_data->accel_z);
-    printf("╠════════════════════════════════════════════════╣\n");
-    printf("║ Gyroscope (deg/s):                             ║\n");
-    printf("║   X: %7.2f  Y: %7.2f  Z: %7.2f          ║\n", 
-           imu_data->gyro_x, imu_data->gyro_y, imu_data->gyro_z);
-    printf("╚════════════════════════════════════════════════╝\n");
-}
-
 void app_main(void)
 {
     ESP_LOGI(TAG, "");
@@ -187,6 +119,25 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
+    // SD CARD INITIALIZATION (MUST BE FIRST FOR CONFIG LOADING)
+    // =========================================================================
+    ESP_LOGI(TAG, "Initializing SD card storage...");
+    err = storage_manager_init();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "SD card initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "Configuration will use defaults (no SD card access)");
+        ESP_LOGW(TAG, "");
+        ESP_LOGW(TAG, "Troubleshooting:");
+        ESP_LOGW(TAG, "  1. Check SD card is inserted");
+        ESP_LOGW(TAG, "  2. Format SD card as FAT32");
+        ESP_LOGW(TAG, "  3. Check wiring: CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18");
+        ESP_LOGW(TAG, "  4. Verify 3.3V power to SD card");
+    } else {
+        ESP_LOGI(TAG, "✓ SD card initialized successfully");
+    }
+    ESP_LOGI(TAG, "");
+    
+    // =========================================================================
     // CONFIGURATION MANAGEMENT (SD CARD)
     // =========================================================================
     ESP_LOGI(TAG, "Loading system configuration...");
@@ -198,11 +149,18 @@ void app_main(void)
         ESP_LOGW(TAG, "Using default configuration");
         config_load_defaults(&config);
         
-        // Save default config to SD card for user to edit
-        if (config_save_to_sd(&config) == ESP_OK) {
-            ESP_LOGI(TAG, "✓ Default config saved to /sdcard/config.txt");
-            ESP_LOGI(TAG, "💡 Edit config.txt on SD card to change WiFi settings");
+        // Save default config to SD card for user to edit (if SD card available)
+        if (storage_manager_is_initialized()) {
+            if (config_save_to_sd(&config) == ESP_OK) {
+                ESP_LOGI(TAG, "✓ Default config saved to /sdcard/config.txt");
+                ESP_LOGI(TAG, "💡 Edit config.txt on SD card to change WiFi settings");
+            }
+        } else {
+            ESP_LOGW(TAG, "💡 Insert SD card and restart to use file-based configuration");
+            ESP_LOGW(TAG, "💡 Or use USB serial commands: wifi_config SSID PASSWORD");
         }
+    } else {
+        ESP_LOGI(TAG, "✓ Configuration loaded from SD card");
     }
     
     config_print(&config);
@@ -250,18 +208,31 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
-    // USB INTERFACE INITIALIZATION
+    // USB SYSTEM INITIALIZATION
     // =========================================================================
-    ESP_LOGI(TAG, "Initializing USB interface...");
+    ESP_LOGI(TAG, "Initializing USB system...");
     
+    // Initialize USB Mass Storage first (TinyUSB stack)
+    err = usb_msc_init();
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "✓ USB Mass Storage initialized");
+        ESP_LOGI(TAG, "💾 SD card will appear as USB drive when connected");
+    } else {
+        ESP_LOGW(TAG, "USB Mass Storage initialization failed: %s", esp_err_to_name(err));
+    }
+    
+    // Initialize USB Serial JTAG interface (compatible with TinyUSB)
     err = usb_interface_init();
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ USB interface initialized");
+        ESP_LOGI(TAG, "✓ USB Serial JTAG interface initialized");
         ESP_LOGI(TAG, "💻 Connect USB cable for configuration access");
         ESP_LOGI(TAG, "📝 Use serial terminal or Python tool for commands");
     } else {
-        ESP_LOGW(TAG, "USB interface initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "USB Serial JTAG interface initialization failed: %s", esp_err_to_name(err));
     }
+    
+    ESP_LOGI(TAG, "⚠️  Note: USB Serial JTAG and USB MSC share the same USB port");
+    ESP_LOGI(TAG, "💡 Programming/debugging works alongside USB MSC functionality");
     
     ESP_LOGI(TAG, "");
     
@@ -276,29 +247,23 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
-    // SD CARD INITIALIZATION (SDMMC)
+    // USB MSC AND DATA LOGGING STARTUP
     // =========================================================================
-    ESP_LOGI(TAG, "Initializing SD card storage...");
-    err = storage_manager_init();
-    if (err != ESP_OK) {
-        ESP_LOGW(TAG, "SD card initialization failed: %s", esp_err_to_name(err));
-        ESP_LOGW(TAG, "Continuing without data logging");
-        ESP_LOGW(TAG, "");
-        ESP_LOGW(TAG, "Troubleshooting:");
-        ESP_LOGW(TAG, "  1. Check SD card is inserted");
-        ESP_LOGW(TAG, "  2. Format SD card as FAT32");
-        ESP_LOGW(TAG, "  3. Check wiring: CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18");
-        ESP_LOGW(TAG, "  4. Verify 3.3V power to SD card");
-    } else {
-        ESP_LOGI(TAG, "✓ SD card initialized successfully");
+    if (storage_manager_is_initialized()) {
+        // Don't start USB Mass Storage automatically - let it be started on demand
+        ESP_LOGI(TAG, "USB Mass Storage ready (not started automatically)");
+        ESP_LOGI(TAG, "💡 Use USB serial command 'usb_msc start' to enable USB drive mode");
         
-        // Start logging
+        // Start logging immediately since USB MSC is not active
         err = storage_manager_start_logging();
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "✓ Data logging started");
         } else {
             ESP_LOGW(TAG, "Failed to start logging: %s", esp_err_to_name(err));
+            ESP_LOGW(TAG, "💡 This is likely due to SD card write protection");
         }
+    } else {
+        ESP_LOGW(TAG, "SD card not available - no USB MSC or data logging");
     }
     
     ESP_LOGI(TAG, "");
@@ -322,6 +287,25 @@ void app_main(void)
     }
     
     ESP_LOGI(TAG, "Starting real-time sensor display in 2 seconds...");
+    
+    // Initialize display manager
+    display_config_t display_config = {
+        .refresh_rate_hz = 30,        // 30 Hz default refresh rate
+        .show_tof_grid = true,        // Show ToF 4x4 grid
+        .show_imu_data = true,        // Show IMU orientation/acceleration
+        .show_system_stats = true,    // Show logging statistics
+        .compact_mode = false         // Use full display layout
+    };
+    
+    err = display_manager_init(&display_config);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "✓ Display manager initialized (30 Hz)");
+        ESP_LOGI(TAG, "💡 Use 'display refresh HZ' to change refresh rate");
+    } else {
+        ESP_LOGW(TAG, "Display manager initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "System will use basic console output");
+    }
+    
     vTaskDelay(pdMS_TO_TICKS(2000));
     
     // Clear screen for clean display
@@ -332,12 +316,9 @@ void app_main(void)
     uint32_t frame_count = 0;
     uint32_t tof_count = 0;
     uint32_t imu_count = 0;
-    uint32_t last_display_time = 0;
-    uint16_t last_min_dist = 9999;
     
     while (1) {
         uint32_t current_time = sensor_manager_get_timestamp();
-        bool should_display = (current_time - last_display_time) >= 500;  // 2Hz display
         
         // Read ToF sensor at full speed (60Hz)
         err = sensor_manager_read_tof(&tof_data);
@@ -349,7 +330,7 @@ void app_main(void)
             if (led_strip != NULL) {
                 update_led(min_dist);
             }
-            last_min_dist = min_dist;  // Store for display
+            // Store for display (removed last_min_dist variable)
         } else if (frame_count < 5) {
             // Log ToF errors during first few frames for debugging
             ESP_LOGW(TAG, "ToF read failed: %s", esp_err_to_name(err));
@@ -388,68 +369,23 @@ void app_main(void)
             storage_manager_write(&log_entry);
         }
         
-        // Display update at 2Hz (only when enough time has passed)
-        if (should_display && (tof_count > 0 || imu_count > 0)) {
-            last_display_time = current_time;
-            
-            // Display ToF grid if we have data
-            if (tof_count > 0) {
-                print_tof_grid(&tof_data, last_min_dist);
-            }
-            
-            // Display IMU data if we have data
-            if (imu_count > 0) {
-                print_imu_data(&imu_data);
-            }
-            
-            // Print frame counter and storage stats
-            frame_count++;
-            printf("\n[Frame: %lu | ToF: %lu @ 60Hz | IMU: %lu @ 100Hz]\n", 
-                   frame_count, tof_count, imu_count);
-            printf("LED Response: Real-time | Display: 2Hz\n");
-            
-            // Storage statistics
-            if (storage_manager_is_logging()) {
-                storage_stats_t stats;
-                storage_manager_get_stats(&stats);
-                printf("SD Card: Logging | Entries: %lu | Buffer: %.1f%% | Dropped: %lu\n",
-                       stats.entries_logged, stats.buffer_fill_percent, stats.entries_dropped);
-            } else {
-                printf("SD Card: Not logging\n");
-            }
-            
-            // Sensor health status
-            sensor_manager_get_health(&health);
-            if (!health.tof_healthy) {
-                printf("\n⚠️  WARNING: ToF sensor not healthy (errors: %lu)\n", health.tof_error_count);
-                printf("   Check I2C wiring: SDA=GPIO8, SCL=GPIO9, LPN=GPIO4\n");
-            }
-            if (!health.imu_healthy) {
-                printf("\n⚠️  WARNING: IMU sensor not healthy (errors: %lu)\n", health.imu_error_count);
-            }
-            
-            printf("Press Ctrl+] to exit monitor\n\n");
+        // Display update using display manager (handles timing automatically)
+        if (tof_count > 0 || imu_count > 0) {
+            uint16_t min_dist = get_min_distance(&tof_data);
+            display_manager_update(&tof_data, &imu_data, min_dist);
         }
         
-        // Check button - show while held down (only during display updates to avoid spam)
-        if (should_display) {
+        // Check button status (simplified - no display spam)
+        static uint32_t last_button_check = 0;
+        if ((current_time - last_button_check) >= 1000) { // Check every second
+            last_button_check = current_time;
+            
             if (sensor_manager_is_button_held()) {
                 uint32_t duration = sensor_manager_get_button_duration();
-                printf("\n");
-                printf("╔════════════════════════════════════════════════╗\n");
-                printf("║       ⚠️  BUTTON HELD - FLAGGING EVENT        ║\n");
-                printf("║   Duration: %lu ms (%.1f seconds)              ║\n", 
-                       duration, duration / 1000.0f);
-                printf("║   Keep holding to mark entire near-miss event  ║\n");
-                printf("╚════════════════════════════════════════════════╝\n");
+                ESP_LOGI(TAG, "⚠️  BUTTON HELD - Flagging event (Duration: %.1f seconds)", duration / 1000.0f);
             } else if (sensor_manager_is_button_pressed()) {
-                // Button was just released after being held
-                printf("\n");
-                printf("╔════════════════════════════════════════════════╗\n");
-                printf("║      ✓ EVENT FLAGGED - Button Released        ║\n");
-                printf("║   Timestamp: %lu ms                            ║\n", 
-                       sensor_manager_get_last_button_press_time());
-                printf("╚════════════════════════════════════════════════╝\n");
+                ESP_LOGI(TAG, "✓ EVENT FLAGGED - Button released (Timestamp: %lu ms)", 
+                         sensor_manager_get_last_button_press_time());
             }
         }
         
@@ -461,5 +397,8 @@ void app_main(void)
         
         // USB interface processing (handle commands from computer)
         usb_interface_process();
+        
+        // Handle automatic USB MSC switching based on computer connection
+        usb_interface_handle_connection_changes();
     }
 }

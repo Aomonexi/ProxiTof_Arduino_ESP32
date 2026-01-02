@@ -1,221 +1,212 @@
 # ProxiTof Quick Reference Card
 
-## 🚀 Quick Start Checklist
+## 🚀 **Essential Commands** 🆕
 
-### ✅ Hardware Setup
-- [ ] ESP32-S3 powered via USB-C
-- [ ] VL53L8CX wired: SDA=8, SCL=9, LPN=4
-- [ ] BNO08x wired: MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6
-- [ ] DS3231 wired: SDA=21, SCL=22
-- [ ] SD card wired: CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18
-- [ ] Button wired: GPIO 3 to GND
-- [ ] SD card formatted as FAT32
-
-### ✅ Software Setup
-- [ ] ESP-IDF v5.5+ installed
-- [ ] Run `export.ps1` before building
-- [ ] Build: `idf.py build`
-- [ ] Flash: `idf.py flash monitor`
-
----
-
-## 🔧 Common Commands
-
-### ESP-IDF Build Commands
+### **System Status**
 ```bash
-# Activate ESP-IDF environment (REQUIRED every time)
-C:\Users\[USERNAME]\esp\v5.5.1\esp-idf\export.ps1
-
-# Build and flash
-idf.py build flash monitor
-
-# Clean build
-idf.py fullclean build
-
-# Monitor only
-idf.py monitor
+status                          # Complete system overview
+sensors                         # Hardware health check
+performance                     # CPU and memory usage
 ```
 
-### USB Interface Commands
+### **Time Management**
 ```bash
-# Python tool (recommended)
-python tools/proxitof_usb_tool.py --status
-python tools/proxitof_usb_tool.py --wifi "SSID" "Password"
-python tools/proxitof_usb_tool.py --sync-time
+time                           # Show current time
+sync                           # Sync with NTP/computer
+config timezone CST-8          # Set China timezone
+```
 
-# Serial terminal commands
-help                    # Show available commands
-status                  # System status
-config wifi SSID PASS  # Set WiFi
-time 2024-12-24 15:30:00 # Set time
-sync                    # NTP sync
+### **WiFi Configuration**
+```bash
+config wifi "MyWiFi" "MyPass"  # Set WiFi credentials
+config                         # Show current config
+```
+
+### **USB Mass Storage**
+```bash
+msc start                      # SD card as USB drive
+msc stop                       # Resume data logging
+msc status                     # Check MSC status
+```
+
+### **Display Control** 🆕
+```bash
+display refresh 30             # Set 30Hz refresh rate
+display compact on             # Enable compact mode
+display status                 # Show display stats
+```
+
+### **Event Flagging**
+```bash
+flag                          # Manual event flag
+button_status                 # Button press history
+```
+
+### **File Management**
+```bash
+files                         # List log files
+msc start                     # Access via USB drive
 ```
 
 ---
 
-## 📁 File Locations
+## 🔌 **Automatic USB Detection** 🆕
 
-### Configuration
-- **SD Card Config**: `/sdcard/config.txt`
-- **Python Tool**: `tools/proxitof_usb_tool.py`
-- **Documentation**: `docs/README.md`
-
-### Data Files
-- **Log Files**: `/sdcard/YYYY-MM-DD/log_YYYYMMDD_HHMMSS.csv`
-- **Config Backup**: `/sdcard/config.txt`
+| Connection Type | System Behavior | LED Indicator |
+|----------------|------------------|---------------|
+| **Computer** | Auto USB MSC mode | Blue flash |
+| **Power Bank** | Continue logging | Green breathing |
+| **Battery** | Normal operation | Green breathing |
 
 ---
 
-## ⚡ Troubleshooting
+## 📱 **Display Refresh Rates** 🆕
 
-### Build Issues
-| Problem | Solution |
-|---------|----------|
-| `idf.py not recognized` | Run `export.ps1` first |
-| Build errors | Try `idf.py fullclean build` |
-| Component errors | Check `components/` folder |
-
-### Hardware Issues
-| Problem | Solution |
-|---------|----------|
-| ToF not detected | Check I2C wiring (SDA=8, SCL=9, LPN=4) |
-| IMU not responding | Verify SPI wiring and P0=P1=3.3V |
-| SD card failed | Format as FAT32, check SDMMC wiring |
-| Time wrong | Set via USB: `time 2024-12-24 15:30:00` |
-
-### Configuration Issues
-| Problem | Solution |
-|---------|----------|
-| WiFi not connecting | Edit `/sdcard/config.txt` |
-| USB not working | Install Python + pyserial |
-| Config not loading | Check config.txt syntax |
+| Rate | CPU Usage | Best For |
+|------|-----------|----------|
+| **10 Hz** | 2-5% | Battery saving |
+| **30 Hz** | 5-10% | Balanced performance |
+| **60 Hz** | 15-20% | Smooth monitoring |
 
 ---
 
-## 📊 Status Indicators
+## 💾 **SD Card File Structure**
 
-### LED Status
-- 🔵 **Blue**: System initializing
-- 🟢 **Green**: Normal operation (>50cm)
-- 🟡 **Yellow**: Medium distance (10-50cm)
-- 🔴 **Red**: Close proximity (<10cm)
-
-### Serial Monitor Messages
-- `✓ Sensor manager initialized` - Sensors working
-- `✓ SD card initialized` - Storage ready
-- `✓ Time synchronized` - Clock accurate
-- `⚠️ DS3231 not available` - RTC issue
-- `❌ SD card failed` - Storage problem
+```
+/sdcard/
+├── config.txt                 # System configuration
+├── 20241231/                 # Today's logs
+│   ├── log_090000.csv        # Morning data
+│   └── log_150000.csv        # Afternoon data
+└── 20241230/                 # Yesterday's logs
+```
 
 ---
 
-## 🔄 Field Deployment Workflow
+## 🎛️ **Configuration File** (`/sdcard/config.txt`)
 
-### Pre-Deployment (Lab)
-1. **Hardware Test**: Verify all sensors working
-2. **Time Setup**: Set accurate time via USB or WiFi
-3. **Config Prepare**: Edit `/sdcard/config.txt` for field
-4. **Data Test**: Verify logging to SD card
-
-### Deployment (Field)
-1. **Power On**: Connect power, wait for initialization
-2. **Status Check**: Green LED = ready for data collection
-3. **Time Verify**: Check timestamps in log files
-4. **Operation**: System runs autonomously
-
-### Maintenance (Field)
-1. **USB Connect**: Connect laptop via USB-C cable
-2. **Status Check**: `python proxitof_usb_tool.py --status`
-3. **Time Sync**: `python proxitof_usb_tool.py --sync-time`
-4. **Config Update**: Edit settings via USB interface
-
----
-
-## 📋 Configuration Template
-
-### `/sdcard/config.txt` Example
 ```ini
-# WiFi Configuration
+# WiFi Settings
 WIFI_ENABLED=true
-WIFI_SSID=YourWiFiNetwork
-WIFI_PASSWORD=YourWiFiPassword
+WIFI_SSID=YourWiFiName
+WIFI_PASSWORD=YourPassword
 
-# Time Configuration  
-TIMEZONE=UTC0
+# Time Settings
+TIMEZONE=CST-8
 SYNC_INTERVAL_HOURS=24
 
-# Hardware Configuration
+# Display Settings 🆕
+DISPLAY_REFRESH_HZ=30
+DISPLAY_COMPACT_MODE=false
+
+# Hardware Settings
 DS3231_ENABLED=true
-DS3231_SDA_PIN=21
-DS3231_SCL_PIN=22
+DS3231_SDA_PIN=8
+DS3231_SCL_PIN=9
 ```
 
-### Common Timezones
-- **UTC**: `UTC0`
-- **US Eastern**: `EST5EDT,M3.2.0,M11.1.0`
-- **US Pacific**: `PST8PDT,M3.2.0,M11.1.0`
-- **Europe/Berlin**: `CET-1CEST,M3.5.0,M10.5.0/3`
+---
+
+## 🔧 **Hardware Connections**
+
+### **Sensors**
+- **ToF VL53L8CX**: SDA=8, SCL=9, LPN=4
+- **IMU BNO08x**: MOSI=11, MISO=13, SCK=12, CS=10
+- **Button**: GPIO=3 (with pull-up)
+- **LED**: GPIO=48 (built-in WS2812)
+
+### **Storage & Time**
+- **SD Card**: CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18
+- **DS3231 RTC**: SDA=8, SCL=9 (shared with ToF)
 
 ---
 
-## 🎯 Performance Targets
+## 🚨 **Troubleshooting**
 
-### Normal Operation
-- **ToF Rate**: 60 Hz (16.7ms intervals)
-- **IMU Rate**: 100 Hz (10ms intervals)
-- **Display**: 2 Hz updates
-- **SD Write**: Every 500ms (batched)
-- **Time Sync**: Every 24 hours (configurable)
+### **Common Issues**
+| Problem | Quick Fix | Command |
+|---------|-----------|---------|
+| Wrong time | Sync time | `sync` |
+| No WiFi | Set credentials | `config wifi SSID PASS` |
+| SD card full | Check files | `files` then `msc start` |
+| Slow display | Reduce rate | `display refresh 15` |
+| USB not working | Check connection | `msc status` |
 
-### Data Quality
-- **Time Accuracy**: ±2ppm with DS3231
-- **Distance Range**: 0-4000mm (ToF)
-- **IMU Range**: ±16g accel, ±2000°/s gyro
-- **File Size**: ~100MB per file (auto-rotate)
-
----
-
-## 🆘 Emergency Procedures
-
-### System Not Responding
-1. **Power Cycle**: Disconnect and reconnect power
-2. **USB Check**: Try different USB cable/port
-3. **SD Card**: Remove and reinsert SD card
-4. **Factory Reset**: Reflash firmware
-
-### Data Recovery
-1. **SD Card**: Remove and read on computer
-2. **File Check**: Look for `/YYYY-MM-DD/` folders
-3. **CSV Validation**: Open files in Excel/Python
-4. **Backup**: Copy important data immediately
-
-### Time Issues
-1. **USB Sync**: `python proxitof_usb_tool.py --sync-time`
-2. **Manual Set**: `time 2024-12-24 15:30:00`
-3. **DS3231 Check**: Verify RTC wiring and battery
-4. **WiFi Sync**: Configure WiFi for NTP
+### **Emergency Commands**
+```bash
+restart                        # Software reset
+factory_reset                  # Return to defaults
+msc stop                      # Force resume logging
+```
 
 ---
 
-## 📞 Support Resources
+## 📊 **LED Status Indicators**
 
-### Documentation
-- **Complete Guide**: `docs/README.md`
-- **System Overview**: `docs/system-overview.md`
-- **USB Interface**: `docs/usb-interface-guide.md`
-- **Time Management**: `docs/smart-time-system-guide.md`
-
-### Tools
-- **Python Tool**: `tools/proxitof_usb_tool.py`
-- **Build System**: ESP-IDF v5.5+
-- **Serial Monitor**: Built into ESP-IDF
-
-### Hardware Specs
-- **ESP32-S3**: DevKitC-1 (16MB Flash, 8MB PSRAM)
-- **ToF Sensor**: VL53L8CX (4x4 array, I2C 0x29)
-- **IMU Sensor**: BNO08x (9-DOF, SPI)
-- **RTC Module**: DS3231 (I2C 0x68, battery-backed)
+| Color/Pattern | Meaning | Action |
+|--------------|---------|--------|
+| **Blue solid** | Initializing | Wait |
+| **Green breathing** | Logging active | Normal |
+| **Blue flash** | USB MSC active | File access mode |
+| **Yellow flash** | Button pressed | Event flagged |
+| **Red solid** | Close proximity | Check placement |
+| **Red blinking** | SD card error | Check card |
 
 ---
 
-**Keep this reference card handy for quick troubleshooting and field operations!** 📋
+## 🎯 **Quick Start Workflow**
+
+### **Initial Setup**
+```bash
+1. status                      # Check system
+2. config wifi "Net" "Pass"    # Set WiFi
+3. sync                        # Sync time
+4. sensors                     # Verify hardware
+```
+
+### **Data Collection**
+```bash
+1. Connect USB → Auto USB drive mode
+2. Copy files from USB drive
+3. Disconnect USB → Auto resume logging
+4. Use button for event flagging
+```
+
+### **Performance Tuning**
+```bash
+1. display refresh 60          # Smooth monitoring
+2. display status              # Check CPU usage
+3. performance                 # System metrics
+4. display compact on          # If CPU high
+```
+
+---
+
+## 💡 **Pro Tips**
+
+- **🔌 Automatic USB**: Just plug in - no commands needed!
+- **📱 Display Tuning**: Start with 30Hz, adjust based on CPU usage
+- **💾 File Access**: USB drive mode pauses logging (by design)
+- **⏰ Time Sync**: Happens automatically with WiFi
+- **🔘 Event Flagging**: Hold button during entire event
+- **📊 Monitoring**: Use `status` and `performance` regularly
+
+---
+
+## 📞 **Getting Help**
+
+```bash
+help                          # Complete command list
+status                        # System overview
+display status                # Display performance
+sensors                       # Hardware health
+performance                   # System metrics
+```
+
+**Serial Settings**: 115200 baud, 8N1, no flow control  
+**USB Cable**: Must support data (not power-only)
+
+---
+
+**🆕 New Features**: Automatic USB detection, configurable display refresh rates, enhanced command system  
+**Last Updated**: December 31, 2024

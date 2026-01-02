@@ -10,9 +10,11 @@
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
+#include "esp_timer.h"
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <errno.h>
 
 static const char *TAG = "STORAGE_MGR";
 
@@ -175,6 +177,52 @@ esp_err_t storage_manager_init(void) {
     
     ESP_LOGI(TAG, "✓ SD card mounted at /sdcard");
     
+    // Test write permissions
+    ESP_LOGI(TAG, "Testing SD card write permissions...");
+    
+    // First, check if /sdcard is accessible
+    struct stat sdcard_stat;
+    if (stat("/sdcard", &sdcard_stat) != 0) {
+        ESP_LOGE(TAG, "❌ /sdcard directory not accessible (errno: %d - %s)", errno, strerror(errno));
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "✓ /sdcard directory accessible");
+    
+    // Try to create test file with simple name
+    FILE *test_file = fopen("/sdcard/test.txt", "w");
+    if (test_file == NULL) {
+        ESP_LOGE(TAG, "❌ Cannot create test file (errno: %d - %s)", errno, strerror(errno));
+        ESP_LOGW(TAG, "SD card may be write-protected or corrupted");
+        
+        // Try read-only test
+        ESP_LOGI(TAG, "Testing read-only access...");
+        test_file = fopen("/sdcard/test.txt", "r");
+        if (test_file != NULL) {
+            ESP_LOGI(TAG, "✓ SD card is readable but write-protected");
+            fclose(test_file);
+        } else {
+            ESP_LOGE(TAG, "❌ SD card is not accessible for read or write");
+            return ESP_FAIL;
+        }
+    } else {
+        fprintf(test_file, "Write test successful\n");
+        fclose(test_file);
+        
+        // Verify file was written
+        test_file = fopen("/sdcard/test.txt", "r");
+        if (test_file != NULL) {
+            char buffer[32];
+            if (fgets(buffer, sizeof(buffer), test_file) != NULL) {
+                ESP_LOGI(TAG, "✓ SD card write permissions OK");
+            }
+            fclose(test_file);
+        }
+        
+        // Clean up
+        remove("/sdcard/test.txt");
+    }
+    
     // Clear buffer
     buffer_clear();
     
@@ -205,8 +253,8 @@ static esp_err_t create_date_directory(char *dir_path, size_t max_len) {
                  timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
     }
     
-    // Format: /sdcard/YYYY-MM-DD
-    snprintf(dir_path, max_len, "/sdcard/%04d-%02d-%02d",
+    // Format: /sdcard/YYYYMMDD (no special characters for maximum FAT32 compatibility)
+    snprintf(dir_path, max_len, "/sdcard/%04d%02d%02d",
              timeinfo.tm_year + 1900,
              timeinfo.tm_mon + 1,
              timeinfo.tm_mday);
@@ -214,11 +262,19 @@ static esp_err_t create_date_directory(char *dir_path, size_t max_len) {
     // Create directory if it doesn't exist
     struct stat st = {0};
     if (stat(dir_path, &st) == -1) {
-        if (mkdir(dir_path, 0700) != 0) {
-            ESP_LOGE(TAG, "Failed to create directory: %s", dir_path);
+        ESP_LOGI(TAG, "Creating directory: %s", dir_path);
+        if (mkdir(dir_path, 0755) != 0) {
+            ESP_LOGE(TAG, "Failed to create directory: %s (errno: %d - %s)", 
+                     dir_path, errno, strerror(errno));
             return ESP_FAIL;
         }
-        ESP_LOGI(TAG, "Created directory: %s", dir_path);
+        ESP_LOGI(TAG, "✓ Directory created: %s", dir_path);
+        
+        // Sync filesystem after directory creation
+        // Note: ESP-IDF VFS doesn't have fsync, but mkdir operations are typically synchronous
+        vTaskDelay(pdMS_TO_TICKS(100)); // Give filesystem time to complete
+    } else {
+        ESP_LOGI(TAG, "Directory already exists: %s", dir_path);
     }
     
     return ESP_OK;
@@ -233,30 +289,49 @@ static esp_err_t create_log_file(void) {
         return ret;
     }
     
-    // Generate filename with timestamp
+    // Generate filename with current time or fallback to simple name
     time_t now;
     struct tm timeinfo;
     time(&now);
-    localtime_r(&now, &timeinfo);
     
-    snprintf(current_filename, sizeof(current_filename),
-             "%s/log_%04d%02d%02d_%02d%02d%02d.csv",
-             dir_path,
-             timeinfo.tm_year + 1900,
-             timeinfo.tm_mon + 1,
-             timeinfo.tm_mday,
-             timeinfo.tm_hour,
-             timeinfo.tm_min,
-             timeinfo.tm_sec);
-    
-    // Open file for writing
-    log_file = fopen(current_filename, "w");
-    if (log_file == NULL) {
-        ESP_LOGE(TAG, "Failed to create log file: %s", current_filename);
-        return ESP_FAIL;
+    // Check if we have valid time (after year 2020)
+    if (now > 1577836800) { // Jan 1, 2020
+        localtime_r(&now, &timeinfo);
+        
+        // Use FAT32-compatible filename: logHHMMSS.csv (8.3 format compatible)
+        snprintf(current_filename, sizeof(current_filename),
+                 "%s/log%02d%02d.csv",
+                 dir_path,
+                 timeinfo.tm_hour,
+                 timeinfo.tm_min);
+    } else {
+        // Use simple sequential filename if time not available
+        static int file_counter = 1;
+        snprintf(current_filename, sizeof(current_filename),
+                 "%s/log%03d.csv", dir_path, file_counter++);
+        ESP_LOGW(TAG, "Using sequential filename (time not synchronized)");
     }
     
-    ESP_LOGI(TAG, "Created log file: %s", current_filename);
+    // Open file for writing
+    ESP_LOGI(TAG, "Attempting to create log file: %s", current_filename);
+    log_file = fopen(current_filename, "w");
+    if (log_file == NULL) {
+        ESP_LOGE(TAG, "Failed to create log file: %s (errno: %d - %s)", 
+                 current_filename, errno, strerror(errno));
+        
+        // Try to create a simpler filename as fallback
+        snprintf(current_filename, sizeof(current_filename), "/sdcard/log.csv");
+        ESP_LOGW(TAG, "Trying fallback filename: %s", current_filename);
+        log_file = fopen(current_filename, "w");
+        if (log_file == NULL) {
+            ESP_LOGE(TAG, "Fallback file creation also failed (errno: %d - %s)", 
+                     errno, strerror(errno));
+            return ESP_FAIL;
+        }
+        ESP_LOGI(TAG, "✓ Fallback log file created successfully");
+    } else {
+        ESP_LOGI(TAG, "✓ Log file created successfully");
+    }
     
     // Write CSV header
     fprintf(log_file, "timestamp_ms");
@@ -343,21 +418,25 @@ esp_err_t storage_manager_stop_logging(void) {
 
 esp_err_t storage_manager_write(const log_entry_t *entry) {
     if (!logging_active) {
+        ESP_LOGW(TAG, "Write failed: logging not active");
         return ESP_ERR_INVALID_STATE;
     }
     
     if (entry == NULL) {
+        ESP_LOGW(TAG, "Write failed: null entry");
         return ESP_ERR_INVALID_ARG;
     }
     
     // Try to add to buffer
     if (!buffer_push(entry)) {
         stats.entries_dropped++;
+        ESP_LOGW(TAG, "Write failed: buffer full, dropped entry");
         return ESP_ERR_NO_MEM;
     }
     
     // Check if we should flush
     if (buffer_fill_percent() >= STORAGE_FLUSH_THRESHOLD) {
+        ESP_LOGI(TAG, "Buffer at %.1f%%, flushing...", buffer_fill_percent());
         storage_manager_flush();
     }
     
@@ -443,4 +522,11 @@ void storage_manager_get_stats(storage_stats_t *out_stats) {
 
 bool storage_manager_is_logging(void) {
     return logging_active;
+}
+
+bool storage_manager_is_initialized(void) {
+    return sd_initialized;
+}
+sdmmc_card_t* storage_manager_get_card(void) {
+    return card;
 }

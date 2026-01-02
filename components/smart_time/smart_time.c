@@ -6,13 +6,18 @@
  */
 
 #include "smart_time.h"
-#include "rtc_ds3231.h"
+#include "ds3231.h"
 #include "time_sync.h"
+#include "sensor_manager.h"
 #include "esp_log.h"
 #include <sys/time.h>
 #include <string.h>
 
 static const char *TAG = "SMART_TIME";
+
+// DS3231 device structure
+static i2c_dev_t ds3231_dev;
+static bool ds3231_available = false;
 
 // Configuration
 static bool ds3231_enabled = false;
@@ -32,7 +37,18 @@ static int max_sync_interval = 24 * 3600;  // Default 24 hours, configurable
 #define MAINTENANCE_INTERVAL 60  // 60 seconds
 
 static bool is_time_valid(time_t t) {
-    return (t > MIN_VALID_TIME && t < (MIN_VALID_TIME + 20 * 365 * 24 * 3600)); // Before 2040
+    return (t > MIN_VALID_TIME && t < (MIN_VALID_TIME + 20LL * 365 * 24 * 3600)); // Before 2040
+}
+
+static bool check_ds3231_available(void) {
+    if (!ds3231_enabled) {
+        return false;
+    }
+    
+    // Try to read time from DS3231 to test connectivity
+    struct tm test_time;
+    esp_err_t ret = ds3231_get_time(&ds3231_dev, &test_time);
+    return (ret == ESP_OK);
 }
 
 static esp_err_t update_internal_rtc(struct tm *timeinfo) {
@@ -56,7 +72,7 @@ static esp_err_t get_ds3231_time(struct tm *timeinfo) {
         return ESP_ERR_NOT_SUPPORTED;
     }
     
-    esp_err_t ret = rtc_ds3231_get_time(timeinfo);
+    esp_err_t ret = ds3231_get_time(&ds3231_dev, timeinfo);
     if (ret != ESP_OK) {
         status.ds3231_error_count++;
         if (status.ds3231_error_count > 3) {
@@ -92,7 +108,7 @@ static esp_err_t sync_from_ntp(void) {
         
         // Update DS3231 if available
         if (ds3231_enabled && status.ds3231_available) {
-            esp_err_t ds_ret = rtc_ds3231_set_time(&timeinfo);
+            esp_err_t ds_ret = ds3231_set_time(&ds3231_dev, &timeinfo);
             if (ds_ret == ESP_OK) {
                 ESP_LOGI(TAG, "✓ DS3231 updated from NTP");
             } else {
@@ -123,13 +139,26 @@ esp_err_t smart_time_init(int ds3231_sda, int ds3231_scl,
     
     // Initialize DS3231 if pins provided
     if (ds3231_sda >= 0 && ds3231_scl >= 0) {
-        esp_err_t ret = rtc_ds3231_init(ds3231_sda, ds3231_scl);
+        // Try to get shared I2C bus from sensor manager first
+        i2c_master_bus_handle_t shared_bus = sensor_manager_get_i2c_bus();
+        
+        esp_err_t ret;
+        if (shared_bus != NULL) {
+            ESP_LOGI(TAG, "Using shared I2C bus from sensor manager");
+            ret = ds3231_init_desc_shared(&ds3231_dev, shared_bus);
+        } else {
+            ESP_LOGI(TAG, "Creating dedicated I2C bus for DS3231");
+            ret = ds3231_init_desc(&ds3231_dev, I2C_NUM_0, ds3231_sda, ds3231_scl);
+        }
+        
         if (ret == ESP_OK) {
             ds3231_enabled = true;
+            ds3231_available = true;
             status.ds3231_available = true;
-            ESP_LOGI(TAG, "✓ DS3231 RTC enabled");
+            ESP_LOGI(TAG, "✓ DS3231 RTC initialized (SDA=%d, SCL=%d)", ds3231_sda, ds3231_scl);
         } else {
             ESP_LOGW(TAG, "DS3231 initialization failed: %s", esp_err_to_name(ret));
+            ds3231_available = false;
         }
     }
     
@@ -241,44 +270,32 @@ esp_err_t smart_time_set_manual(const char* time_str) {
         return ESP_ERR_INVALID_ARG;
     }
     
-    struct tm timeinfo = {0};
-    
-    // Parse "YYYY-MM-DD HH:MM:SS" format
-    int parsed = sscanf(time_str, "%d-%d-%d %d:%d:%d",
-                       &timeinfo.tm_year, &timeinfo.tm_mon, &timeinfo.tm_mday,
-                       &timeinfo.tm_hour, &timeinfo.tm_min, &timeinfo.tm_sec);
-    
-    if (parsed != 6) {
-        ESP_LOGE(TAG, "Invalid time format. Use: YYYY-MM-DD HH:MM:SS");
-        return ESP_ERR_INVALID_ARG;
-    }
-    
-    // Adjust for tm structure
-    timeinfo.tm_year -= 1900;
-    timeinfo.tm_mon -= 1;
-    
-    // Calculate day of week
-    time_t t = mktime(&timeinfo);
-    struct tm *tm_ptr = localtime(&t);
-    timeinfo.tm_wday = tm_ptr->tm_wday;
-    
     ESP_LOGI(TAG, "Setting time manually: %s", time_str);
     
-    // Update internal RTC
-    esp_err_t ret = update_internal_rtc(&timeinfo);
-    
-    // Update DS3231 if available
-    if (ds3231_enabled && status.ds3231_available) {
-        esp_err_t ds_ret = rtc_ds3231_set_time(&timeinfo);
-        if (ds_ret == ESP_OK) {
-            ESP_LOGI(TAG, "✓ DS3231 updated manually");
-        } else {
-            ESP_LOGW(TAG, "Failed to update DS3231: %s", esp_err_to_name(ds_ret));
+    // Use the time_sync function to set time
+    esp_err_t ret = time_sync_set_manual_time(time_str);
+    if (ret == ESP_OK) {
+        status.time_synced = true;
+        status.current_source = TIME_SOURCE_MANUAL;
+        status.last_sync_time = time(NULL);
+        status.sync_count++;
+        
+        // Try to update DS3231 if available
+        if (ds3231_enabled && status.ds3231_available) {
+            struct tm timeinfo;
+            time_t now = time(NULL);
+            localtime_r(&now, &timeinfo);
+            
+            esp_err_t ds_ret = ds3231_set_time(&ds3231_dev, &timeinfo);
+            if (ds_ret == ESP_OK) {
+                ESP_LOGI(TAG, "✓ DS3231 updated with manual time");
+            } else {
+                ESP_LOGW(TAG, "Failed to update DS3231: %s", esp_err_to_name(ds_ret));
+            }
         }
+        
+        ESP_LOGI(TAG, "✓ Manual time set successfully");
     }
-    
-    status.time_synced = true;
-    status.current_source = TIME_SOURCE_INTERNAL_RTC;
     
     return ret;
 }
@@ -294,12 +311,18 @@ void smart_time_maintenance(void) {
     last_maintenance = now;
     
     // Check if DS3231 is still available (if it was working before)
-    if (ds3231_enabled && !status.ds3231_available && status.ds3231_error_count < 10) {
-        struct tm timeinfo;
-        if (get_ds3231_time(&timeinfo) == ESP_OK) {
-            ESP_LOGI(TAG, "DS3231 recovered!");
-            status.ds3231_available = true;
-            status.ds3231_error_count = 0;
+    if (ds3231_enabled) {
+        bool currently_available = check_ds3231_available();
+        if (currently_available != status.ds3231_available) {
+            if (currently_available) {
+                ESP_LOGI(TAG, "DS3231 recovered!");
+                status.ds3231_available = true;
+                status.ds3231_error_count = 0;
+            } else {
+                ESP_LOGW(TAG, "DS3231 connection lost");
+                status.ds3231_available = false;
+                status.ds3231_error_count++;
+            }
         }
     }
     

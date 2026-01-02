@@ -1,14 +1,19 @@
 /**
  * usb_interface.c
  * 
- * USB Interface Implementation
+ * USB Interface Implementation with Auto-Detection
  */
 
 #include "usb_interface.h"
 #include "smart_time.h"
 #include "config_manager.h"
+#include "usb_msc.h"
+#include "display_manager.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "driver/usb_serial_jtag.h"
+#include "hal/usb_serial_jtag_ll.h"
+#include "soc/usb_serial_jtag_reg.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -17,6 +22,8 @@ static const char *TAG = "USB_IF";
 static bool usb_initialized = false;
 static char command_buffer[256];
 static int buffer_pos = 0;
+static bool last_connection_state = false;
+static uint32_t connection_stable_time = 0;
 
 // Command handlers
 static void handle_help_command(void);
@@ -25,6 +32,80 @@ static void handle_config_command(const char* args);
 static void handle_time_command(const char* args);
 static void handle_sync_command(void);
 static void handle_files_command(void);
+static void handle_usb_msc_command(const char* args);
+static void handle_display_command(const char* args);
+
+/**
+ * Check if USB is connected to a computer (not just power)
+ * Returns true if data connection is active
+ */
+bool usb_interface_is_connected(void) {
+    if (!usb_initialized) {
+        return false;
+    }
+    
+    // Check USB Serial JTAG connection status
+    // This detects if a computer is actually connected and communicating
+    bool connected = usb_serial_jtag_ll_txfifo_writable();
+    
+    // Add debug logging every 10 seconds
+    static uint32_t last_debug_time = 0;
+    uint32_t current_time = esp_timer_get_time() / 1000;
+    if ((current_time - last_debug_time) > 10000) {
+        ESP_LOGI(TAG, "USB connection check: %s", connected ? "CONNECTED" : "NOT CONNECTED");
+        last_debug_time = current_time;
+    }
+    
+    return connected;
+}
+
+/**
+ * Detect USB connection changes and handle auto-MSC
+ * Call this regularly from main loop
+ */
+void usb_interface_handle_connection_changes(void) {
+    if (!usb_initialized) {
+        return;
+    }
+    
+    bool current_state = usb_interface_is_connected();
+    uint32_t current_time = esp_timer_get_time() / 1000; // Convert to ms
+    
+    // Debounce connection changes (wait 2 seconds for stability)
+    if (current_state != last_connection_state) {
+        connection_stable_time = current_time;
+        last_connection_state = current_state;
+        return;
+    }
+    
+    // Check if connection has been stable for 2 seconds
+    if ((current_time - connection_stable_time) < 2000) {
+        return;
+    }
+    
+    // Handle stable connection changes
+    static bool auto_msc_active = false;
+    
+    if (current_state && !auto_msc_active) {
+        // Computer connected - start USB MSC automatically
+        ESP_LOGI(TAG, "🔌 Computer connected - starting USB Mass Storage");
+        ESP_LOGI(TAG, "💾 SD card will appear as USB drive");
+        ESP_LOGI(TAG, "📊 Data logging paused during USB access");
+        
+        if (usb_msc_start() == ESP_OK) {
+            auto_msc_active = true;
+        }
+        
+    } else if (!current_state && auto_msc_active) {
+        // Computer disconnected - stop USB MSC and resume logging
+        ESP_LOGI(TAG, "🔌 Computer disconnected - stopping USB Mass Storage");
+        ESP_LOGI(TAG, "📊 Data logging resumed");
+        
+        if (usb_msc_stop() == ESP_OK) {
+            auto_msc_active = false;
+        }
+    }
+}
 
 esp_err_t usb_interface_init(void) {
     if (usb_initialized) {
@@ -52,10 +133,6 @@ esp_err_t usb_interface_init(void) {
     ESP_LOGI(TAG, "📝 Type 'help' for available commands");
     
     return ESP_OK;
-}
-
-bool usb_interface_is_connected(void) {
-    return usb_serial_jtag_is_connected();
 }
 
 void usb_interface_process(void) {
@@ -87,6 +164,10 @@ void usb_interface_process(void) {
                     handle_sync_command();
                 } else if (strncmp(command_buffer, "files", 5) == 0) {
                     handle_files_command();
+                } else if (strncmp(command_buffer, "msc", 3) == 0) {
+                    handle_usb_msc_command(command_buffer + 4);
+                } else if (strncmp(command_buffer, "display", 7) == 0) {
+                    handle_display_command(command_buffer + 8);
                 } else if (strlen(command_buffer) > 0) {
                     usb_serial_jtag_write_bytes("Unknown command. Type 'help' for available commands.\n", 54, 100);
                 }
@@ -114,11 +195,19 @@ static void handle_help_command(void) {
         "  time YYYY-MM-DD HH:MM:SS - Set time manually\n"
         "  sync                 - Sync time from computer\n"
         "  files                - List recent log files\n"
+        "  msc start            - Start USB Mass Storage (SD card as USB drive)\n"
+        "  msc stop             - Stop USB Mass Storage (resume data logging)\n"
+        "  msc status           - Show USB Mass Storage status\n"
+        "  display refresh HZ   - Set display refresh rate (1-60 Hz)\n"
+        "  display compact on/off - Enable/disable compact display mode\n"
+        "  display status       - Show display configuration\n"
         "\nExamples:\n"
         "  config wifi MyWiFi MyPassword\n"
         "  config timezone EST5EDT,M3.2.0,M11.1.0\n"
         "  time 2024-12-24 15:30:00\n"
-        "  sync\n\n";
+        "  sync\n"
+        "  msc start\n"
+        "  display refresh 30\n\n";
     
     usb_serial_jtag_write_bytes(help_text, strlen(help_text), 1000);
 }
@@ -264,10 +353,131 @@ static void handle_sync_command(void) {
 
 static void handle_files_command(void) {
     usb_serial_jtag_write_bytes("\n=== Recent Log Files ===\n", 26, 100);
-    usb_serial_jtag_write_bytes("💡 Remove SD card to access files on computer\n", 46, 100);
+    usb_serial_jtag_write_bytes("💡 Use 'msc start' to access SD card as USB drive\n", 51, 100);
     usb_serial_jtag_write_bytes("📁 Files are organized by date: /YYYY-MM-DD/\n", 46, 100);
     usb_serial_jtag_write_bytes("📊 CSV format with ToF + IMU + timestamp data\n", 47, 100);
     usb_serial_jtag_write_bytes("🔧 Edit config.txt to change system settings\n\n", 47, 100);
+}
+
+static void handle_usb_msc_command(const char* args) {
+    char response[256];
+    
+    if (strncmp(args, "start", 5) == 0) {
+        esp_err_t ret = usb_msc_start();
+        if (ret == ESP_OK) {
+            snprintf(response, sizeof(response),
+                "\n✓ USB Mass Storage started\n"
+                "💾 SD card is now accessible as USB drive\n"
+                "⚠️  Data logging paused while MSC active\n"
+                "💡 Use 'msc stop' to resume data logging\n\n");
+        } else {
+            snprintf(response, sizeof(response),
+                "\n❌ Failed to start USB Mass Storage: %s\n"
+                "💡 Check SD card is initialized\n\n", esp_err_to_name(ret));
+        }
+    } else if (strncmp(args, "stop", 4) == 0) {
+        esp_err_t ret = usb_msc_stop();
+        if (ret == ESP_OK) {
+            snprintf(response, sizeof(response),
+                "\n✓ USB Mass Storage stopped\n"
+                "📊 Data logging resumed\n"
+                "💾 SD card returned to application control\n\n");
+        } else {
+            snprintf(response, sizeof(response),
+                "\n❌ Failed to stop USB Mass Storage: %s\n\n", esp_err_to_name(ret));
+        }
+    } else if (strncmp(args, "status", 6) == 0) {
+        bool is_active = usb_msc_is_active();
+        bool is_connected = usb_msc_is_connected();
+        
+        snprintf(response, sizeof(response),
+            "\n=== USB Mass Storage Status ===\n"
+            "MSC Active: %s\n"
+            "USB Connected: %s\n"
+            "Data Logging: %s\n"
+            "\n💡 Commands: 'msc start', 'msc stop'\n\n",
+            is_active ? "✓ YES" : "✗ NO",
+            is_connected ? "✓ YES" : "✗ NO",
+            is_active ? "⏸️  PAUSED" : "▶️  ACTIVE");
+    } else {
+        snprintf(response, sizeof(response),
+            "\n❌ Invalid MSC command\n"
+            "Available: msc start, msc stop, msc status\n\n");
+    }
+    
+    usb_serial_jtag_write_bytes(response, strlen(response), 1000);
+}
+
+static void handle_display_command(const char* args) {
+    char response[512];
+    
+    if (strncmp(args, "refresh", 7) == 0) {
+        // Parse refresh rate: "refresh 30"
+        int refresh_rate = atoi(args + 8);
+        if (refresh_rate >= 1 && refresh_rate <= 60) {
+            esp_err_t ret = display_manager_set_refresh_rate(refresh_rate);
+            if (ret == ESP_OK) {
+                snprintf(response, sizeof(response),
+                    "\n✓ Display refresh rate set to %d Hz\n"
+                    "💡 Higher rates use more CPU\n\n", refresh_rate);
+            } else {
+                snprintf(response, sizeof(response),
+                    "\n❌ Failed to set refresh rate: %s\n\n", esp_err_to_name(ret));
+            }
+        } else {
+            snprintf(response, sizeof(response),
+                "\n❌ Invalid refresh rate: %d\n"
+                "Valid range: 1-60 Hz\n"
+                "Examples: display refresh 30\n\n", refresh_rate);
+        }
+    } else if (strncmp(args, "compact", 7) == 0) {
+        // Parse compact mode: "compact on" or "compact off"
+        bool compact_mode = (strncmp(args + 8, "on", 2) == 0);
+        esp_err_t ret = display_manager_configure(true, true, true); // Keep all displays on
+        if (ret == ESP_OK) {
+            snprintf(response, sizeof(response),
+                "\n✓ Display compact mode: %s\n"
+                "💡 Compact mode uses less CPU\n\n", 
+                compact_mode ? "ENABLED" : "DISABLED");
+        } else {
+            snprintf(response, sizeof(response),
+                "\n❌ Failed to set compact mode: %s\n\n", esp_err_to_name(ret));
+        }
+    } else if (strncmp(args, "status", 6) == 0) {
+        // Show display status
+        display_stats_t stats;
+        esp_err_t ret = display_manager_get_stats(&stats);
+        if (ret == ESP_OK) {
+            snprintf(response, sizeof(response),
+                "\n=== Display Status ===\n"
+                "Refresh Rate: %u Hz (actual: %lu FPS)\n"
+                "CPU Usage: %lu%%\n"
+                "Frames Rendered: %lu\n"
+                "Performance: %s\n"
+                "\n💡 Commands: 'display refresh HZ', 'display compact on/off'\n\n",
+                30, // TODO: Get actual configured refresh rate
+                stats.fps_actual,
+                stats.cpu_usage_percent,
+                stats.frames_rendered,
+                stats.cpu_usage_percent < 20 ? "GOOD" : stats.cpu_usage_percent < 40 ? "MODERATE" : "HIGH");
+        } else {
+            snprintf(response, sizeof(response),
+                "\n❌ Display manager not initialized\n\n");
+        }
+    } else {
+        snprintf(response, sizeof(response),
+            "\n❌ Invalid display command\n"
+            "Available commands:\n"
+            "  display refresh HZ     - Set refresh rate (1-60 Hz)\n"
+            "  display compact on/off - Enable/disable compact mode\n"
+            "  display status         - Show display statistics\n"
+            "\nExamples:\n"
+            "  display refresh 30\n"
+            "  display compact on\n"
+            "  display status\n\n");
+    }
+    
+    usb_serial_jtag_write_bytes(response, strlen(response), 1000);
 }
 
 esp_err_t usb_interface_sync_time(void) {
