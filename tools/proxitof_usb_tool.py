@@ -23,10 +23,24 @@ class ProxiTofUSB:
         """Find ProxiTof device automatically"""
         ports = serial.tools.list_ports.comports()
         
+        # First, look for specific ESP32 or ProxiTof identifiers
         for port in ports:
-            # Look for ESP32-S3 USB Serial JTAG
-            if "USB Serial" in port.description or "ESP32" in port.description:
-                print(f"Found potential ProxiTof device: {port.device}")
+            description = port.description.upper()
+            # Check for ESP32-specific identifiers first
+            if any(keyword in description for keyword in [
+                "ESP32", "USB SERIAL JTAG", "PROXITOF"
+            ]):
+                print(f"Found ESP32 device: {port.device} ({port.description})")
+                return port.device
+        
+        # Then look for common USB-to-serial chips (like CH343 used with ESP32)
+        for port in ports:
+            description = port.description.upper()
+            if any(keyword in description for keyword in [
+                "CH343", "CH340", "CP210", "FTDI", "USB-ENHANCED-SERIAL", "USB SERIAL"
+            ]):
+                print(f"Found USB-to-serial device: {port.device} ({port.description})")
+                print("💡 This might be your ESP32 connected via USB-to-serial chip")
                 return port.device
                 
         return None
@@ -39,25 +53,60 @@ class ProxiTofUSB:
         if not self.port:
             print("❌ No ProxiTof device found")
             print("💡 Make sure device is connected via USB cable")
+            print("Available ports:")
+            ports = serial.tools.list_ports.comports()
+            for port in ports:
+                print(f"  {port.device}: {port.description}")
             return False
             
         try:
-            self.serial = serial.Serial(self.port, 115200, timeout=2)
-            time.sleep(0.5)  # Wait for connection
+            print(f"Connecting to {self.port}...")
+            self.serial = serial.Serial(self.port, 115200, timeout=5)
+            time.sleep(2)  # Wait longer for ESP32 to be ready
             
-            # Test connection
-            self.send_command("status")
-            response = self.read_response()
+            # Clear any existing data
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
             
-            if "System Status" in response:
+            print("Testing connection with ProxiTof device...")
+            
+            # Send a simple command and wait for response
+            self.send_command("help")
+            response = self.read_response(timeout=5)
+            
+            if any(keyword in response.upper() for keyword in [
+                "PROXITOF USB INTERFACE", "AVAILABLE COMMANDS", "HELP", 
+                "STATUS", "CONFIG", "MSC", "DISPLAY"
+            ]):
                 print(f"✓ Connected to ProxiTof device on {self.port}")
+                print("✓ Device is responding to commands")
                 return True
-            else:
-                print("❌ Device found but not responding correctly")
-                return False
+            
+            # If help didn't work, try status command
+            print("Trying status command...")
+            self.send_command("status")
+            response = self.read_response(timeout=5)
+            
+            if any(keyword in response.upper() for keyword in [
+                "SYSTEM STATUS", "TIME:", "USB CONNECTED", "SD CARD"
+            ]):
+                print(f"✓ Connected to ProxiTof device on {self.port}")
+                print("✓ Device responded to status command")
+                return True
+            
+            # If no specific responses, but we can send data, assume it might work
+            if len(response.strip()) > 0:
+                print(f"⚠️  Connected to {self.port} - device responded but format unexpected")
+                print(f"Response: {response[:100]}...")
+                print("💡 This might still be your ProxiTof device")
+                return True
+            
+            print(f"❌ Device on {self.port} is not responding as expected")
+            print("💡 Make sure you're running the ProxiTof firmware")
+            return False
                 
         except Exception as e:
-            print(f"❌ Failed to connect: {e}")
+            print(f"❌ Failed to connect to {self.port}: {e}")
             return False
     
     def disconnect(self):

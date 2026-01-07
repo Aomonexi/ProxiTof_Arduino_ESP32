@@ -16,6 +16,10 @@ DS3231_ENABLED=true
 DS3231_SDA_PIN=8
 DS3231_SCL_PIN=9
 
+# Display Configuration
+DISPLAY_REFRESH_HZ=2
+DISPLAY_COMPACT_MODE=false
+
 # Common Timezone Examples:
 # UTC: UTC0
 # US Eastern: EST5EDT,M3.2.0,M11.1.0
@@ -23,3 +27,11 @@ DS3231_SCL_PIN=9
 # Europe/Berlin: CET-1CEST,M3.5.0,M10.5.0/3
 # Asia/Tokyo: JST-9
 # China: CST-8
+
+# Display Refresh Rate Examples:
+# DISPLAY_REFRESH_HZ=1   # Very low CPU usage, slow updates
+# DISPLAY_REFRESH_HZ=2   # Low CPU usage (default)
+# DISPLAY_REFRESH_HZ=5   # Moderate CPU usage
+# DISPLAY_REFRESH_HZ=10  # Higher CPU usage, smooth updates
+# DISPLAY_REFRESH_HZ=30  # High CPU usage, very smooth
+# Valid range: 1-60 Hz

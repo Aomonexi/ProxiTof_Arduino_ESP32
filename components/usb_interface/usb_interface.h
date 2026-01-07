@@ -37,6 +37,14 @@ void usb_interface_process(void);
 bool usb_interface_is_connected(void);
 
 /**
+ * Check if USB MSC mode is currently active
+ * Returns true if device is in flash drive mode
+ * 
+ * @return true if USB Mass Storage is active
+ */
+bool usb_interface_is_msc_active(void);
+
+/**
  * Handle USB connection changes and auto-MSC switching
  * Call this regularly from main loop to detect connection changes
  * Automatically starts/stops USB MSC based on computer connection

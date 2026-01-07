@@ -19,6 +19,7 @@ Welcome to the ProxiTof Near-Miss Detection System documentation. This index pro
 - **[WiFi Time Sync Guide](wifi-time-sync-guide.md)** - Network time synchronization
 
 ### Configuration & Access
+- **[USB Quick Start Guide](usb-quick-start-guide.md)** - 🚀 **START HERE** for USB commands and flash drive
 - **[Field Configuration Guide](field-configuration-guide.md)** - SD card-based configuration
 - **[USB Interface Guide](usb-interface-guide.md)** - Computer access via USB
 - **[USB Mass Storage Guide](usb-mass-storage-guide.md)** - SD card as USB drive

@@ -124,6 +124,13 @@ bool storage_manager_is_initialized(void);
  */
 sdmmc_card_t* storage_manager_get_card(void);
 
+/**
+ * Safe shutdown - prepare for USB MSC or system shutdown
+ * Ensures all data is safely written before releasing SD card
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t storage_manager_safe_shutdown(void);
+
 #ifdef __cplusplus
 }
 #endif

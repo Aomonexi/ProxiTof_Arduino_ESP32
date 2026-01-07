@@ -276,7 +276,7 @@ esp_err_t smart_time_set_manual(const char* time_str) {
     esp_err_t ret = time_sync_set_manual_time(time_str);
     if (ret == ESP_OK) {
         status.time_synced = true;
-        status.current_source = TIME_SOURCE_MANUAL;
+        status.current_source = TIME_SOURCE_USB;  // Assume USB if called from USB interface
         status.last_sync_time = time(NULL);
         status.sync_count++;
         
@@ -288,13 +288,13 @@ esp_err_t smart_time_set_manual(const char* time_str) {
             
             esp_err_t ds_ret = ds3231_set_time(&ds3231_dev, &timeinfo);
             if (ds_ret == ESP_OK) {
-                ESP_LOGI(TAG, "✓ DS3231 updated with manual time");
+                ESP_LOGI(TAG, "✓ DS3231 updated with synchronized time");
             } else {
                 ESP_LOGW(TAG, "Failed to update DS3231: %s", esp_err_to_name(ds_ret));
             }
         }
         
-        ESP_LOGI(TAG, "✓ Manual time set successfully");
+        ESP_LOGI(TAG, "✓ Time synchronized successfully");
     }
     
     return ret;
@@ -344,6 +344,8 @@ const char* smart_time_source_name(time_source_t source) {
         case TIME_SOURCE_DS3231: return "DS3231 RTC";
         case TIME_SOURCE_INTERNAL_RTC: return "Internal RTC";
         case TIME_SOURCE_NTP: return "NTP";
+        case TIME_SOURCE_USB: return "USB";
+        case TIME_SOURCE_MANUAL: return "Manual";
         case TIME_SOURCE_NONE: return "None";
         default: return "Unknown";
     }

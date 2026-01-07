@@ -20,6 +20,7 @@ typedef enum {
     TIME_SOURCE_INTERNAL_RTC,
     TIME_SOURCE_DS3231,
     TIME_SOURCE_NTP,
+    TIME_SOURCE_USB,
     TIME_SOURCE_MANUAL
 } time_source_t;
 

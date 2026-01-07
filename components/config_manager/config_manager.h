@@ -23,8 +23,10 @@ typedef struct {
     int ds3231_sda_pin;
     int ds3231_scl_pin;
     int sync_interval_hours;
+    int display_refresh_hz;
     bool wifi_enabled;
     bool ds3231_enabled;
+    bool display_compact_mode;
 } system_config_t;
 
 /**

@@ -61,11 +61,14 @@ static esp_err_t init_led(void)
 }
 
 /**
- * Update LED based on minimum distance
+ * Update LED based on system mode and distance
  */
-static void update_led(uint16_t min_distance_mm)
+static void update_led(uint16_t min_distance_mm, bool usb_msc_active)
 {
-    if (min_distance_mm < CLOSE_THRESHOLD) {
+    if (usb_msc_active) {
+        // BLUE - USB Mass Storage mode (flash drive active)
+        led_strip_set_pixel(led_strip, 0, 0, 0, 100);
+    } else if (min_distance_mm < CLOSE_THRESHOLD) {
         // RED - Close (< 10cm)
         led_strip_set_pixel(led_strip, 0, 50, 0, 0);
     } else if (min_distance_mm < MEDIUM_THRESHOLD) {
@@ -101,8 +104,19 @@ void app_main(void)
     ESP_LOGI(TAG, "╚════════════════════════════════════════════╝");
     ESP_LOGI(TAG, "");
     
+    // Declare all variables at the top of the function
+    esp_err_t err;
+    system_config_t config;
+    sensor_health_t health;
+    display_config_t display_config;
+    tof_data_t tof_data;
+    imu_data_t imu_data;
+    uint32_t frame_count = 0;
+    uint32_t tof_count = 0;
+    uint32_t imu_count = 0;
+    
     // Initialize LED
-    esp_err_t err = init_led();
+    err = init_led();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "LED initialization failed, continuing without LED");
     }
@@ -142,7 +156,6 @@ void app_main(void)
     // =========================================================================
     ESP_LOGI(TAG, "Loading system configuration...");
     
-    system_config_t config;
     esp_err_t config_err = config_load_from_sd(&config);
     
     if (config_err != ESP_OK) {
@@ -208,36 +221,42 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
-    // USB SYSTEM INITIALIZATION
+    // USB SYSTEM INITIALIZATION - DEDICATED PORTS
     // =========================================================================
-    ESP_LOGI(TAG, "Initializing USB system...");
+    ESP_LOGI(TAG, "Initializing USB system with dedicated ports...");
     
-    // Initialize USB Mass Storage first (TinyUSB stack)
+    // Initialize USB Mass Storage for LEFT port (TinyUSB MSC)
     err = usb_msc_init();
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ USB Mass Storage initialized");
-        ESP_LOGI(TAG, "💾 SD card will appear as USB drive when connected");
+        ESP_LOGI(TAG, "✓ USB Mass Storage initialized (LEFT port)");
+        ESP_LOGI(TAG, "💾 Connect LEFT port → SD card appears as flash drive");
+        ESP_LOGI(TAG, "💡 LED turns BLUE when LEFT port connected");
+        ESP_LOGI(TAG, "🔄 Auto-detection enabled");
     } else {
-        ESP_LOGW(TAG, "USB Mass Storage initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "❌ USB Mass Storage initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "💡 This may be due to USB-OTG bridge hardware issues");
+        ESP_LOGW(TAG, "💡 System will continue with data logging only");
+        ESP_LOGW(TAG, "💡 Check USB-OTG bridge soldering and connections");
     }
     
-    // Initialize USB Serial JTAG interface (compatible with TinyUSB)
+    // Initialize USB Serial JTAG for RIGHT port (programming, monitoring, time sync)
     err = usb_interface_init();
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ USB Serial JTAG interface initialized");
-        ESP_LOGI(TAG, "💻 Connect USB cable for configuration access");
-        ESP_LOGI(TAG, "📝 Use serial terminal or Python tool for commands");
+        ESP_LOGI(TAG, "✓ USB Serial JTAG initialized (RIGHT port)");
+        ESP_LOGI(TAG, "🔧 Connect RIGHT port → Programming, monitoring, time sync");
+        ESP_LOGI(TAG, "📝 Send TIME:YYYY-MM-DD HH:MM:SS for time sync");
     } else {
-        ESP_LOGW(TAG, "USB Serial JTAG interface initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "USB Serial JTAG initialization failed: %s", esp_err_to_name(err));
     }
     
-    ESP_LOGI(TAG, "⚠️  Note: USB Serial JTAG and USB MSC share the same USB port");
-    ESP_LOGI(TAG, "💡 Programming/debugging works alongside USB MSC functionality");
-    
+    ESP_LOGI(TAG, "");
+    ESP_LOGI(TAG, "🔌 USB Port Functions:");
+    ESP_LOGI(TAG, "   RIGHT port: Programming, monitoring, time sync");
+    ESP_LOGI(TAG, "   LEFT port:  Flash drive (automatic detection)");
+    ESP_LOGI(TAG, "💡 Use ONE cable at a time for each function");
     ESP_LOGI(TAG, "");
     
     // Get sensor health status
-    sensor_health_t health;
     sensor_manager_get_health(&health);
     ESP_LOGI(TAG, "Sensor Health:");
     ESP_LOGI(TAG, "  ToF: %s (errors: %lu)", 
@@ -288,18 +307,16 @@ void app_main(void)
     
     ESP_LOGI(TAG, "Starting real-time sensor display in 2 seconds...");
     
-    // Initialize display manager
-    display_config_t display_config = {
-        .refresh_rate_hz = 30,        // 30 Hz default refresh rate
-        .show_tof_grid = true,        // Show ToF 4x4 grid
-        .show_imu_data = true,        // Show IMU orientation/acceleration
-        .show_system_stats = true,    // Show logging statistics
-        .compact_mode = false         // Use full display layout
-    };
+    // Initialize display manager with config from SD card
+    display_config.refresh_rate_hz = config.display_refresh_hz;  // Use config value
+    display_config.show_tof_grid = true;        // Show ToF 4x4 grid
+    display_config.show_imu_data = true;        // Show IMU orientation/acceleration
+    display_config.show_system_stats = true;    // Show logging statistics
+    display_config.compact_mode = config.display_compact_mode;    // Use config value
     
     err = display_manager_init(&display_config);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ Display manager initialized (30 Hz)");
+        ESP_LOGI(TAG, "✓ Display manager initialized (%d Hz)", config.display_refresh_hz);
         ESP_LOGI(TAG, "💡 Use 'display refresh HZ' to change refresh rate");
     } else {
         ESP_LOGW(TAG, "Display manager initialization failed: %s", esp_err_to_name(err));
@@ -311,94 +328,136 @@ void app_main(void)
     // Clear screen for clean display
     printf("\033[2J\033[H");
     
-    tof_data_t tof_data;
-    imu_data_t imu_data;
-    uint32_t frame_count = 0;
-    uint32_t tof_count = 0;
-    uint32_t imu_count = 0;
-    
     while (1) {
         uint32_t current_time = sensor_manager_get_timestamp();
         
-        // Read ToF sensor at full speed (60Hz)
-        err = sensor_manager_read_tof(&tof_data);
-        if (err == ESP_OK) {
-            tof_count++;
+        // Check if USB MSC is active (flash drive mode)
+        bool usb_msc_active = usb_interface_is_msc_active();
+        
+        // Debug USB MSC state every 5 seconds
+        static uint32_t last_usb_debug = 0;
+        if ((current_time - last_usb_debug) >= 5000) {
+            last_usb_debug = current_time;
+            ESP_LOGI(TAG, "🔌 USB Status: MSC_active=%s, TinyUSB_mounted=%s", 
+                     usb_msc_active ? "YES" : "NO",
+                     usb_msc_is_connected() ? "YES" : "NO");
+        }
+        
+        // Only read sensors and log data if NOT in USB MSC mode
+        if (!usb_msc_active) {
+            // Read ToF sensor at full speed (60Hz)
+            err = sensor_manager_read_tof(&tof_data);
+            if (err == ESP_OK) {
+                tof_count++;
+                
+                // Get minimum distance and update LED IMMEDIATELY (real-time response)
+                uint16_t min_dist = get_min_distance(&tof_data);
+                if (led_strip != NULL) {
+                    update_led(min_dist, usb_msc_active);
+                }
+            } else if (err != ESP_ERR_NOT_FOUND && frame_count < 5) {
+                // Log actual ToF errors during first few frames (ignore "no data ready")
+                ESP_LOGW(TAG, "ToF read failed: %s", esp_err_to_name(err));
+            }
             
-            // Get minimum distance and update LED IMMEDIATELY (real-time response)
-            uint16_t min_dist = get_min_distance(&tof_data);
+            // Read IMU sensor at full speed (100Hz)
+            err = sensor_manager_read_imu(&imu_data);
+            if (err == ESP_OK) {
+                imu_count++;
+            }
+            
+            // Log to SD card if both sensors have data
+            if (storage_manager_is_logging() && tof_count > 0 && imu_count > 0) {
+                log_entry_t log_entry = {
+                    .timestamp_ms = current_time,
+                    .flag_manual = sensor_manager_is_button_held() ? 1 : 0
+                };
+                
+                // Copy ToF data
+                for (int i = 0; i < 16; i++) {
+                    log_entry.tof[i] = tof_data.distances[i];
+                }
+                
+                // Copy IMU data
+                log_entry.roll = imu_data.roll;
+                log_entry.pitch = imu_data.pitch;
+                log_entry.yaw = imu_data.yaw;
+                log_entry.accel_x = imu_data.accel_x;
+                log_entry.accel_y = imu_data.accel_y;
+                log_entry.accel_z = imu_data.accel_z;
+                log_entry.gyro_x = imu_data.gyro_x;
+                log_entry.gyro_y = imu_data.gyro_y;
+                log_entry.gyro_z = imu_data.gyro_z;
+                
+                // Write to buffer (non-blocking)
+                esp_err_t log_err = storage_manager_write(&log_entry);
+                
+                // Debug logging every 300 frames (once every 5 seconds at 60Hz)
+                static uint32_t debug_log_count = 0;
+                debug_log_count++;
+                if (debug_log_count % 300 == 0) {
+                    storage_stats_t stats;
+                    storage_manager_get_stats(&stats);
+                    ESP_LOGI(TAG, "📊 Logging: %lu entries, %.1f%% buffer, %lu bytes", 
+                             stats.entries_logged, stats.buffer_fill_percent, stats.current_file_size);
+                    
+                    if (log_err != ESP_OK) {
+                        ESP_LOGW(TAG, "⚠️  Log write failed: %s", esp_err_to_name(log_err));
+                    }
+                }
+            } else {
+                // Debug why logging is not happening
+                static uint32_t debug_no_log_count = 0;
+                debug_no_log_count++;
+                if (debug_no_log_count % 300 == 0) { // Every 5 seconds
+                    ESP_LOGW(TAG, "🚫 Not logging: storage_active=%s, tof_count=%lu, imu_count=%lu", 
+                             storage_manager_is_logging() ? "YES" : "NO", tof_count, imu_count);
+                }
+            }
+            
+            // Display update using display manager (handles timing automatically)
+            if (tof_count > 0 || imu_count > 0) {
+                uint16_t min_dist = get_min_distance(&tof_data);
+                display_manager_update(&tof_data, &imu_data, min_dist);
+            }
+            
+            // Check button status (simplified - no display spam)
+            static uint32_t last_button_check = 0;
+            if ((current_time - last_button_check) >= 1000) { // Check every second
+                last_button_check = current_time;
+                
+                if (sensor_manager_is_button_held()) {
+                    uint32_t duration = sensor_manager_get_button_duration();
+                    ESP_LOGI(TAG, "⚠️  BUTTON HELD - Flagging event (Duration: %.1f seconds)", duration / 1000.0f);
+                } else if (sensor_manager_is_button_pressed()) {
+                    ESP_LOGI(TAG, "✓ EVENT FLAGGED - Button released (Timestamp: %lu ms)", 
+                             sensor_manager_get_last_button_press_time());
+                }
+            }
+        } else {
+            // USB MSC mode - show blue LED and minimal processing
             if (led_strip != NULL) {
-                update_led(min_dist);
-            }
-            // Store for display (removed last_min_dist variable)
-        } else if (frame_count < 5) {
-            // Log ToF errors during first few frames for debugging
-            ESP_LOGW(TAG, "ToF read failed: %s", esp_err_to_name(err));
-        }
-        
-        // Read IMU sensor at full speed (100Hz)
-        err = sensor_manager_read_imu(&imu_data);
-        if (err == ESP_OK) {
-            imu_count++;
-        }
-        
-        // Log to SD card if both sensors have data
-        if (storage_manager_is_logging() && tof_count > 0 && imu_count > 0) {
-            log_entry_t log_entry = {
-                .timestamp_ms = current_time,
-                .flag_manual = sensor_manager_is_button_held() ? 1 : 0
-            };
-            
-            // Copy ToF data
-            for (int i = 0; i < 16; i++) {
-                log_entry.tof[i] = tof_data.distances[i];
+                update_led(0, true);  // Force blue LED
             }
             
-            // Copy IMU data
-            log_entry.roll = imu_data.roll;
-            log_entry.pitch = imu_data.pitch;
-            log_entry.yaw = imu_data.yaw;
-            log_entry.accel_x = imu_data.accel_x;
-            log_entry.accel_y = imu_data.accel_y;
-            log_entry.accel_z = imu_data.accel_z;
-            log_entry.gyro_x = imu_data.gyro_x;
-            log_entry.gyro_y = imu_data.gyro_y;
-            log_entry.gyro_z = imu_data.gyro_z;
-            
-            // Write to buffer (non-blocking)
-            storage_manager_write(&log_entry);
+            // Longer delay in USB mode to reduce CPU usage
+            vTaskDelay(pdMS_TO_TICKS(100));  // 10Hz loop rate in USB mode
         }
         
-        // Display update using display manager (handles timing automatically)
-        if (tof_count > 0 || imu_count > 0) {
-            uint16_t min_dist = get_min_distance(&tof_data);
-            display_manager_update(&tof_data, &imu_data, min_dist);
+        // Small delay to prevent CPU spinning (check sensors frequently in normal mode)
+        if (!usb_msc_active) {
+            vTaskDelay(pdMS_TO_TICKS(5));  // 200Hz loop rate for responsive LED
         }
-        
-        // Check button status (simplified - no display spam)
-        static uint32_t last_button_check = 0;
-        if ((current_time - last_button_check) >= 1000) { // Check every second
-            last_button_check = current_time;
-            
-            if (sensor_manager_is_button_held()) {
-                uint32_t duration = sensor_manager_get_button_duration();
-                ESP_LOGI(TAG, "⚠️  BUTTON HELD - Flagging event (Duration: %.1f seconds)", duration / 1000.0f);
-            } else if (sensor_manager_is_button_pressed()) {
-                ESP_LOGI(TAG, "✓ EVENT FLAGGED - Button released (Timestamp: %lu ms)", 
-                         sensor_manager_get_last_button_press_time());
-            }
-        }
-        
-        // Small delay to prevent CPU spinning (check sensors frequently)
-        vTaskDelay(pdMS_TO_TICKS(5));  // 200Hz loop rate for responsive LED
         
         // Smart time maintenance (every ~60 seconds)
         smart_time_maintenance();
         
-        // USB interface processing (handle commands from computer)
+        // USB interface processing (handle commands from RIGHT port)
         usb_interface_process();
         
-        // Handle automatic USB MSC switching based on computer connection
-        usb_interface_handle_connection_changes();
+        // Handle automatic USB MSC switching (LEFT port)
+        usb_msc_handle_auto_detection();
+        
+        frame_count++;
     }
 }

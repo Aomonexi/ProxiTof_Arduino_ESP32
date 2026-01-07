@@ -113,14 +113,23 @@ Button & LED:
 
 ### ESP-IDF Installation
 
+**Complete Installation Guide**: See [ESP-IDF Installation Guide](docs/esp-idf-installation-guide.md) for detailed setup instructions.
+
+**Quick Setup**:
+
 1. **Install ESP-IDF v5.5+**:
-   - Follow the [ESP-IDF Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/)
-   - Recommended installation path: `C:\Users\[username]\esp\v5.5.1\esp-idf`
+   - **Windows**: Download installer from [ESP-IDF Releases](https://github.com/espressif/esp-idf/releases)
+   - **macOS**: Use Homebrew or official installer
+   - **Linux**: Follow manual installation steps
+   - Recommended installation path: `C:\Users\[username]\esp\v5.5.1\esp-idf` (Windows)
 
 2. **Set up environment** (run before each build session):
    ```powershell
    # Windows PowerShell
    C:\Users\[username]\esp\v5.5.1\esp-idf\export.ps1
+   
+   # macOS/Linux
+   . ~/esp/v5.5.1/esp-idf/export.sh
    ```
 
 3. **Verify installation**:
@@ -411,6 +420,7 @@ tflite_model = convert_to_tflite(model)
 This project includes comprehensive documentation for all aspects of development and deployment:
 
 #### Quick Start Guides
+- **[USB Quick Start Guide](docs/usb-quick-start-guide.md)** - 🚀 **Essential**: USB commands and flash drive access
 - **[Complete Wiring Diagram](docs/complete-wiring-diagram.md)** - Hardware setup and connections
 - **[ESP-IDF Build Guide](docs/esp-idf-build-guide.md)** - Building and flashing firmware
 - **[Field Configuration Guide](docs/field-configuration-guide.md)** - SD card configuration system

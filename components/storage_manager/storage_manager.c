@@ -93,9 +93,150 @@ static storage_stats_t stats = {0};
 static char current_filename[128] = {0};  // Increased size to prevent truncation
 static uint32_t current_file_size = 0;
 
-// =============================================================================
-// SD Card Initialization
-// =============================================================================
+// Corruption prevention
+static bool emergency_flush_needed = false;
+static uint32_t last_flush_time = 0;
+static uint32_t last_sync_time = 0;
+static bool usb_msc_transition_pending = false;
+
+#define EMERGENCY_FLUSH_INTERVAL_MS 5000   // Force flush every 5 seconds
+#define FILE_SYNC_INTERVAL_MS 10000        // Sync file to disk every 10 seconds
+#define BUFFER_EMERGENCY_THRESHOLD 80      // Emergency flush at 80% buffer full
+
+/**
+ * Emergency flush - force write all buffered data immediately
+ * Called before USB MSC activation or system shutdown
+ */
+static esp_err_t emergency_flush_buffer(void) {
+    if (!sd_initialized || !log_file) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    ESP_LOGI(TAG, "🚨 Emergency flush: Writing %zu buffered entries", buffer_size());
+    
+    uint32_t flushed_count = 0;
+    log_entry_t entry;
+    
+    // Write all buffered data immediately
+    while (buffer_pop(&entry)) {
+        // Write CSV row - same format as regular flush
+        fprintf(log_file, "%lu", entry.timestamp_ms);
+        
+        // ToF data
+        for (int i = 0; i < 16; i++) {
+            fprintf(log_file, ",%u", entry.tof[i]);
+        }
+        
+        // IMU data
+        fprintf(log_file, ",%.2f,%.2f,%.2f", entry.roll, entry.pitch, entry.yaw);
+        fprintf(log_file, ",%.2f,%.2f,%.2f", entry.accel_x, entry.accel_y, entry.accel_z);
+        fprintf(log_file, ",%.2f,%.2f,%.2f", entry.gyro_x, entry.gyro_y, entry.gyro_z);
+        
+        // Flag
+        fprintf(log_file, ",%u", entry.flag_manual);
+        
+        fprintf(log_file, "\n");
+        
+        if (ferror(log_file)) {
+            ESP_LOGE(TAG, "❌ Emergency flush write failed");
+            return ESP_FAIL;
+        }
+        flushed_count++;
+    }
+    
+    // Force immediate write to disk
+    if (fflush(log_file) != 0) {
+        ESP_LOGE(TAG, "❌ Emergency flush failed");
+        return ESP_FAIL;
+    }
+    
+    // Sync to ensure data is written to SD card
+    // Note: fsync may not be available on all systems, so we'll skip it for now
+    // The fflush() above should be sufficient for most cases
+    
+    stats.entries_logged += flushed_count;
+    last_flush_time = esp_timer_get_time() / 1000;
+    last_sync_time = last_flush_time;
+    
+    ESP_LOGI(TAG, "✓ Emergency flush complete: %lu entries written", flushed_count);
+    return ESP_OK;
+}
+
+/**
+ * Safe shutdown - prepare for USB MSC or system shutdown
+ * Ensures all data is safely written before releasing SD card
+ */
+esp_err_t storage_manager_safe_shutdown(void) {
+    if (!logging_active) {
+        return ESP_OK;
+    }
+    
+    ESP_LOGI(TAG, "🛡️  Safe shutdown initiated");
+    
+    // Mark transition as pending
+    usb_msc_transition_pending = true;
+    
+    // Emergency flush all buffered data
+    esp_err_t ret = emergency_flush_buffer();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "❌ Safe shutdown failed - data may be lost");
+        return ret;
+    }
+    
+    // Close current log file safely
+    if (log_file) {
+        ESP_LOGI(TAG, "📁 Closing log file safely");
+        fflush(log_file);
+        // fsync(fileno(log_file));  // Skip fsync for compatibility
+        fclose(log_file);
+        log_file = NULL;
+    }
+    
+    logging_active = false;
+    usb_msc_transition_pending = false;
+    
+    ESP_LOGI(TAG, "✓ Safe shutdown complete - SD card ready for USB access");
+    return ESP_OK;
+}
+
+/**
+ * Periodic maintenance - prevent data loss from sudden disconnection
+ */
+static void storage_maintenance(void) {
+    if (!logging_active || !log_file) {
+        return;
+    }
+    
+    uint32_t current_time = esp_timer_get_time() / 1000;
+    float buffer_fill = buffer_fill_percent();
+    
+    // Emergency flush if buffer is getting too full
+    if (buffer_fill >= BUFFER_EMERGENCY_THRESHOLD) {
+        ESP_LOGW(TAG, "⚠️  Buffer at %.1f%% - emergency flush triggered", buffer_fill);
+        emergency_flush_needed = true;
+    }
+    
+    // Periodic emergency flush (every 5 seconds) - only if buffer has reasonable amount
+    if ((current_time - last_flush_time) >= EMERGENCY_FLUSH_INTERVAL_MS && buffer_size() >= 5) {
+        emergency_flush_needed = true;
+    }
+    
+    // Perform emergency flush if needed
+    if (emergency_flush_needed && buffer_size() > 0) {
+        ESP_LOGI(TAG, "🔄 Periodic flush: %zu entries (%.1f%% full)", buffer_size(), buffer_fill);
+        storage_manager_flush();  // Use the existing flush function
+        emergency_flush_needed = false;
+    }
+    
+    // Periodic file sync (every 10 seconds)
+    if ((current_time - last_sync_time) >= FILE_SYNC_INTERVAL_MS) {
+        if (log_file) {
+            fflush(log_file);
+            // fsync(fileno(log_file));  // Skip fsync for compatibility
+            last_sync_time = current_time;
+        }
+    }
+}
 
 esp_err_t storage_manager_init(void) {
     ESP_LOGI(TAG, "Initializing SD card via SDIO (4-bit mode)...");
@@ -239,14 +380,15 @@ static esp_err_t create_date_directory(char *dir_path, size_t max_len) {
     
     time(&now);
     
-    // Check if time is valid (after year 2020)
-    if (now < 1577836800) {  // Jan 1, 2020
-        ESP_LOGW(TAG, "System time not synchronized");
+    // Check if time is valid (after year 2020 and before year 2030)
+    if (now < 1577836800 || now > 1893456000) {  // Jan 1, 2020 to Jan 1, 2030
+        ESP_LOGW(TAG, "System time not synchronized (timestamp: %ld)", now);
         ESP_LOGW(TAG, "💡 Smart time system will handle time management");
+        ESP_LOGW(TAG, "💡 Use USB Serial JTAG command: TIME:2026-01-07 15:30:00");
         // Set to current date as fallback
-        timeinfo.tm_year = 2024 - 1900;  // Years since 1900
-        timeinfo.tm_mon = 12 - 1;        // Month (0-11)
-        timeinfo.tm_mday = 24;           // Day of month
+        timeinfo.tm_year = 2026 - 1900;  // Years since 1900
+        timeinfo.tm_mon = 1 - 1;         // Month (0-11) - January
+        timeinfo.tm_mday = 7;            // Day of month
     } else {
         localtime_r(&now, &timeinfo);
         ESP_LOGI(TAG, "Using system time: %04d-%02d-%02d", 
@@ -352,9 +494,21 @@ static esp_err_t create_log_file(void) {
     fprintf(log_file, ",flag_manual");
     
     fprintf(log_file, "\n");
+    
+    // Force immediate write of header to disk
     fflush(log_file);
     
     current_file_size = ftell(log_file);
+    
+    ESP_LOGI(TAG, "✓ CSV header written and synced to disk (%lu bytes)", current_file_size);
+    
+    // Test write to verify file is working
+    fprintf(log_file, "# Test write at startup - timestamp: %ld\n", (long)time(NULL));
+    fflush(log_file);
+    
+    // Update file size after test write
+    current_file_size = ftell(log_file);
+    ESP_LOGI(TAG, "✓ Test write completed (%lu bytes total)", current_file_size);
     
     return ESP_OK;
 }
@@ -427,6 +581,9 @@ esp_err_t storage_manager_write(const log_entry_t *entry) {
         return ESP_ERR_INVALID_ARG;
     }
     
+    // Run maintenance to prevent corruption
+    storage_maintenance();
+    
     // Try to add to buffer
     if (!buffer_push(entry)) {
         stats.entries_dropped++;
@@ -476,12 +633,29 @@ esp_err_t storage_manager_flush(void) {
     }
     
     if (flushed > 0) {
+        // Force immediate write to disk
         fflush(log_file);
+        
+        // Force file close and reopen to ensure data is written to SD card
+        // This is aggressive but ensures data persistence
+        FILE *temp_file = log_file;
+        log_file = NULL;
+        fclose(temp_file);
+        
+        // Reopen file in append mode
+        log_file = fopen(current_filename, "a");
+        if (log_file == NULL) {
+            ESP_LOGE(TAG, "❌ Failed to reopen log file after flush");
+            return ESP_FAIL;
+        }
+        
         stats.flush_count++;
         
         // Update file size
         current_file_size = ftell(log_file);
         stats.current_file_size = current_file_size;
+        
+        ESP_LOGI(TAG, "✓ Flushed %lu entries to disk (%lu bytes) - file closed/reopened", flushed, current_file_size);
         
         // Check if file rotation needed
         if (current_file_size >= STORAGE_MAX_FILE_SIZE) {

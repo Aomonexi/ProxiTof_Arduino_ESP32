@@ -55,6 +55,12 @@ bool usb_msc_is_active(void);
 bool usb_msc_is_connected(void);
 
 /**
+ * Handle automatic USB MSC detection and switching (LEFT port only)
+ * Call this regularly from main loop
+ */
+void usb_msc_handle_auto_detection(void);
+
+/**
  * Deinitialize USB MSC
  * Cleans up TinyUSB resources
  * 

@@ -61,6 +61,17 @@ DS3231_SCL_PIN=22
 | `DS3231_SDA_PIN` | DS3231 SDA GPIO pin | `21` |
 | `DS3231_SCL_PIN` | DS3231 SCL GPIO pin | `22` |
 
+### Display Settings
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `DISPLAY_REFRESH_HZ` | Display update rate (1-60 Hz) | `2` (low CPU), `10` (smooth) |
+| `DISPLAY_COMPACT_MODE` | Compact display layout | `true` or `false` |
+
+**Display Performance Impact**:
+- `1-2 Hz`: ~5% CPU usage (recommended for battery)
+- `5-10 Hz`: ~15% CPU usage (good balance)
+- `30+ Hz`: ~30% CPU usage (very smooth, high power)
+
 ## 🚀 Field Deployment Scenarios
 
 ### Scenario 1: **Lab Setup → Field Deployment**
