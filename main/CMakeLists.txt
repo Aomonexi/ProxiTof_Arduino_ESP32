@@ -10,7 +10,7 @@ idf_component_register(
         smart_time
         config_manager
         usb_interface
-        usb_msc
+        usb_flash_partition
         display_manager
         led_strip
         driver

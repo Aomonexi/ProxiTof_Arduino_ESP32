@@ -7,6 +7,6 @@ idf_component_register(
         smart_time
         config_manager
         driver
-        usb_msc
+        usb_flash_partition
         display_manager
 )

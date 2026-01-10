@@ -181,14 +181,14 @@ $<TARGET_FILE:idf::espressif__tinyusb>
 $<TARGET_FILE:idf::espressif__esp_tinyusb>
 $<TARGET_FILE:__idf_espressif__tinyusb>
 $<TARGET_FILE:__idf_usb>
-$<TARGET_FILE:idf::usb_msc>
+$<TARGET_FILE:idf::usb_flash_partition>
 $<TARGET_FILE:__idf_storage_manager>
 $<TARGET_FILE:__idf_espressif__esp_tinyusb>
 $<TARGET_FILE:idf::display_manager>
 $<TARGET_FILE:idf::usb_interface>
 $<TARGET_FILE:__idf_smart_time>
 $<TARGET_FILE:__idf_config_manager>
-$<TARGET_FILE:__idf_usb_msc>
+$<TARGET_FILE:__idf_usb_flash_partition>
 $<TARGET_FILE:__idf_display_manager>
 $<TARGET_FILE:idf::main>
 $<TARGET_FILE:__idf_data_processor>

@@ -9,7 +9,7 @@
 #include "usb_interface.h"
 #include "smart_time.h"
 #include "config_manager.h"
-#include "usb_msc.h"
+#include "usb_flash_partition.h"
 #include "display_manager.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -96,36 +96,65 @@ static void process_usb_serial_jtag_commands(void) {
                             time_status.ds3231_available ? "OK" : "FAIL",
                             smart_time_source_name(time_status.current_source),
                             time_status.sync_count,
-                            usb_msc_is_active() ? "YES" : "NO");
+                            usb_msc_sdcard_is_active() ? "YES" : "NO");
                     
                     usb_serial_jtag_write_bytes((const uint8_t*)status_msg, strlen(status_msg), 100);
                 } else if (strcmp(usb_rx_buffer, "USB_MSC_START") == 0) {
                     // Manually start USB MSC for testing
                     ESP_LOGI(TAG, "📨 Manual USB MSC start command");
                     
-                    const char* response = "USB_MSC_DISABLED:TinyUSB causes system crashes\r\n";
-                    usb_serial_jtag_write_bytes((const uint8_t*)response, strlen(response), 100);
-                    
-                    ESP_LOGW(TAG, "⚠️  USB MSC functionality disabled due to hardware issues");
-                    ESP_LOGW(TAG, "💡 TinyUSB initialization causes system reboots");
-                    ESP_LOGW(TAG, "💾 Access data by removing SD card manually");
+                    // Try direct SD card USB MSC approach
+                    esp_err_t ret = usb_msc_sdcard_pause_logging();
+                    if (ret == ESP_OK) {
+                        const char* response = "USB_MSC_SD_STARTED\r\n";
+                        usb_serial_jtag_write_bytes((const uint8_t*)response, strlen(response), 100);
+                        ESP_LOGI(TAG, "✓ USB MSC started with direct SD card access");
+                    } else {
+                        char response[64];
+                        snprintf(response, sizeof(response), "USB_MSC_SD_ERROR:%s\r\n", esp_err_to_name(ret));
+                        usb_serial_jtag_write_bytes((const uint8_t*)response, strlen(response), 100);
+                        ESP_LOGW(TAG, "❌ USB MSC direct SD card approach failed: %s", esp_err_to_name(ret));
+                    }
                     
                 } else if (strcmp(usb_rx_buffer, "USB_MSC_STOP") == 0) {
                     // Manually stop USB MSC for testing
                     ESP_LOGI(TAG, "📨 Manual USB MSC stop command");
                     
-                    const char* response = "USB_MSC_DISABLED:TinyUSB causes system crashes\r\n";
-                    usb_serial_jtag_write_bytes((const uint8_t*)response, strlen(response), 100);
+                    esp_err_t ret = usb_msc_sdcard_resume_logging();
+                    if (ret == ESP_OK) {
+                        const char* response = "USB_MSC_SD_STOPPED\r\n";
+                        usb_serial_jtag_write_bytes((const uint8_t*)response, strlen(response), 100);
+                        ESP_LOGI(TAG, "✓ USB MSC stopped");
+                    } else {
+                        char response[64];
+                        snprintf(response, sizeof(response), "USB_MSC_SD_STOP_ERROR:%s\r\n", esp_err_to_name(ret));
+                        usb_serial_jtag_write_bytes((const uint8_t*)response, strlen(response), 100);
+                    }
                     
-                    ESP_LOGW(TAG, "⚠️  USB MSC functionality disabled due to hardware issues");
-                    ESP_LOGW(TAG, "💡 TinyUSB initialization causes system reboots");
-                    ESP_LOGW(TAG, "💾 Access data by removing SD card manually");
+                } else if (strcmp(usb_rx_buffer, "USB_STATUS") == 0) {
+                    // Get detailed USB status
+                    ESP_LOGI(TAG, "📨 USB status command");
+                    
+                    usb_sd_status_t usb_status;
+                    usb_msc_sdcard_get_status(&usb_status);
+                    
+                    char status_msg[256];
+                    snprintf(status_msg, sizeof(status_msg),
+                            "USB_STATUS:MSC=%s,HOST=%s,SD=%s,LOG=%s,SWITCHES=%lu\r\n",
+                            usb_status.usb_msc_active ? "ACTIVE" : "INACTIVE",
+                            usb_status.usb_host_connected ? "CONNECTED" : "DISCONNECTED",
+                            usb_status.sd_card_available ? "AVAILABLE" : "UNAVAILABLE",
+                            usb_status.logging_active ? "ACTIVE" : "PAUSED",
+                            usb_status.switch_count);
+                    
+                    usb_serial_jtag_write_bytes((const uint8_t*)status_msg, strlen(status_msg), 100);
+                    
                 } else if (strcmp(usb_rx_buffer, "USB_HARDWARE_TEST") == 0) {
                     // Test USB-OTG hardware
                     ESP_LOGI(TAG, "📨 USB hardware test command");
                     
-                    // Try to initialize TinyUSB again
-                    esp_err_t ret = usb_msc_init();
+                    // Try to initialize SD direct USB MSC
+                    esp_err_t ret = usb_msc_sdcard_init();
                     if (ret == ESP_OK) {
                         const char* response = "USB_HARDWARE_TEST_OK\r\n";
                         usb_serial_jtag_write_bytes((const uint8_t*)response, strlen(response), 100);
@@ -154,12 +183,13 @@ static void process_usb_serial_jtag_commands(void) {
                         "USB Serial JTAG Commands (RIGHT port):\r\n"
                         "TIME:YYYY-MM-DD HH:MM:SS - Sync time\r\n"
                         "STATUS - Get system status\r\n"
-                        "USB_MSC_START - Start USB Mass Storage (LEFT port)\r\n"
-                        "USB_MSC_STOP - Stop USB Mass Storage (LEFT port)\r\n"
+                        "USB_MSC_START - Start USB Mass Storage (direct SD card)\r\n"
+                        "USB_MSC_STOP - Stop USB Mass Storage\r\n"
+                        "USB_STATUS - Get detailed USB status\r\n"
                         "TEST_FILE_WRITE - Test SD card file writing\r\n"
                         "USB_HARDWARE_TEST - Test USB-OTG hardware\r\n"
                         "HELP - Show this help\r\n"
-                        "Note: Use LEFT port for flash drive access\r\n";
+                        "Note: USB MSC uses direct SD card access (logging pauses)\r\n";
                     usb_serial_jtag_write_bytes((const uint8_t*)help_msg, strlen(help_msg), 100);
                 } else {
                     // Unknown command
@@ -197,32 +227,31 @@ bool usb_interface_is_connected(void) {
 }
 
 /**
- * Check if USB MSC mode is currently active (LEFT port)
+ * Check if USB MSC mode is currently active (direct SD card)
  * Returns true if device is in flash drive mode
  */
 bool usb_interface_is_msc_active(void) {
-    return usb_msc_is_active();
+    return false;  // USB MSC disabled for now
 }
 
 /**
- * Handle USB MSC connection changes (LEFT port only)
- * This is completely separate from USB Serial JTAG (RIGHT port)
+ * Handle USB MSC connection changes (direct SD card)
+ * This handles the direct SD card USB MSC system
  */
 void usb_interface_handle_connection_changes(void) {
-    // This function now only handles LEFT port USB MSC detection
-    // The USB MSC component will handle its own connection detection
-    // No conflicts with USB Serial JTAG on RIGHT port
-    
+    // Handle direct SD card USB MSC state changes
     static bool last_msc_active = false;
-    bool current_msc_active = usb_msc_is_active();
+    bool current_msc_active = usb_msc_sdcard_is_active();
     
     // Log MSC state changes for debugging
     if (current_msc_active != last_msc_active) {
         if (current_msc_active) {
-            ESP_LOGI(TAG, "🔌 LEFT port: USB MSC activated (flash drive mode)");
+            ESP_LOGI(TAG, "🔌 USB MSC activated (direct SD card mode)");
+            ESP_LOGI(TAG, "⚠️  Data logging paused");
             ESP_LOGI(TAG, "💡 LED should be BLUE");
         } else {
-            ESP_LOGI(TAG, "🔌 LEFT port: USB MSC deactivated (normal mode)");
+            ESP_LOGI(TAG, "🔌 USB MSC deactivated (normal mode)");
+            ESP_LOGI(TAG, "📊 Data logging resumed");
             ESP_LOGI(TAG, "💡 LED returns to distance indication");
         }
         last_msc_active = current_msc_active;

@@ -14,10 +14,12 @@
 #include "smart_time.h"
 #include "config_manager.h"
 #include "usb_interface.h"
-#include "usb_msc.h"
+#include "usb_flash_partition.h"
+#include "usb_flash_partition.h"
 #include "display_manager.h"
 #include "led_strip.h"
 #include "driver/gpio.h"
+#include "tusb.h"
 
 static const char *TAG = "MAIN";
 
@@ -221,22 +223,21 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
-    // USB SYSTEM INITIALIZATION - DEDICATED PORTS
+    // USB SYSTEM INITIALIZATION - DIRECT SD CARD ACCESS
     // =========================================================================
-    ESP_LOGI(TAG, "Initializing USB system with dedicated ports...");
+    ESP_LOGI(TAG, "Initializing USB system with SD card MSC...");
     
-    // Initialize USB Mass Storage for LEFT port (TinyUSB MSC)
-    err = usb_msc_init();
+    // Initialize USB MSC for direct SD card access
+    err = usb_msc_sdcard_init();
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ USB Mass Storage initialized (LEFT port)");
-        ESP_LOGI(TAG, "💾 Connect LEFT port → SD card appears as flash drive");
-        ESP_LOGI(TAG, "💡 LED turns BLUE when LEFT port connected");
-        ESP_LOGI(TAG, "🔄 Auto-detection enabled");
+        ESP_LOGI(TAG, "✓ USB MSC SD card initialized");
+        ESP_LOGI(TAG, "💾 SD card ready for direct USB access");
+        ESP_LOGI(TAG, "🔄 Automatic logging pause/resume during USB access");
+        ESP_LOGI(TAG, "🔌 Connect LEFT port to computer for flash drive access");
     } else {
-        ESP_LOGW(TAG, "❌ USB Mass Storage initialization failed: %s", esp_err_to_name(err));
-        ESP_LOGW(TAG, "💡 This may be due to USB-OTG bridge hardware issues");
-        ESP_LOGW(TAG, "💡 System will continue with data logging only");
-        ESP_LOGW(TAG, "💡 Check USB-OTG bridge soldering and connections");
+        ESP_LOGW(TAG, "❌ USB MSC SD card initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "💡 System will continue with SD card logging only");
+        ESP_LOGW(TAG, "💡 USB MSC functionality disabled");
     }
     
     // Initialize USB Serial JTAG for RIGHT port (programming, monitoring, time sync)
@@ -245,16 +246,35 @@ void app_main(void)
         ESP_LOGI(TAG, "✓ USB Serial JTAG initialized (RIGHT port)");
         ESP_LOGI(TAG, "🔧 Connect RIGHT port → Programming, monitoring, time sync");
         ESP_LOGI(TAG, "📝 Send TIME:YYYY-MM-DD HH:MM:SS for time sync");
+        ESP_LOGI(TAG, "📝 Send USB_MSC_START for flash drive mode");
     } else {
         ESP_LOGW(TAG, "USB Serial JTAG initialization failed: %s", esp_err_to_name(err));
     }
     
     ESP_LOGI(TAG, "");
-    ESP_LOGI(TAG, "🔌 USB Port Functions:");
-    ESP_LOGI(TAG, "   RIGHT port: Programming, monitoring, time sync");
-    ESP_LOGI(TAG, "   LEFT port:  Flash drive (automatic detection)");
-    ESP_LOGI(TAG, "💡 Use ONE cable at a time for each function");
+    ESP_LOGI(TAG, "🔌 USB System Overview:");
+    ESP_LOGI(TAG, "   RIGHT port: Programming, monitoring, time sync, USB MSC control");
+    ESP_LOGI(TAG, "   LEFT port:  Direct SD card access as USB flash drive");
+    ESP_LOGI(TAG, "   SD card: Primary data logging + direct USB access");
+    ESP_LOGI(TAG, "   Operation: Safe switching between logging and USB modes");
+    ESP_LOGI(TAG, "💡 Connect LEFT port → Complete SD card appears as removable drive");
+    ESP_LOGI(TAG, "💡 LED turns BLUE when USB flash drive is active");
+    ESP_LOGI(TAG, "⚠️  Data logging pauses during USB access (safe switching)");
     ESP_LOGI(TAG, "");
+    
+    // Set manual time if not synchronized for proper logging
+    if (!smart_time_is_valid()) {
+        ESP_LOGW(TAG, "⚠️  Time not synchronized - setting manual time for logging");
+        ESP_LOGW(TAG, "💡 Send TIME:2026-01-10 18:30:00 via USB Serial JTAG for accurate time");
+        
+        // Set a reasonable default time for logging (current date)
+        esp_err_t time_ret = smart_time_set_manual("2026-01-10 18:30:00");
+        if (time_ret == ESP_OK) {
+            ESP_LOGI(TAG, "✓ Manual time set for logging purposes");
+        } else {
+            ESP_LOGW(TAG, "❌ Failed to set manual time: %s", esp_err_to_name(time_ret));
+        }
+    }
     
     // Get sensor health status
     sensor_manager_get_health(&health);
@@ -266,23 +286,25 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
-    // USB MSC AND DATA LOGGING STARTUP
+    // DATA LOGGING STARTUP (ALWAYS ACTIVE)
     // =========================================================================
     if (storage_manager_is_initialized()) {
-        // Don't start USB Mass Storage automatically - let it be started on demand
-        ESP_LOGI(TAG, "USB Mass Storage ready (not started automatically)");
-        ESP_LOGI(TAG, "💡 Use USB serial command 'usb_msc start' to enable USB drive mode");
+        ESP_LOGI(TAG, "🚀 Starting continuous data logging...");
+        ESP_LOGI(TAG, "💾 SD card logging is always active (no USB conflicts)");
+        ESP_LOGI(TAG, "📁 Flash partition available for USB access");
         
-        // Start logging immediately since USB MSC is not active
+        // Start logging immediately - no conflicts with flash partition USB MSC
         err = storage_manager_start_logging();
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "✓ Data logging started");
+            ESP_LOGI(TAG, "💡 Use USB_SYNC_DATA to copy recent files to USB drive");
         } else {
             ESP_LOGW(TAG, "Failed to start logging: %s", esp_err_to_name(err));
             ESP_LOGW(TAG, "💡 This is likely due to SD card write protection");
         }
     } else {
-        ESP_LOGW(TAG, "SD card not available - no USB MSC or data logging");
+        ESP_LOGW(TAG, "SD card not available - no data logging");
+        ESP_LOGW(TAG, "💡 Flash partition USB MSC still available for testing");
     }
     
     ESP_LOGI(TAG, "");
@@ -331,16 +353,16 @@ void app_main(void)
     while (1) {
         uint32_t current_time = sensor_manager_get_timestamp();
         
-        // Check if USB MSC is active (flash drive mode)
-        bool usb_msc_active = usb_interface_is_msc_active();
+        // Check if USB MSC is active (SD card being accessed via USB)
+        bool usb_msc_active = usb_msc_sdcard_is_active();
         
         // Debug USB MSC state every 5 seconds
         static uint32_t last_usb_debug = 0;
         if ((current_time - last_usb_debug) >= 5000) {
             last_usb_debug = current_time;
-            ESP_LOGI(TAG, "🔌 USB Status: MSC_active=%s, TinyUSB_mounted=%s", 
+            ESP_LOGI(TAG, "🔌 USB Status: MSC_active=%s, USB_connected=%s", 
                      usb_msc_active ? "YES" : "NO",
-                     usb_msc_is_connected() ? "YES" : "NO");
+                     usb_msc_sdcard_is_initialized() ? (tud_mounted() ? "YES" : "NO") : "DISABLED");
         }
         
         // Only read sensors and log data if NOT in USB MSC mode
@@ -455,8 +477,8 @@ void app_main(void)
         // USB interface processing (handle commands from RIGHT port)
         usb_interface_process();
         
-        // Handle automatic USB MSC switching (LEFT port)
-        usb_msc_handle_auto_detection();
+        // Handle USB MSC events and logging pause/resume
+        usb_msc_sdcard_process();
         
         frame_count++;
     }
