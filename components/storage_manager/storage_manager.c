@@ -132,8 +132,13 @@ static esp_err_t emergency_flush_buffer(void) {
         fprintf(log_file, ",%.2f,%.2f,%.2f", entry.accel_x, entry.accel_y, entry.accel_z);
         fprintf(log_file, ",%.2f,%.2f,%.2f", entry.gyro_x, entry.gyro_y, entry.gyro_z);
         
-        // Flag
-        fprintf(log_file, ",%u", entry.flag_manual);
+        // GPS data
+        fprintf(log_file, ",%.8f,%.8f,%.2f,%.2f,%u", 
+                entry.latitude, entry.longitude, entry.speed_ms, 
+                entry.heading_deg, entry.gps_satellites);
+        
+        // Flags
+        fprintf(log_file, ",%u,%u", entry.flag_manual, entry.flag_auto);
         
         fprintf(log_file, "\n");
         
@@ -490,8 +495,11 @@ static esp_err_t create_log_file(void) {
     fprintf(log_file, ",accel_x,accel_y,accel_z");
     fprintf(log_file, ",gyro_x,gyro_y,gyro_z");
     
-    // Flag column
-    fprintf(log_file, ",flag_manual");
+    // GPS columns
+    fprintf(log_file, ",latitude,longitude,speed_ms,heading_deg,gps_satellites");
+    
+    // Flag columns
+    fprintf(log_file, ",flag_manual,flag_auto");
     
     fprintf(log_file, "\n");
     
@@ -623,8 +631,13 @@ esp_err_t storage_manager_flush(void) {
         fprintf(log_file, ",%.2f,%.2f,%.2f", entry.accel_x, entry.accel_y, entry.accel_z);
         fprintf(log_file, ",%.2f,%.2f,%.2f", entry.gyro_x, entry.gyro_y, entry.gyro_z);
         
-        // Flag
-        fprintf(log_file, ",%u", entry.flag_manual);
+        // GPS data
+        fprintf(log_file, ",%.8f,%.8f,%.2f,%.2f,%u", 
+                entry.latitude, entry.longitude, entry.speed_ms, 
+                entry.heading_deg, entry.gps_satellites);
+        
+        // Flags
+        fprintf(log_file, ",%u,%u", entry.flag_manual, entry.flag_auto);
         
         fprintf(log_file, "\n");
         

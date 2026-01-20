@@ -31,7 +31,7 @@ extern "C" {
 
 /**
  * Simple log entry for raw sensor data
- * Simplified version without derived features (those come from Task 4)
+ * Includes GPS location data for near-miss event mapping
  */
 typedef struct {
     uint32_t timestamp_ms;
@@ -44,8 +44,16 @@ typedef struct {
     float accel_x, accel_y, accel_z;
     float gyro_x, gyro_y, gyro_z;
     
+    // GPS data (location tracking)
+    double latitude;           // Degrees (0.0 if no GPS fix)
+    double longitude;          // Degrees (0.0 if no GPS fix)
+    float speed_ms;            // Speed in m/s (0.0 if no GPS fix)
+    float heading_deg;         // Heading in degrees (0.0 if no GPS fix)
+    uint8_t gps_satellites;    // Number of satellites (0 if no GPS fix)
+    
     // Flags
-    uint8_t flag_manual;
+    uint8_t flag_manual;       // Manual flag (button press)
+    uint8_t flag_auto;         // Automatic flag (algorithm detection)
     
 } log_entry_t;
 

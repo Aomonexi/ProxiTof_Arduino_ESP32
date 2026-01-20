@@ -15,6 +15,9 @@
 | **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Ready | **Conflict-free pins** |
 | **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Ready | Battery-backed time |
 | **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21 | ✅ Ready | 128x64 @ 60Hz (4-wire, no CS) |
+| **Neo-M9N GPS** | UART | TX=44, RX=43 | ✅ Ready | Location tracking @ 1-5Hz |
+| **Buzzer** | PWM | GPIO 45 | ✅ Ready | Near-miss audio alert |
+| **Potentiometer** | ADC | GPIO 46 (ADC2_CH5) | ⏳ Optional | Volume control (0-3.3V) |
 | **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Ready | Manual event flagging |
 | **WS2812 LED** | GPIO | GPIO 48 | ✅ Built-in | Status indicator |
 
@@ -26,8 +29,8 @@
                            ESP32-S3-DevKitC-1
                     ╔══════════════════════════════════╗
                     ║                                  ║
-    I2C Bus         ║  SPI Bus (IMU)      SDMMC Bus    ║  GPIO
-    -------         ║  --------------     ----------   ║  -----
+    I2C Bus         ║  SPI Bus (IMU)      SDMMC Bus    ║  GPIO/UART/PWM
+    -------         ║  --------------     ----------   ║  --------------
                     ║                                  ║
 VL53L8CX ToF ──────╫── GPIO 8  (SDA)                  ║
              ──────╫── GPIO 9  (SCL)                  ║
@@ -61,6 +64,13 @@ DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
                     ║  GPIO 35 (DC)   ──────────────── ║
                     ║  GPIO 21 (RST)  ──────────────── ║
                     ║                                  ║
+                    ║              Neo-M9N GPS (UART)  ║
+                    ║              ----------------    ║
+                    ║  GPIO 44 (TX)   ──────────────── ║
+                    ║  GPIO 43 (RX)   ──────────────── ║
+                    ║                                  ║
+                    ║  GPIO 45 ──────────────── Buzzer ║ (PWM)
+                    ║  GPIO 46 ──────────────── Pot    ║ (ADC - Optional)
                     ║  GPIO 3  ──────────────── Button ║
                     ║  GPIO 48 ──────────────── LED    ║ (Built-in)
                     ║                                  ║
@@ -305,7 +315,7 @@ idf.py build flash monitor
 
 ## 📊 GPIO Pin Usage Summary
 
-### Used Pins (21 total)
+### Used Pins (26 total)
 | GPIO | Function | Component |
 |------|----------|-----------|
 | 1 | SPI MOSI | OLED Display |
@@ -328,11 +338,15 @@ idf.py build flash monitor
 | 18 | SDMMC D3 | SD Card |
 | 21 | RST | OLED Display |
 | 35 | DC | OLED Display |
+| 43 | UART RX | Neo-M9N GPS |
+| 44 | UART TX | Neo-M9N GPS |
+| 45 | PWM | Buzzer |
+| 46 | ADC | Potentiometer (Optional) |
 | 48 | LED Data | WS2812 |
 
-### Available for Future Expansion (16+ pins)
-- GPIO 19-20, 36-37, 44-47
-- Perfect for: GNSS module, additional sensors, external buttons
+### Available for Future Expansion (12+ pins)
+- GPIO 19-20, 36-37, 38-42, 47
+- Perfect for: Additional sensors, external buttons, displays
 
 ---
 
@@ -485,6 +499,197 @@ GND            --> GND
 - 4 display modes: Dashboard, ToF Focus, IMU Focus, Status
 - **Dual-color zones**: Top 16 pixels = YELLOW (alerts), Bottom 48 pixels = BLUE (data)
 
+### 7. Neo-M9N GPS Module (UART)
+
+```
+ESP32-S3          Neo-M9N GPS
+--------          -----------
+GPIO 44 (TX)   --> RX (GPS receives data from ESP32)
+GPIO 43 (RX)   --> TX (GPS sends data to ESP32)
+5V             --> VCC (GPS requires 5V, NOT 3.3V!)
+GND            --> GND
+```
+
+**⚠️ UART Wiring Explanation (TX/RX Crossover)**:
+- **This is CORRECT!** UART connections are always crossover
+- ESP32 **TX** (transmit) connects to GPS **RX** (receive)
+- ESP32 **RX** (receive) connects to GPS **TX** (transmit)
+- Think of it as: "My transmitter talks to your receiver"
+- **DO NOT connect TX to TX or RX to RX** - that won't work!
+
+**Visual Explanation**:
+```
+ESP32-S3                    Neo-M9N GPS
+--------                    -----------
+GPIO 44 (TX) ----data----> RX (receives ESP32's data)
+GPIO 43 (RX) <---data----- TX (sends GPS data to ESP32)
+```
+
+**Critical Notes:**
+- **Power: 5V required!** (Neo-M9N operates at 5V, not 3.3V)
+- **Logic levels: 3.3V compatible** (TX/RX can connect directly to ESP32)
+- **UART2 interface** (ESP32-S3 has multiple UART ports)
+- **Baud rate: 9600** (default for NMEA output)
+- **Update rate: 1-5 Hz** (configurable)
+- **Cold start: 26 seconds** (first GPS fix)
+- **Hot start: 1 second** (subsequent fixes)
+
+**GPS Data Format (NMEA):**
+```
+$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47
+       ^^^^^^ ^^^^^^^^^ ^ ^^^^^^^^^^ ^
+       Time   Latitude  N Longitude  E
+```
+
+**What GPS Provides:**
+- Latitude/Longitude (location)
+- Speed (km/h or m/s)
+- Heading (direction of travel)
+- Altitude (meters above sea level)
+- Time (UTC from satellites)
+- Number of satellites (fix quality)
+
+**Why GPS for Near-Miss Detection:**
+- **Location context:** Where did near-miss occur?
+- **Speed validation:** Confirm IMU-derived speed
+- **Route tracking:** Map near-miss hotspots
+- **Time synchronization:** Accurate timestamps
+- **Data enrichment:** Add location to CSV logs
+
+### 8. Buzzer (PWM Audio Alert)
+
+```
+ESP32-S3          Buzzer (Active/Passive)
+--------          -----------------------
+GPIO 45 (PWM)  --> IN (Signal)
+5V or 3.3V     --> VCC (check buzzer specs)
+GND            --> GND
+```
+
+**Buzzer Types:**
+
+**Option A: Active Buzzer (Simpler)**
+```
+- Has built-in oscillator
+- Just needs ON/OFF signal
+- Fixed frequency (usually 2-4 kHz)
+- Louder, but less control
+- Wiring: GPIO 45 → IN, VCC → 5V, GND → GND
+```
+
+**Option B: Passive Buzzer (More Control)**
+```
+- Requires PWM signal
+- Variable frequency (100 Hz - 10 kHz)
+- Can create tones, melodies
+- Volume control via PWM duty cycle
+- Wiring: GPIO 45 → IN, VCC → 5V, GND → GND
+```
+
+**Alert Patterns:**
+```
+Near-Miss Detected:
+  - Frequency: 2000 Hz (high-pitched)
+  - Pattern: 3 short beeps (200ms on, 100ms off)
+  - Volume: Adjustable via potentiometer
+
+Critical Proximity:
+  - Frequency: 1000 Hz (lower pitch)
+  - Pattern: Continuous tone
+  - Volume: Maximum (override potentiometer)
+
+Button Press:
+  - Frequency: 3000 Hz
+  - Pattern: Single short beep (100ms)
+  - Volume: Medium
+```
+
+**PWM Configuration:**
+```c
+// LEDC (LED Control) peripheral for PWM
+ledc_timer_config_t timer = {
+    .speed_mode = LEDC_LOW_SPEED_MODE,
+    .duty_resolution = LEDC_TIMER_10_BIT,
+    .timer_num = LEDC_TIMER_0,
+    .freq_hz = 2000,  // 2 kHz tone
+    .clk_cfg = LEDC_AUTO_CLK
+};
+
+ledc_channel_config_t channel = {
+    .gpio_num = 45,
+    .speed_mode = LEDC_LOW_SPEED_MODE,
+    .channel = LEDC_CHANNEL_0,
+    .timer_sel = LEDC_TIMER_0,
+    .duty = 512,  // 50% duty cycle
+    .hpoint = 0
+};
+```
+
+### 9. Potentiometer (Volume Control) - OPTIONAL
+
+```
+ESP32-S3          Potentiometer (10kΩ)
+--------          --------------------
+GPIO 4 (ADC)   --> Wiper (middle pin)
+3.3V           --> One end
+GND            --> Other end
+```
+
+**How It Works:**
+```
+Potentiometer creates voltage divider:
+- Fully CCW: 0V → Volume = 0% (silent)
+- Middle: 1.65V → Volume = 50%
+- Fully CW: 3.3V → Volume = 100% (max)
+
+ADC reads voltage (0-3.3V) → Convert to duty cycle (0-100%)
+```
+
+**ADC Configuration:**
+```c
+// Configure ADC
+adc1_config_width(ADC_WIDTH_BIT_12);  // 12-bit resolution (0-4095)
+adc1_config_channel_atten(ADC1_CHANNEL_3, ADC_ATTEN_DB_11);  // 0-3.3V range
+
+// Read volume
+int adc_value = adc1_get_raw(ADC1_CHANNEL_3);  // 0-4095
+int volume_percent = (adc_value * 100) / 4095;  // 0-100%
+int pwm_duty = (volume_percent * 1023) / 100;  // 0-1023 (10-bit PWM)
+
+// Set buzzer volume
+ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, pwm_duty);
+ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+```
+
+**Alternative: Digital Volume Control**
+```
+Instead of potentiometer, use buttons:
+- GPIO 46: Volume Up
+- GPIO 47: Volume Down
+- Store volume in NVS (non-volatile storage)
+- Display volume on OLED
+```
+
+**⚠️ IMPORTANT - GPIO 4 Conflict Resolved:**
+- GPIO 4 is ALREADY USED for ToF LPN (Low Power/Reset)
+- **DO NOT use GPIO 4 for potentiometer!**
+- **Correct pin: GPIO 46 (ADC2_CH5)** - No conflicts
+
+**Correct Potentiometer Wiring:**
+```
+ESP32-S3          Potentiometer (10kΩ)
+--------          --------------------
+GPIO 46 (ADC)  --> Wiper (middle pin)  ✅ CORRECT
+3.3V           --> One end
+GND            --> Other end
+```
+
+**Why GPIO 46?**
+- GPIO 4 = ToF LPN (OCCUPIED)
+- GPIO 46 = ADC2_CH5 (FREE)
+- GPIO 46 supports 12-bit ADC (0-4095 range)
+- Perfect for 0-3.3V potentiometer reading
+
 ## Complete System Diagram
 
 ```
@@ -555,10 +760,19 @@ The SD card uses dedicated SDMMC pins for high-speed access:
 | DS3231 RTC | 3.3V | 0.1mA | 1mA |
 | BNO08x IMU | 3.3V | 10mA | 15mA |
 | SD Card | 3.3V | 50mA | 200mA |
+| OLED Display | 3.3V | 15mA | 30mA |
+| Neo-M9N GPS | 5V | 25mA | 67mA |
+| Buzzer | 5V | 30mA | 50mA |
 | WS2812 LED | 3.3V | 20mA | 60mA |
-| **Total** | **3.3V** | **~180mA** | **~816mA** |
+| **Total 3.3V** | **3.3V** | **~195mA** | **~846mA** |
+| **Total 5V** | **5V** | **~55mA** | **~117mA** |
 
-**Recommendation:** Use USB power (5V → 3.3V regulator on DevKit) or external 3.3V supply capable of 1A.
+**Recommendation:** 
+- Use USB power (5V input → 3.3V regulator on DevKit)
+- ESP32-S3 DevKit can provide both 3.3V and 5V
+- Total power: ~250mA typical, ~963mA peak
+- USB 2.0 provides 500mA, USB 3.0 provides 900mA
+- **Use USB 3.0 port or powered USB hub for reliable operation**
 
 ## Troubleshooting
 
