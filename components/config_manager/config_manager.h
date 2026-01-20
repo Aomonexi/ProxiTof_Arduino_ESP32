@@ -27,6 +27,12 @@ typedef struct {
     bool wifi_enabled;
     bool ds3231_enabled;
     bool display_compact_mode;
+    // OLED Display Configuration
+    bool oled_enabled;
+    int oled_refresh_hz;
+    int oled_brightness;
+    int oled_mode;
+    bool oled_flip;
 } system_config_t;
 
 /**

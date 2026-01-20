@@ -2,7 +2,7 @@
  * data_processor_types.h
  * 
  * Data types for Data Processor Component (ESP-IDF compatible)
- * Pure C types without Arduino dependencies
+ * Uses types from sensor_manager to avoid conflicts
  */
 
 #ifndef DATA_PROCESSOR_TYPES_H
@@ -10,36 +10,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "sensor_manager.h"  // Use existing tof_data_t and imu_data_t
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // =============================================================================
-// Sensor Data Structures
+// Synchronized Data Structure
 // =============================================================================
-
-/**
- * ToFData - Time-of-Flight sensor data structure
- * Contains 4x4 distance grid from VL53L8CX sensor
- */
-typedef struct {
-    uint32_t timestamp_ms;      // Milliseconds since boot
-    uint16_t distances[16];     // 4x4 grid in row-major order (mm)
-    bool valid;                 // Data validity flag
-} tof_data_t;
-
-/**
- * IMUData - Inertial Measurement Unit data structure
- * Contains orientation, linear acceleration, and angular velocity from BNO08x
- */
-typedef struct {
-    uint32_t timestamp_ms;      // Milliseconds since boot
-    float roll, pitch, yaw;     // Orientation in degrees
-    float accel_x, accel_y, accel_z;  // Linear acceleration in m/s²
-    float gyro_x, gyro_y, gyro_z;     // Angular velocity in deg/s
-    bool valid;                 // Data validity flag
-} imu_data_t;
 
 /**
  * SyncedData - Synchronized sensor data structure
@@ -47,8 +26,8 @@ typedef struct {
  */
 typedef struct {
     uint32_t timestamp_ms;      // Common timestamp for synchronized data
-    tof_data_t tof;             // ToF sensor data
-    imu_data_t imu;             // IMU sensor data
+    tof_data_t tof;             // ToF sensor data (from sensor_manager)
+    imu_data_t imu;             // IMU sensor data (from sensor_manager)
     bool synchronized;          // Synchronization success flag
 } synced_data_t;
 

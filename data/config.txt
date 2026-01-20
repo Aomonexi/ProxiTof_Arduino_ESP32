@@ -16,9 +16,16 @@ DS3231_ENABLED=true
 DS3231_SDA_PIN=8
 DS3231_SCL_PIN=9
 
-# Display Configuration
+# Console Display Configuration
 DISPLAY_REFRESH_HZ=2
 DISPLAY_COMPACT_MODE=false
+
+# OLED Display Configuration (0.96" SSD1306 SPI)
+OLED_ENABLED=true
+OLED_REFRESH_HZ=60  # 1-60 Hz (60 recommended for smooth display)
+OLED_BRIGHTNESS=128  # 0-255 (128 = medium)
+OLED_MODE=0  # 0=Dashboard, 1=ToF Focus, 2=IMU Focus, 3=Status
+OLED_FLIP=false  # Rotate display 180 degrees
 
 # Common Timezone Examples:
 # UTC: UTC0

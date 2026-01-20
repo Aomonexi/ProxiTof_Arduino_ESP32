@@ -55,6 +55,30 @@ dependencies:
     source:
       type: idf
     version: 5.5.1
+  k0i05/esp_ssd1306:
+    component_hash: 0bda01e422bdefe42b0760b2e3d3e840d57f5adc555fe40a267ecb918d9b63a2
+    dependencies:
+    - name: idf
+      require: private
+      version: '>5.3.0'
+    - name: k0i05/esp_type_utils
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.2.7
+  k0i05/esp_type_utils:
+    component_hash: 95d8ec40268e045f7e264d8035f451e53844b4a2f6d5f112ece6645c5effd639
+    dependencies:
+    - name: idf
+      require: private
+      version: '>5.3.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.2.7
   rjrp44/vl53l8cx:
     component_hash: 453314712a3e36ae9c6c4c169943f3be9cc15579071f4afb2bb662faed669f7f
     dependencies:
@@ -70,7 +94,8 @@ direct_dependencies:
 - espressif/esp_tinyusb
 - espressif/led_strip
 - idf
+- k0i05/esp_ssd1306
 - rjrp44/vl53l8cx
-manifest_hash: 8bd6695c1a418d171cda295dc7c6f46278ad20e9637d627e51d11716c39360d4
+manifest_hash: e10bbd1398399615a055486a9800cf7b4d7fb09ad3a5c0eea8cfb721cac9159a
 target: esp32s3
 version: 2.0.0

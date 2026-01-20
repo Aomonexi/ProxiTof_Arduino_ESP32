@@ -17,9 +17,11 @@
 #include "usb_flash_partition.h"
 #include "usb_flash_partition.h"
 #include "display_manager.h"
+#include "oled_display.h"
 #include "led_strip.h"
 #include "driver/gpio.h"
 #include "tusb.h"
+#include "data_processor_c_wrapper.h"
 
 static const char *TAG = "MAIN";
 
@@ -30,7 +32,14 @@ static const char *TAG = "MAIN";
 #define CLOSE_THRESHOLD 100    // < 10cm = RED
 #define MEDIUM_THRESHOLD 500   // 10-50cm = YELLOW, > 50cm = GREEN
 
+// Near-miss detection thresholds
+#define RAPID_APPROACH_THRESHOLD 500.0f    // mm/s (0.5 m/s)
+#define HIGH_JERK_THRESHOLD 2.0f           // m/s³
+#define CRITICAL_PROXIMITY_DISTANCE 300    // mm (30 cm)
+#define CRITICAL_PROXIMITY_APPROACH 200.0f // mm/s (0.2 m/s)
+
 static led_strip_handle_t led_strip = NULL;
+static data_processor_handle_t *data_processor = NULL;
 
 /**
  * Initialize RGB LED
@@ -63,13 +72,33 @@ static esp_err_t init_led(void)
 }
 
 /**
- * Update LED based on system mode and distance
+ * Update LED based on system mode, distance, and near-miss detection
+ * Priority: USB MSC > Near-Miss Alert > Distance-based color
  */
-static void update_led(uint16_t min_distance_mm, bool usb_msc_active)
+static void update_led(uint16_t min_distance_mm, bool usb_msc_active, bool near_miss_detected)
 {
     if (usb_msc_active) {
         // BLUE - USB Mass Storage mode (flash drive active)
         led_strip_set_pixel(led_strip, 0, 0, 0, 100);
+    } else if (near_miss_detected) {
+        // ORANGE/RED FLASH - Near-miss event detected
+        // Alternate between orange and red for high visibility
+        static uint32_t last_flash = 0;
+        static bool flash_state = false;
+        uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        
+        if ((now - last_flash) > 250) {  // 4Hz flash rate
+            flash_state = !flash_state;
+            last_flash = now;
+        }
+        
+        if (flash_state) {
+            // Bright orange
+            led_strip_set_pixel(led_strip, 0, 100, 50, 0);
+        } else {
+            // Bright red
+            led_strip_set_pixel(led_strip, 0, 100, 0, 0);
+        }
     } else if (min_distance_mm < CLOSE_THRESHOLD) {
         // RED - Close (< 10cm)
         led_strip_set_pixel(led_strip, 0, 50, 0, 0);
@@ -345,10 +374,85 @@ void app_main(void)
         ESP_LOGW(TAG, "System will use basic console output");
     }
     
+    // =========================================================================
+    // OLED DISPLAY INITIALIZATION (REAL-TIME 60 FPS VISUALIZATION)
+    // =========================================================================
+    if (config.oled_enabled) {
+        ESP_LOGI(TAG, "Initializing OLED display (SSD1306 128x64 SPI)...");
+        ESP_LOGI(TAG, "Wiring: SCK=7, MOSI=1, DC=19, CS=20, RST=21");
+        
+        err = oled_display_init();
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "✓ OLED display initialized successfully");
+            ESP_LOGI(TAG, "📺 Real-time sensor visualization at %d FPS", config.oled_refresh_hz);
+            ESP_LOGI(TAG, "🎨 Display mode: %d (0=Dashboard, 1=ToF, 2=IMU, 3=Status)", config.oled_mode);
+            ESP_LOGI(TAG, "💡 Brightness: %d/255", config.oled_brightness);
+            
+            // Set initial configuration
+            oled_display_set_mode((oled_display_mode_t)config.oled_mode);
+            oled_display_set_brightness(config.oled_brightness);
+        } else {
+            ESP_LOGW(TAG, "❌ OLED display initialization failed: %s", esp_err_to_name(err));
+            ESP_LOGW(TAG, "💡 Check wiring: SCK=7, MOSI=1, DC=19, CS=20, RST=21");
+            ESP_LOGW(TAG, "💡 System will continue without OLED display");
+        }
+    } else {
+        ESP_LOGI(TAG, "OLED display disabled in config.txt");
+        ESP_LOGI(TAG, "💡 Set OLED_ENABLED=true to enable");
+    }
+    
+    ESP_LOGI(TAG, "");
+    
+    // =========================================================================
+    // DATA PROCESSOR INITIALIZATION (NEAR-MISS DETECTION)
+    // =========================================================================
+    ESP_LOGI(TAG, "Initializing Data Processor (Near-Miss Detection)...");
+    ESP_LOGI(TAG, "Algorithm: Sensor fusion + Feature extraction + Rule-based detection");
+    ESP_LOGI(TAG, "");
+    
+    data_processor = data_processor_create();
+    if (data_processor == NULL) {
+        ESP_LOGE(TAG, "❌ Failed to allocate DataProcessor");
+        ESP_LOGE(TAG, "System will continue without near-miss detection");
+    } else {
+        // Configure synchronization window (10ms default)
+        data_processor_set_sync_window(data_processor, 10);
+        
+        ESP_LOGI(TAG, "✓ Data Processor initialized successfully");
+        ESP_LOGI(TAG, "");
+        ESP_LOGI(TAG, "Near-Miss Detection Configuration:");
+        ESP_LOGI(TAG, "  Sensor Sync Window: %lu ms", data_processor_get_sync_window(data_processor));
+        ESP_LOGI(TAG, "  Rapid Approach Threshold: %.0f mm/s (%.2f m/s)", 
+                 RAPID_APPROACH_THRESHOLD, RAPID_APPROACH_THRESHOLD / 1000.0f);
+        ESP_LOGI(TAG, "  High Jerk Threshold: %.1f m/s³", HIGH_JERK_THRESHOLD);
+        ESP_LOGI(TAG, "  Critical Proximity: <%d mm with >%.0f mm/s approach", 
+                 CRITICAL_PROXIMITY_DISTANCE, CRITICAL_PROXIMITY_APPROACH);
+        ESP_LOGI(TAG, "  Combined Detection Window: 500 ms");
+        ESP_LOGI(TAG, "");
+        ESP_LOGI(TAG, "Detection Features:");
+        ESP_LOGI(TAG, "  ✓ Minimum distance calculation (4x4 ToF grid)");
+        ESP_LOGI(TAG, "  ✓ Approach rate (distance change over time)");
+        ESP_LOGI(TAG, "  ✓ Jerk magnitude (acceleration change rate)");
+        ESP_LOGI(TAG, "  ✓ Angular velocity (rotation speed)");
+        ESP_LOGI(TAG, "  ✓ Multi-tier alert system (Critical > Combined > Individual)");
+        ESP_LOGI(TAG, "");
+        ESP_LOGI(TAG, "Alert Priorities:");
+        ESP_LOGI(TAG, "  1. Critical Proximity (Highest) - Imminent collision");
+        ESP_LOGI(TAG, "  2. Combined Near-Miss - Rapid approach + High jerk within 500ms");
+        ESP_LOGI(TAG, "  3. Individual Conditions - Rapid approach OR High jerk");
+    }
+    
+    ESP_LOGI(TAG, "");
+    
     vTaskDelay(pdMS_TO_TICKS(2000));
     
     // Clear screen for clean display
     printf("\033[2J\033[H");
+    
+    // Near-miss detection state tracking
+    bool near_miss_active = false;
+    uint32_t near_miss_start_time = 0;
+    uint32_t near_miss_event_count = 0;
     
     while (1) {
         uint32_t current_time = sensor_manager_get_timestamp();
@@ -371,12 +475,6 @@ void app_main(void)
             err = sensor_manager_read_tof(&tof_data);
             if (err == ESP_OK) {
                 tof_count++;
-                
-                // Get minimum distance and update LED IMMEDIATELY (real-time response)
-                uint16_t min_dist = get_min_distance(&tof_data);
-                if (led_strip != NULL) {
-                    update_led(min_dist, usb_msc_active);
-                }
             } else if (err != ESP_ERR_NOT_FOUND && frame_count < 5) {
                 // Log actual ToF errors during first few frames (ignore "no data ready")
                 ESP_LOGW(TAG, "ToF read failed: %s", esp_err_to_name(err));
@@ -388,7 +486,80 @@ void app_main(void)
                 imu_count++;
             }
             
-            // Log to SD card if both sensors have data
+            // =====================================================================
+            // NEAR-MISS DETECTION PIPELINE (NEW)
+            // =====================================================================
+            bool near_miss_detected = false;
+            feature_vector_t features = {0};
+            
+            if (data_processor != NULL && tof_count > 0 && imu_count > 0) {
+                // Step 1: Synchronize sensor data (align ToF and IMU timestamps)
+                synced_data_t synced_data = {0};
+                bool sync_success = data_processor_synchronize_data(data_processor, &tof_data, &imu_data, &synced_data);
+                
+                if (sync_success) {
+                    // Step 2: Extract features (raw + derived)
+                    data_processor_extract_features(data_processor, &synced_data, &features);
+                    
+                    // Step 3: Detect near-miss conditions
+                    near_miss_detected = data_processor_detect_near_miss(data_processor, &features);
+                    
+                    // Step 4: Handle near-miss event
+                    if (near_miss_detected) {
+                        if (!near_miss_active) {
+                            // New near-miss event started
+                            near_miss_active = true;
+                            near_miss_start_time = current_time;
+                            near_miss_event_count++;
+                            
+                            ESP_LOGW(TAG, "");
+                            ESP_LOGW(TAG, "╔════════════════════════════════════════════════╗");
+                            ESP_LOGW(TAG, "║  ⚠️  NEAR-MISS EVENT DETECTED #%lu              ║", near_miss_event_count);
+                            ESP_LOGW(TAG, "╠════════════════════════════════════════════════╣");
+                            ESP_LOGW(TAG, "║  Timestamp: %lu ms                            ║", current_time);
+                            ESP_LOGW(TAG, "║  Min Distance: %u mm (%.2f m)                 ║", 
+                                     features.min_distance_mm, features.min_distance_mm / 1000.0f);
+                            ESP_LOGW(TAG, "║  Approach Rate: %.1f mm/s (%.2f m/s)          ║", 
+                                     features.approach_rate_mm_s, features.approach_rate_mm_s / 1000.0f);
+                            ESP_LOGW(TAG, "║  Jerk Magnitude: %.2f m/s³                    ║", 
+                                     features.jerk_magnitude_m_s3);
+                            ESP_LOGW(TAG, "║  Angular Velocity: %.1f deg/s                 ║", 
+                                     features.angular_velocity_deg_s);
+                            ESP_LOGW(TAG, "╚════════════════════════════════════════════════╝");
+                            ESP_LOGW(TAG, "");
+                            
+                            // Set automatic flag for this event
+                            features.flag_auto = true;
+                        }
+                    } else {
+                        // Clear near-miss state after 2 seconds of no detection
+                        if (near_miss_active && (current_time - near_miss_start_time) > 2000) {
+                            near_miss_active = false;
+                            ESP_LOGI(TAG, "✓ Near-miss event cleared (Duration: %.1f seconds)", 
+                                     (current_time - near_miss_start_time) / 1000.0f);
+                        }
+                    }
+                    
+                    // Debug feature extraction every 300 frames (5 seconds at 60Hz)
+                    static uint32_t debug_feature_count = 0;
+                    debug_feature_count++;
+                    if (debug_feature_count % 300 == 0) {
+                        ESP_LOGI(TAG, "📊 Features: min_dist=%u mm, approach=%.1f mm/s, jerk=%.2f m/s³, ang_vel=%.1f deg/s",
+                                 features.min_distance_mm, features.approach_rate_mm_s, 
+                                 features.jerk_magnitude_m_s3, features.angular_velocity_deg_s);
+                    }
+                }
+            }
+            
+            // Update LED with near-miss detection state
+            uint16_t min_dist = get_min_distance(&tof_data);
+            if (led_strip != NULL) {
+                update_led(min_dist, usb_msc_active, near_miss_active);
+            }
+            
+            // =====================================================================
+            // DATA LOGGING WITH ENHANCED FEATURES
+            // =====================================================================
             if (storage_manager_is_logging() && tof_count > 0 && imu_count > 0) {
                 log_entry_t log_entry = {
                     .timestamp_ms = current_time,
@@ -411,6 +582,10 @@ void app_main(void)
                 log_entry.gyro_y = imu_data.gyro_y;
                 log_entry.gyro_z = imu_data.gyro_z;
                 
+                // Note: Derived features (min_distance, approach_rate, jerk, angular_velocity)
+                // are calculated but not yet added to log_entry_t structure
+                // This will be added in a future update to storage_manager
+                
                 // Write to buffer (non-blocking)
                 esp_err_t log_err = storage_manager_write(&log_entry);
                 
@@ -420,8 +595,9 @@ void app_main(void)
                 if (debug_log_count % 300 == 0) {
                     storage_stats_t stats;
                     storage_manager_get_stats(&stats);
-                    ESP_LOGI(TAG, "📊 Logging: %lu entries, %.1f%% buffer, %lu bytes", 
-                             stats.entries_logged, stats.buffer_fill_percent, stats.current_file_size);
+                    ESP_LOGI(TAG, "📊 Logging: %lu entries, %.1f%% buffer, %lu bytes, near-miss events: %lu", 
+                             stats.entries_logged, stats.buffer_fill_percent, 
+                             stats.current_file_size, near_miss_event_count);
                     
                     if (log_err != ESP_OK) {
                         ESP_LOGW(TAG, "⚠️  Log write failed: %s", esp_err_to_name(log_err));
@@ -441,6 +617,17 @@ void app_main(void)
             if (tof_count > 0 || imu_count > 0) {
                 uint16_t min_dist = get_min_distance(&tof_data);
                 display_manager_update(&tof_data, &imu_data, min_dist);
+                
+                // Update OLED display at configured refresh rate (60 FPS by default)
+                if (config.oled_enabled) {
+                    static uint32_t last_oled_update = 0;
+                    uint32_t oled_interval_ms = 1000 / config.oled_refresh_hz;
+                    
+                    if ((current_time - last_oled_update) >= oled_interval_ms) {
+                        oled_display_update(&tof_data, &imu_data, min_dist);
+                        last_oled_update = current_time;
+                    }
+                }
             }
             
             // Check button status (simplified - no display spam)
@@ -459,7 +646,7 @@ void app_main(void)
         } else {
             // USB MSC mode - show blue LED and minimal processing
             if (led_strip != NULL) {
-                update_led(0, true);  // Force blue LED
+                update_led(0, true, false);  // Force blue LED (no near-miss in USB mode)
             }
             
             // Longer delay in USB mode to reduce CPU usage

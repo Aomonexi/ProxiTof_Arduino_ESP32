@@ -4,9 +4,26 @@
 
 Successfully implemented USB Mass Storage Class (MSC) functionality using ESP-IDF's TinyUSB v2.0 API. The system now provides direct SD card access via USB while maintaining safe switching between data logging and USB modes.
 
+## File Structure
+
+The USB MSC implementation consists of only the essential files:
+
+```
+components/usb_flash_partition/
+├── usb_msc_sdcard.c          # Main USB MSC implementation using ESP-IDF TinyUSB
+├── usb_flash_partition.h     # Public API header
+└── CMakeLists.txt           # Build configuration
+```
+
+### Removed Files (Cleanup)
+- ❌ `usb_host_msc.c` - USB Host MSC (not needed - we use Device MSC)
+- ❌ `usb_sd_direct.c` - Old direct SD implementation
+- ❌ `usb_flash_partition.c` - Old flash partition implementation  
+- ❌ `usb_stub.c` - Temporary stub implementation
+
 ## Implementation Details
 
-### Architecture
+### Clean Architecture
 - **RIGHT Port**: USB Serial JTAG (programming, monitoring, time sync, commands)
 - **LEFT Port**: Native USB-OTG (direct SD card access as USB flash drive)
 - **Safe Switching**: Automatic pause/resume of data logging during USB access

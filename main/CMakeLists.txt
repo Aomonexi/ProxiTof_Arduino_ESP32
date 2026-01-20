@@ -12,6 +12,7 @@ idf_component_register(
         usb_interface
         usb_flash_partition
         display_manager
+        oled_display
         led_strip
         driver
 )

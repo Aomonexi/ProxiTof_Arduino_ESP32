@@ -14,6 +14,7 @@
 | **BNO08x IMU** | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | ✅ Ready | 9-DOF @ 100Hz |
 | **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Ready | **Conflict-free pins** |
 | **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Ready | Battery-backed time |
+| **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21 | ✅ Ready | 128x64 @ 60Hz (4-wire, no CS) |
 | **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Ready | Manual event flagging |
 | **WS2812 LED** | GPIO | GPIO 48 | ✅ Built-in | Status indicator |
 
@@ -52,6 +53,13 @@ DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
                     ║              GPIO 16 (D1)  ───── ║
                     ║              GPIO 17 (D2)  ───── ║
                     ║              GPIO 18 (D3)  ───── ║
+                    ║                                  ║
+                    ║              OLED Display (SPI)  ║
+                    ║              ----------------    ║
+                    ║  GPIO 7  (SCK)  ──────────────── ║
+                    ║  GPIO 1  (MOSI) ──────────────── ║
+                    ║  GPIO 35 (DC)   ──────────────── ║
+                    ║  GPIO 21 (RST)  ──────────────── ║
                     ║                                  ║
                     ║  GPIO 3  ──────────────── Button ║
                     ║  GPIO 48 ──────────────── LED    ║ (Built-in)
@@ -297,14 +305,16 @@ idf.py build flash monitor
 
 ## 📊 GPIO Pin Usage Summary
 
-### Used Pins (17 total)
+### Used Pins (21 total)
 | GPIO | Function | Component |
 |------|----------|-----------|
+| 1 | SPI MOSI | OLED Display |
 | 2 | SDMMC D0 | SD Card |
 | 3 | Button Input | Flag Button |
 | 4 | ToF LPN | VL53L8CX |
 | 5 | IMU INT | BNO08x |
 | 6 | IMU RST | BNO08x |
+| 7 | SPI SCK | OLED Display |
 | 8 | I2C SDA | VL53L8CX + DS3231 |
 | 9 | I2C SCL | VL53L8CX + DS3231 |
 | 10 | SPI CS | BNO08x |
@@ -316,11 +326,13 @@ idf.py build flash monitor
 | 16 | SDMMC D1 | SD Card |
 | 17 | SDMMC D2 | SD Card |
 | 18 | SDMMC D3 | SD Card |
+| 21 | RST | OLED Display |
+| 35 | DC | OLED Display |
 | 48 | LED Data | WS2812 |
 
-### Available for Future Expansion (20+ pins)
-- GPIO 1, 7, 19-21, 35-37, 44-47
-- Perfect for: OLED display, GNSS module, additional sensors
+### Available for Future Expansion (16+ pins)
+- GPIO 19-20, 36-37, 44-47
+- Perfect for: GNSS module, additional sensors, external buttons
 
 ---
 
@@ -450,6 +462,28 @@ GND            --> GND
 - Built-in WS2812 RGB LED on ESP32-S3-DevKitC-1
 - Controlled via RMT driver
 - No external components needed
+
+### 6. OLED Display (SSD1306 128x64 SPI)
+
+```
+ESP32-S3          OLED SSD1306
+--------          ------------
+GPIO 7  (SCK)  --> SCK (Clock)
+GPIO 1  (MOSI) --> MOSI (Data)
+GPIO 35 (DC)   --> DC (Data/Command)
+GPIO 21 (RST)  --> RES (Reset)
+3.3V           --> VCC
+GND            --> GND
+```
+
+**Notes:**
+- 0.96" OLED display (128x64 pixels, dual-color: yellow + blue)
+- **4-wire SPI mode** (NO CS pin - this is normal!)
+- SPI interface for high-speed updates (60 FPS capable)
+- Separate SPI bus from IMU (different pins)
+- Real-time sensor visualization
+- 4 display modes: Dashboard, ToF Focus, IMU Focus, Status
+- **Dual-color zones**: Top 16 pixels = YELLOW (alerts), Bottom 48 pixels = BLUE (data)
 
 ## Complete System Diagram
 

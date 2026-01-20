@@ -21,9 +21,9 @@ extern "C" {
 // Configuration Constants
 // =============================================================================
 
-#define STORAGE_BUFFER_SIZE 120         // 2 seconds at 60Hz
+#define STORAGE_BUFFER_SIZE 500         // Larger buffer: ~8 seconds at 60Hz
 #define STORAGE_MAX_FILE_SIZE (100 * 1024 * 1024)  // 100MB
-#define STORAGE_FLUSH_THRESHOLD 80      // Flush at 80% capacity
+#define STORAGE_FLUSH_THRESHOLD 70      // Flush at 70% capacity (350 entries)
 
 // =============================================================================
 // Data Structures

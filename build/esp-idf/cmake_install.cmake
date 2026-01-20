@@ -639,6 +639,21 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
+  include("F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/k0i05__esp_type_utils/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/k0i05__esp_ssd1306/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
   include("F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/cmake_install.cmake")
 endif()
 

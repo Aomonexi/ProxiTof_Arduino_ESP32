@@ -28,6 +28,12 @@ void config_load_defaults(system_config_t *config) {
     config->wifi_enabled = true;
     config->ds3231_enabled = true;
     config->display_compact_mode = false;
+    // OLED Display defaults
+    config->oled_enabled = true;
+    config->oled_refresh_hz = 60;  // 60 FPS for smooth display
+    config->oled_brightness = 128;  // Medium brightness (0-255)
+    config->oled_mode = 0;  // Dashboard mode
+    config->oled_flip = false;
 }
 
 bool config_file_exists(void) {
@@ -107,6 +113,31 @@ esp_err_t config_load_from_sd(system_config_t *config) {
             }
         } else if (strcmp(key, "DISPLAY_COMPACT_MODE") == 0) {
             config->display_compact_mode = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+        } else if (strcmp(key, "OLED_ENABLED") == 0) {
+            config->oled_enabled = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+        } else if (strcmp(key, "OLED_REFRESH_HZ") == 0) {
+            int hz = atoi(value);
+            if (hz >= 1 && hz <= 60) {
+                config->oled_refresh_hz = hz;
+            } else {
+                ESP_LOGW(TAG, "Invalid OLED refresh rate: %d (using default)", hz);
+            }
+        } else if (strcmp(key, "OLED_BRIGHTNESS") == 0) {
+            int brightness = atoi(value);
+            if (brightness >= 0 && brightness <= 255) {
+                config->oled_brightness = brightness;
+            } else {
+                ESP_LOGW(TAG, "Invalid OLED brightness: %d (using default)", brightness);
+            }
+        } else if (strcmp(key, "OLED_MODE") == 0) {
+            int mode = atoi(value);
+            if (mode >= 0 && mode <= 3) {
+                config->oled_mode = mode;
+            } else {
+                ESP_LOGW(TAG, "Invalid OLED mode: %d (using default)", mode);
+            }
+        } else if (strcmp(key, "OLED_FLIP") == 0) {
+            config->oled_flip = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
         } else {
             ESP_LOGW(TAG, "Unknown config key: %s", key);
         }
@@ -153,9 +184,17 @@ esp_err_t config_save_to_sd(const system_config_t *config) {
     fprintf(file, "DS3231_SCL_PIN=%d\n", config->ds3231_scl_pin);
     fprintf(file, "\n");
     
-    fprintf(file, "# Display Configuration\n");
+    fprintf(file, "# Console Display Configuration\n");
     fprintf(file, "DISPLAY_REFRESH_HZ=%d\n", config->display_refresh_hz);
     fprintf(file, "DISPLAY_COMPACT_MODE=%s\n", config->display_compact_mode ? "true" : "false");
+    fprintf(file, "\n");
+    
+    fprintf(file, "# OLED Display Configuration (0.96\" SSD1306 SPI)\n");
+    fprintf(file, "OLED_ENABLED=%s\n", config->oled_enabled ? "true" : "false");
+    fprintf(file, "OLED_REFRESH_HZ=%d  # 1-60 Hz (60 recommended for smooth display)\n", config->oled_refresh_hz);
+    fprintf(file, "OLED_BRIGHTNESS=%d  # 0-255 (128 = medium)\n", config->oled_brightness);
+    fprintf(file, "OLED_MODE=%d  # 0=Dashboard, 1=ToF Focus, 2=IMU Focus, 3=Status\n", config->oled_mode);
+    fprintf(file, "OLED_FLIP=%s  # Rotate display 180 degrees\n", config->oled_flip ? "true" : "false");
     fprintf(file, "\n");
     
     fprintf(file, "# Common Timezone Examples:\n");
@@ -187,7 +226,13 @@ void config_print(const system_config_t *config) {
     }
     ESP_LOGI(TAG, "  Timezone: %s", config->timezone);
     ESP_LOGI(TAG, "  Sync Interval: %d hours", config->sync_interval_hours);
-    ESP_LOGI(TAG, "  Display: %d Hz, %s mode", 
+    ESP_LOGI(TAG, "  Console Display: %d Hz, %s mode", 
              config->display_refresh_hz, 
              config->display_compact_mode ? "compact" : "full");
+    ESP_LOGI(TAG, "  OLED Display: %s", config->oled_enabled ? "Enabled" : "Disabled");
+    if (config->oled_enabled) {
+        ESP_LOGI(TAG, "    Refresh: %d Hz", config->oled_refresh_hz);
+        ESP_LOGI(TAG, "    Brightness: %d/255", config->oled_brightness);
+        ESP_LOGI(TAG, "    Mode: %d", config->oled_mode);
+    }
 }

@@ -99,9 +99,9 @@ static uint32_t last_flush_time = 0;
 static uint32_t last_sync_time = 0;
 static bool usb_msc_transition_pending = false;
 
-#define EMERGENCY_FLUSH_INTERVAL_MS 5000   // Force flush every 5 seconds
-#define FILE_SYNC_INTERVAL_MS 10000        // Sync file to disk every 10 seconds
-#define BUFFER_EMERGENCY_THRESHOLD 80      // Emergency flush at 80% buffer full
+#define EMERGENCY_FLUSH_INTERVAL_MS 10000  // Force flush every 10 seconds (was 5)
+#define FILE_SYNC_INTERVAL_MS 30000        // Sync file to disk every 30 seconds (was 10)
+#define BUFFER_EMERGENCY_THRESHOLD 85      // Emergency flush at 85% buffer full (was 80)
 
 /**
  * Emergency flush - force write all buffered data immediately
@@ -633,21 +633,8 @@ esp_err_t storage_manager_flush(void) {
     }
     
     if (flushed > 0) {
-        // Force immediate write to disk
+        // Just flush to OS buffer - much faster than close/reopen
         fflush(log_file);
-        
-        // Force file close and reopen to ensure data is written to SD card
-        // This is aggressive but ensures data persistence
-        FILE *temp_file = log_file;
-        log_file = NULL;
-        fclose(temp_file);
-        
-        // Reopen file in append mode
-        log_file = fopen(current_filename, "a");
-        if (log_file == NULL) {
-            ESP_LOGE(TAG, "❌ Failed to reopen log file after flush");
-            return ESP_FAIL;
-        }
         
         stats.flush_count++;
         
@@ -655,32 +642,17 @@ esp_err_t storage_manager_flush(void) {
         current_file_size = ftell(log_file);
         stats.current_file_size = current_file_size;
         
-        ESP_LOGI(TAG, "✓ Flushed %lu entries to disk (%lu bytes) - file closed/reopened", flushed, current_file_size);
+        // Only log every 10th flush to reduce console spam
+        if (stats.flush_count % 10 == 0) {
+            ESP_LOGI(TAG, "✓ Flushed %lu entries (%lu total, %lu bytes)", 
+                     flushed, stats.entries_logged, current_file_size);
+        }
         
         // Check if file rotation needed
         if (current_file_size >= STORAGE_MAX_FILE_SIZE) {
             ESP_LOGI(TAG, "File size limit reached, rotating...");
             fclose(log_file);
             create_log_file();
-        }
-        
-        // Check SD card health periodically
-        static uint32_t last_health_check = 0;
-        uint32_t now_ms = esp_timer_get_time() / 1000;
-        if (now_ms - last_health_check > 30000) {  // Every 30 seconds
-            last_health_check = now_ms;
-            
-            // Try to create a test file to verify SD card is still working
-            FILE *test_file = fopen("/sdcard/.health_check", "w");
-            if (test_file) {
-                fprintf(test_file, "ok");
-                fclose(test_file);
-                remove("/sdcard/.health_check");
-            } else {
-                ESP_LOGW(TAG, "⚠️  SD card health check failed - card may be removed");
-                ESP_LOGW(TAG, "💡 Data logging will resume when SD card is reinserted");
-                // Note: System continues running, just stops logging
-            }
         }
     }
     

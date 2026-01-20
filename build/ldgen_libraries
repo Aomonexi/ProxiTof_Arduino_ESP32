@@ -170,12 +170,12 @@ F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/bu
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/libstorage_manager.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/fatfs/libfatfs.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/libdata_processor.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sensor_manager/libsensor_manager.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rtc_ds3231/librtc_ds3231.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/time_sync/libtime_sync.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/libsmart_time.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rtc_ds3231/librtc_ds3231.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/time_sync/libtime_sync.a
-F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sensor_manager/libsensor_manager.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/libconfig_manager.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/libespressif__tinyusb.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp_tinyusb/libespressif__esp_tinyusb.a
@@ -190,6 +190,12 @@ F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/bu
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/libconfig_manager.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_flash_partition/libusb_flash_partition.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/display_manager/libdisplay_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/k0i05__esp_type_utils/libk0i05__esp_type_utils.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/k0i05__esp_ssd1306/libk0i05__esp_ssd1306.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/k0i05__esp_type_utils/libk0i05__esp_type_utils.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/liboled_display.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/k0i05__esp_ssd1306/libk0i05__esp_ssd1306.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/libmain.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/libdata_processor.a
 F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_interface/libusb_interface.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/liboled_display.a
