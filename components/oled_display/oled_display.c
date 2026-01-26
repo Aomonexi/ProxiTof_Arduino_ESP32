@@ -12,6 +12,7 @@
 #include "driver/gpio.h"
 #include "smart_time.h"
 #include "storage_manager.h"
+#include "gps.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -49,6 +50,52 @@ static oled_config_t current_config = {
     .flip_display = false,
     .mode = OLED_MODE_DASHBOARD
 };
+
+// State for jerk calculation (need previous acceleration)
+static float prev_accel_x = 0.0f;
+static float prev_accel_y = 0.0f;
+static float prev_accel_z = 0.0f;
+static uint32_t prev_accel_time = 0;
+static bool prev_accel_valid = false;
+
+// State for approach rate calculation (need previous distance)
+static uint16_t prev_min_distance = 0;
+static uint32_t prev_distance_time = 0;
+static bool prev_distance_valid = false;
+
+// Near-miss detection state (improved with time-based logic)
+typedef struct {
+    bool rapid_approach_active;
+    uint32_t rapid_approach_start_time;
+    uint16_t min_distance_during_approach;
+    uint32_t high_jerk_time;
+    bool high_jerk_detected;
+    float max_jerk_during_approach;
+} near_miss_state_t;
+
+static near_miss_state_t nm_state = {0};
+static bool near_miss_active = false;
+static char near_miss_reasons[4][32] = {"", "", "", ""};
+static int near_miss_reason_count = 0;
+
+// Jerk noise filtering (moving average)
+#define JERK_HISTORY_SIZE 5
+static float jerk_history[JERK_HISTORY_SIZE] = {0};
+static int jerk_history_index = 0;
+
+/**
+ * Calculate moving average for jerk (noise filtering)
+ */
+static float calculate_jerk_moving_average(float new_jerk) {
+    jerk_history[jerk_history_index] = new_jerk;
+    jerk_history_index = (jerk_history_index + 1) % JERK_HISTORY_SIZE;
+    
+    float sum = 0.0f;
+    for (int i = 0; i < JERK_HISTORY_SIZE; i++) {
+        sum += jerk_history[i];
+    }
+    return sum / JERK_HISTORY_SIZE;
+}
 
 /**
  * Clear frame buffer (internal buffer only, doesn't update display)
@@ -96,6 +143,11 @@ static void fb_write_text(int page, const char *text, bool invert) {
  */
 static void fb_draw_bar(int page, int x, int width, uint16_t distance, uint16_t max_distance) {
     if (page < 0 || page >= 8) return;
+    
+    // Handle invalid ToF readings (sensor returns 8191 for out-of-range)
+    if (distance > 4000) {
+        distance = max_distance;  // Treat as max distance (empty bar)
+    }
     
     // Calculate fill level (closer = fuller bar)
     float fill_percent = 1.0f - ((float)distance / (float)max_distance);
@@ -221,6 +273,146 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
         return ESP_ERR_INVALID_STATE;
     }
     
+    // Calculate derived metrics
+    float jerk_magnitude = 0.0f;
+    float jerk_filtered = 0.0f;
+    float approach_rate = 0.0f;
+    float angular_velocity = 0.0f;
+    
+    // Calculate jerk (derivative of acceleration)
+    if (prev_accel_valid && imu_data->valid) {
+        uint32_t delta_time = imu_data->timestamp_ms - prev_accel_time;
+        if (delta_time > 0) {
+            float delta_ax = imu_data->accel_x - prev_accel_x;
+            float delta_ay = imu_data->accel_y - prev_accel_y;
+            float delta_az = imu_data->accel_z - prev_accel_z;
+            float delta_t_sec = delta_time / 1000.0f;
+            
+            float jerk_x = delta_ax / delta_t_sec;
+            float jerk_y = delta_ay / delta_t_sec;
+            float jerk_z = delta_az / delta_t_sec;
+            
+            jerk_magnitude = sqrtf(jerk_x * jerk_x + jerk_y * jerk_y + jerk_z * jerk_z);
+            
+            // Apply moving average filter to reduce noise
+            jerk_filtered = calculate_jerk_moving_average(jerk_magnitude);
+        }
+    }
+    
+    // Update previous acceleration
+    if (imu_data->valid) {
+        prev_accel_x = imu_data->accel_x;
+        prev_accel_y = imu_data->accel_y;
+        prev_accel_z = imu_data->accel_z;
+        prev_accel_time = imu_data->timestamp_ms;
+        prev_accel_valid = true;
+    }
+    
+    // Calculate approach rate (negative = approaching)
+    if (prev_distance_valid && tof_data->valid) {
+        uint32_t delta_time = tof_data->timestamp_ms - prev_distance_time;
+        if (delta_time > 0) {
+            float delta_dist = (float)min_distance - (float)prev_min_distance;
+            float delta_t_sec = delta_time / 1000.0f;
+            approach_rate = delta_dist / delta_t_sec;  // mm/s (negative = approaching)
+        }
+    }
+    
+    // Update previous distance
+    if (tof_data->valid) {
+        prev_min_distance = min_distance;
+        prev_distance_time = tof_data->timestamp_ms;
+        prev_distance_valid = true;
+    }
+    
+    // Calculate angular velocity magnitude
+    if (imu_data->valid) {
+        angular_velocity = sqrtf(imu_data->gyro_x * imu_data->gyro_x +
+                                imu_data->gyro_y * imu_data->gyro_y +
+                                imu_data->gyro_z * imu_data->gyro_z);
+    }
+    
+    // Improved near-miss detection with time-based state machine
+    uint32_t now = tof_data->timestamp_ms;
+    near_miss_reason_count = 0;
+    
+    // State 1: Detect rapid approach START
+    if (approach_rate < -800.0f && !nm_state.rapid_approach_active) {
+        nm_state.rapid_approach_active = true;
+        nm_state.rapid_approach_start_time = now;
+        nm_state.min_distance_during_approach = min_distance;
+        nm_state.high_jerk_detected = false;
+        nm_state.max_jerk_during_approach = 0.0f;
+    }
+    
+    // State 2: Track minimum distance and jerk during approach
+    if (nm_state.rapid_approach_active) {
+        // Update minimum distance
+        if (min_distance < nm_state.min_distance_during_approach) {
+            nm_state.min_distance_during_approach = min_distance;
+        }
+        
+        // Detect high jerk during approach (filtered to reduce false positives)
+        if (jerk_filtered > 50.0f) {
+            nm_state.high_jerk_detected = true;
+            nm_state.high_jerk_time = now;
+            if (jerk_filtered > nm_state.max_jerk_during_approach) {
+                nm_state.max_jerk_during_approach = jerk_filtered;
+            }
+        }
+        
+        // Check approach duration
+        uint32_t approach_duration = now - nm_state.rapid_approach_start_time;
+        
+        // State 3: Evaluate near-miss conditions
+        near_miss_active = false;
+        
+        // Condition 1: Critical proximity reached during approach
+        if (nm_state.min_distance_during_approach < 200) {
+            snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
+                    "CRITICAL: %dmm", nm_state.min_distance_during_approach);
+            near_miss_active = true;
+        }
+        
+        // Condition 2: Rapid approach sustained (0.5-5 seconds)
+        if (approach_duration > 500 && approach_duration < 5000 && 
+            approach_rate < -800.0f) {
+            snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
+                    "RAPID: %.0fmm/s", -approach_rate);
+            near_miss_active = true;
+        }
+        
+        // Condition 3: High jerk during approach (sudden stop/dodge)
+        if (nm_state.high_jerk_detected) {
+            uint32_t time_since_jerk = now - nm_state.high_jerk_time;
+            if (time_since_jerk < 2000) {  // Within 2 seconds
+                snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
+                        "JERK: %.1fm/s3", nm_state.max_jerk_during_approach);
+                near_miss_active = true;
+            }
+        }
+        
+        // Condition 4: High rotation during approach (evasive maneuver)
+        if (angular_velocity > 300.0f) {
+            snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
+                    "SPIN: %.0fdeg/s", angular_velocity);
+            near_miss_active = true;
+        }
+        
+        // State 4: Reset if approach ended (slowed down or moving away)
+        if (approach_rate > -100.0f || approach_duration > 5000) {
+            nm_state.rapid_approach_active = false;
+        }
+    }
+    
+    // Standalone critical proximity check (even without approach)
+    if (!nm_state.rapid_approach_active && min_distance < 150) {
+        near_miss_active = true;
+        near_miss_reason_count = 0;
+        snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
+                "CRITICAL: %dmm", min_distance);
+    }
+    
     // Clear frame buffer (not the display - eliminates flicker!)
     clear_frame_buffer();
     
@@ -240,17 +432,34 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                 storage_manager_get_stats(&storage_stats);
                 const char *log_status = storage_stats.logging_active ? "LOG" : "---";
                 
-                // Get GPS status (simplified - you can expand this)
-                const char *gps_status = "GPS";  // TODO: Add actual GPS fix status
+                // Get GPS status
+                gps_data_t gps_data;
+                const char *gps_status = "GPS";
+                if (gps_read(&gps_data) == ESP_OK && gps_data.valid) {
+                    if (gps_data.satellites_used >= 4) {
+                        gps_status = "3D";  // 3D fix
+                    } else if (gps_data.satellites_used >= 3) {
+                        gps_status = "2D";  // 2D fix
+                    } else {
+                        gps_status = "FIX";  // Some fix
+                    }
+                } else {
+                    gps_status = "---";  // No fix
+                }
                 
                 // Line 1: Time + Logging + GPS
                 char status_line1[32];
                 snprintf(status_line1, sizeof(status_line1), "%s %s %s", time_str, log_status, gps_status);
                 fb_write_text(0, status_line1, false);
                 
-                // Line 2: Min distance
+                // Line 2: Min distance + approach rate
                 char status_line2[32];
-                snprintf(status_line2, sizeof(status_line2), "Min:%dmm", min_distance);
+                if (fabsf(approach_rate) > 1.0f) {
+                    snprintf(status_line2, sizeof(status_line2), "%dmm %+.0fmm/s", 
+                            min_distance, approach_rate);
+                } else {
+                    snprintf(status_line2, sizeof(status_line2), "%dmm", min_distance);
+                }
                 fb_write_text(1, status_line2, false);
             }
             
@@ -273,8 +482,6 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                 }
             }
             
-            // Gaps between bars are automatically handled by the 32px spacing
-            
             // IMU summary at bottom (page 6-7)
             {
                 char imu_line1[32];
@@ -283,8 +490,11 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                 fb_write_text(6, imu_line1, false);
                 
                 char imu_line2[32];
-                snprintf(imu_line2, sizeof(imu_line2), "A%.2f %.2f %.2f",
-                         imu_data->accel_x, imu_data->accel_y, imu_data->accel_z);
+                snprintf(imu_line2, sizeof(imu_line2), "J%.1f A%.1fg",
+                         jerk_filtered,  // Use filtered jerk (less noisy)
+                         sqrtf(imu_data->accel_x * imu_data->accel_x +
+                               imu_data->accel_y * imu_data->accel_y +
+                               imu_data->accel_z * imu_data->accel_z) / 9.81f);
                 fb_write_text(7, imu_line2, false);
             }
             break;
@@ -295,16 +505,61 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                 char metrics[32];
                 snprintf(metrics, sizeof(metrics), "Min:%dmm", min_distance);
                 fb_write_text(0, metrics, false);
+                
+                // Line 2: Approach rate
+                char rate_line[32];
+                if (fabsf(approach_rate) > 1.0f) {
+                    snprintf(rate_line, sizeof(rate_line), "Rate:%+.0fmm/s", approach_rate);
+                } else {
+                    snprintf(rate_line, sizeof(rate_line), "Rate: ---");
+                }
+                fb_write_text(1, rate_line, false);
             }
             
             // Blue zone - Large ToF grid with numbers
-            fb_write_text(2, "ToF 4x4 Grid:", false);
+            // Smart formatting: show up to 4 digits, use "----" for invalid
+            fb_write_text(2, "ToF Grid (mm):", false);
             for (int row = 0; row < 4; row++) {
                 char line[32];
-                snprintf(line, sizeof(line), "%4d %4d %4d %4d",
-                         tof_data->distances[row*4+0], tof_data->distances[row*4+1],
-                         tof_data->distances[row*4+2], tof_data->distances[row*4+3]);
+                char val0[5], val1[5], val2[5], val3[5];
+                
+                // Get distances
+                uint16_t d0 = tof_data->distances[row*4+0];
+                uint16_t d1 = tof_data->distances[row*4+1];
+                uint16_t d2 = tof_data->distances[row*4+2];
+                uint16_t d3 = tof_data->distances[row*4+3];
+                
+                // Format each value: show "----" for invalid (>4000), otherwise show number
+                snprintf(val0, sizeof(val0), d0 > 4000 ? "----" : "%4d", d0);
+                snprintf(val1, sizeof(val1), d1 > 4000 ? "----" : "%4d", d1);
+                snprintf(val2, sizeof(val2), d2 > 4000 ? "----" : "%4d", d2);
+                snprintf(val3, sizeof(val3), d3 > 4000 ? "----" : "%4d", d3);
+                
+                // Combine: 4 chars × 4 values = 16 chars (perfect fit!)
+                snprintf(line, sizeof(line), "%s%s%s%s", val0, val1, val2, val3);
                 fb_write_text(3+row, line, false);
+            }
+            
+            // Page 7: Statistics
+            {
+                uint16_t max_dist = 0;
+                uint32_t sum = 0;
+                int valid_count = 0;
+                for (int i = 0; i < 16; i++) {
+                    uint16_t dist = tof_data->distances[i];
+                    if (dist <= 4000) {  // Only count valid readings
+                        if (dist > max_dist) {
+                            max_dist = dist;
+                        }
+                        sum += dist;
+                        valid_count++;
+                    }
+                }
+                uint16_t avg_dist = valid_count > 0 ? (sum / valid_count) : 0;
+                
+                char stats[32];
+                snprintf(stats, sizeof(stats), "Avg:%d Max:%d", avg_dist, max_dist);
+                fb_write_text(7, stats, false);
             }
             break;
             
@@ -312,25 +567,27 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             // Yellow zone - IMU status
             {
                 char status[32];
-                float jerk = sqrtf(imu_data->accel_x * imu_data->accel_x +
-                                   imu_data->accel_y * imu_data->accel_y +
-                                   imu_data->accel_z * imu_data->accel_z);
-                snprintf(status, sizeof(status), "IMU J:%.1fm/s3", jerk);
+                snprintf(status, sizeof(status), "IMU 100Hz");
                 fb_write_text(0, status, false);
+                
+                // Line 2: Jerk magnitude (filtered)
+                char jerk_line[32];
+                snprintf(jerk_line, sizeof(jerk_line), "Jerk:%.1fm/s3", jerk_filtered);
+                fb_write_text(1, jerk_line, false);
             }
             
             // Blue zone - Full IMU data
-            fb_write_text(2, "Orientation:", false);
+            fb_write_text(2, "Orient (deg):", false);
             {
                 char line[32];
-                snprintf(line, sizeof(line), " R:%+7.2f", imu_data->roll);
+                snprintf(line, sizeof(line), " R:%+7.1f", imu_data->roll);
                 fb_write_text(3, line, false);
-                snprintf(line, sizeof(line), " P:%+7.2f", imu_data->pitch);
+                snprintf(line, sizeof(line), " P:%+7.1f", imu_data->pitch);
                 fb_write_text(4, line, false);
-                snprintf(line, sizeof(line), " Y:%+7.2f", imu_data->yaw);
+                snprintf(line, sizeof(line), " Y:%+7.1f", imu_data->yaw);
                 fb_write_text(5, line, false);
                 
-                fb_write_text(6, "Accel:", false);
+                fb_write_text(6, "Accel (m/s2):", false);
                 snprintf(line, sizeof(line), "%.2f %.2f %.2f",
                          imu_data->accel_x, imu_data->accel_y, imu_data->accel_z);
                 fb_write_text(7, line, false);
@@ -341,15 +598,102 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             // Yellow zone - System info
             fb_write_text(0, "ProxiTof v1.0", false);
             
-            // Blue zone - Component status
-            fb_write_text(2, "ToF: OK  60Hz", false);
-            fb_write_text(3, "IMU: OK 100Hz", false);
-            fb_write_text(4, "SD:  OK", false);
-            fb_write_text(5, "GPS: SEARCHING", false);
+            // Line 2: Uptime
             {
+                uint32_t uptime_sec = sensor_manager_get_timestamp() / 1000;
+                uint32_t hours = uptime_sec / 3600;
+                uint32_t minutes = (uptime_sec % 3600) / 60;
+                char uptime[32];
+                snprintf(uptime, sizeof(uptime), "Up:%02luh%02lum", 
+                        (unsigned long)hours, (unsigned long)minutes);
+                fb_write_text(1, uptime, false);
+            }
+            
+            // Blue zone - Component status
+            {
+                // ToF status
+                sensor_health_t health;
+                sensor_manager_get_health(&health);
+                char tof_status[32];
+                snprintf(tof_status, sizeof(tof_status), "ToF:%s 60Hz", 
+                        health.tof_healthy ? "OK " : "ERR");
+                fb_write_text(2, tof_status, false);
+                
+                // IMU status
+                char imu_status[32];
+                snprintf(imu_status, sizeof(imu_status), "IMU:%s 100Hz", 
+                        health.imu_healthy ? "OK " : "ERR");
+                fb_write_text(3, imu_status, false);
+                
+                // SD card status
+                storage_stats_t storage_stats;
+                storage_manager_get_stats(&storage_stats);
+                char sd_status[32];
+                snprintf(sd_status, sizeof(sd_status), "SD: %s %luKB", 
+                        storage_stats.logging_active ? "LOG" : "OK ",
+                        (unsigned long)(storage_stats.current_file_size / 1024));
+                fb_write_text(4, sd_status, false);
+                
+                // GPS status
+                gps_data_t gps_data;
+                char gps_status[32];
+                if (gps_read(&gps_data) == ESP_OK && gps_data.valid) {
+                    snprintf(gps_status, sizeof(gps_status), "GPS:FIX SAT:%d", 
+                            gps_data.satellites_used);
+                } else {
+                    snprintf(gps_status, sizeof(gps_status), "GPS:SEARCH");
+                }
+                fb_write_text(5, gps_status, false);
+                
+                // RTC status (check if time is valid)
+                struct tm timeinfo;
+                char rtc_status[32];
+                if (smart_time_get(&timeinfo) == ESP_OK && timeinfo.tm_year > (2024 - 1900)) {
+                    snprintf(rtc_status, sizeof(rtc_status), "RTC:SYNC");
+                } else {
+                    snprintf(rtc_status, sizeof(rtc_status), "RTC:NOSYNC");
+                }
+                fb_write_text(6, rtc_status, false);
+                
+                // Min distance
                 char line[32];
-                snprintf(line, sizeof(line), "Min: %dmm", min_distance);
+                snprintf(line, sizeof(line), "Min:%dmm", min_distance);
                 fb_write_text(7, line, false);
+            }
+            break;
+            
+        case OLED_MODE_NEAR_MISS:
+            // Yellow zone - ALERT!
+            fb_write_text(0, "!NEAR MISS ALERT!", true);  // Inverted for attention
+            
+            // Line 2: Timestamp
+            {
+                struct tm timeinfo;
+                char time_str[32] = "??:??:??";
+                if (smart_time_get(&timeinfo) == ESP_OK) {
+                    strftime(time_str, sizeof(time_str), "%H:%M:%S", &timeinfo);
+                }
+                fb_write_text(1, time_str, false);
+            }
+            
+            // Blue zone - Reasons
+            if (near_miss_active && near_miss_reason_count > 0) {
+                fb_write_text(2, "Reasons:", false);
+                for (int i = 0; i < near_miss_reason_count && i < 4; i++) {
+                    fb_write_text(3 + i, near_miss_reasons[i], false);
+                }
+                
+                // Fill remaining lines
+                for (int i = 3 + near_miss_reason_count; i < 8; i++) {
+                    fb_write_text(i, "", false);
+                }
+            } else {
+                fb_write_text(2, "No active alert", false);
+                fb_write_text(3, "", false);
+                fb_write_text(4, "Press button to", false);
+                fb_write_text(5, "return to", false);
+                fb_write_text(6, "Dashboard", false);
+                fb_write_text(7, "", false);
             }
             break;
             
@@ -374,7 +718,7 @@ esp_err_t oled_display_set_mode(oled_display_mode_t mode) {
     
     current_config.mode = mode;
     
-    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status"};
+    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss"};
     ESP_LOGI(TAG, "Display mode changed to: %s", mode_names[mode]);
     
     // Show mode change notification

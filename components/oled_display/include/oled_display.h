@@ -22,6 +22,7 @@ typedef enum {
     OLED_MODE_TOF_FOCUS,        // Large ToF grid
     OLED_MODE_IMU_FOCUS,        // Large IMU display
     OLED_MODE_STATUS,           // System status
+    OLED_MODE_NEAR_MISS,        // Near-miss alert details
     OLED_MODE_MAX
 } oled_display_mode_t;
 

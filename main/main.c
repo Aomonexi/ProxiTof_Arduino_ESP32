@@ -95,7 +95,7 @@ static bool check_mode_button(void)
             oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
             oled_display_set_mode(next_mode);
             
-            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status"};
+            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss"};
             ESP_LOGI(TAG, "🔄 Display mode changed: %s → %s", 
                      mode_names[current_mode], mode_names[next_mode]);
             
