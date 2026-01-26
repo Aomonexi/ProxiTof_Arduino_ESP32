@@ -1,10 +1,10 @@
-# OLED Display - Current Layouts (UPDATED - All Issues Fixed!)
+# OLED Display - Current Modes & Layouts (Complete Reference)
 
 **Date**: January 26, 2026  
 **Display**: SSD1306 128x64 OLED (4-wire SPI)  
 **Refresh Rate**: 60 Hz with frame buffer (no flicker)  
-**Total Modes**: 5 (Dashboard, ToF Focus, IMU Focus, Status, Near Miss)  
-**Status**: ✅ All issues fixed and tested!
+**Total Modes**: 6 (Dashboard, ToF Focus, IMU Focus, Status, Near Miss, WiFi Settings)  
+**Status**: ✅ All modes implemented and working!
 
 ---
 
@@ -24,6 +24,17 @@
 
 ---
 
+## Mode Navigation
+
+**Button 1 (GPIO 20)**: Cycle through modes
+
+**Mode Order:**
+```
+Dashboard → ToF Focus → IMU Focus → Status → Near Miss → WiFi Settings → (back to Dashboard)
+```
+
+---
+
 ## Mode 0: Dashboard (Default)
 
 **Purpose**: Full system overview with ToF grid, IMU data, and status
@@ -34,7 +45,7 @@
 ┌────────────────────────────────────────────────────────┐
 │ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
 ├────────────────────────────────────────────────────────┤
-│ Page 0: HH:MM:SS LOG 3D                                │ ← Time, logging, GPS fix
+│ Page 0: HH:MM:SS LOG 3D FLAG                          │ ← Time, logging, GPS, FLAG
 │ Page 1: XXXmm +XXXmm/s                                 │ ← Distance + approach rate
 ├────────────────────────────────────────────────────────┤
 │ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
@@ -47,6 +58,14 @@
 │ Page 7: J12.3 A1.0g                                   │ ← Jerk + accel magnitude
 └────────────────────────────────────────────────────────┘
 ```
+
+### New Features
+
+**FLAG Indicator (Page 0):**
+- Shows "FLAG" when Button 2 (GPIO 3) is pressed
+- Visual confirmation of manual event flagging
+- Example: `12:34:56 LOG 3D FLAG` (when button held)
+- Example: `12:34:56 LOG 3D` (normal)
 
 ### Implementation Details
 
@@ -721,3 +740,253 @@ Page 7: (empty)
 **Last Updated**: January 26, 2026  
 **Status**: ✅ All issues fixed, ready for testing!  
 **File**: `components/oled_display/oled_display.c`
+
+
+---
+
+## Mode 5: WiFi Settings (NEW!)
+
+**Purpose**: WiFi control and time synchronization management
+
+### Layout Diagram
+
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall) - INVERTED    │
+├────────────────────────────────────────────────────────┤
+│ Page 0: WiFi Settings                                  │ ← Header (inverted)
+│ Page 1: Status: SYNCED                                 │ ← Sync status
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: Last: 2h ago                                   │ ← Last sync time
+│ Page 3: Syncs: 5                                       │ ← Sync count
+│ Page 4: Source: DS3231                                 │ ← Time source
+│ Page 5:                                                │ ← Empty
+│ Page 6: Press ACTION to                                │ ← Instructions
+│ Page 7: sync time (WiFi)                               │ ← Instructions
+└────────────────────────────────────────────────────────┘
+```
+
+### Page Details
+
+**Page 0 (Inverted Header):**
+- Text: "WiFi Settings"
+- Style: White text on black background (inverted)
+- Purpose: Clear mode identification
+
+**Page 1 (Sync Status):**
+- Format: `Status: SYNCED` or `Status: NOT SYNCED`
+- Shows if time has been synchronized
+- Updates after sync attempt
+
+**Page 2 (Last Sync Time):**
+- Format: `Last: <time> ago`
+- Examples:
+  - `Last: <1h ago` (less than 1 hour)
+  - `Last: 5h ago` (5 hours ago)
+  - `Last: 2d ago` (2 days ago)
+  - `Last: Never` (never synchronized)
+
+**Page 3 (Sync Count):**
+- Format: `Syncs: <count>`
+- Example: `Syncs: 5`
+- Counts successful syncs since boot
+
+**Page 4 (Time Source):**
+- Format: `Source: <source>`
+- Possible values:
+  - `Source: DS3231 RTC` (battery-backed RTC)
+  - `Source: Internal RTC` (ESP32 internal)
+  - `Source: NTP` (just synced from internet)
+  - `Source: None` (no valid time)
+
+**Pages 6-7 (Instructions):**
+- Line 1: `Press ACTION to`
+- Line 2: `sync time (WiFi)`
+- Tells user to press Button 2 (GPIO 3)
+
+### Button Actions
+
+**Button 1 (GPIO 20):**
+- Action: Cycle to next mode
+- Next mode: Dashboard
+
+**Button 2 (GPIO 3):**
+- Action: Trigger WiFi sync
+- LED: Blue during sync
+- Display: Shows "Connecting..." → "Sync SUCCESS!" or "Sync FAILED"
+- Duration: 5-10 seconds
+- Result: Updates DS3231 RTC and returns to WiFi Settings
+
+### Sync Process Display
+
+**During Sync:**
+```
+┌────────────────────────────────────────────────────────┐
+│ WiFi Settings                                          │ ← Inverted
+│                                                        │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│ Connecting...                                          │
+│ Please wait                                            │
+│                                                        │
+│                                                        │
+│                                                        │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+**After Success:**
+```
+┌────────────────────────────────────────────────────────┐
+│ WiFi Settings                                          │ ← Inverted
+│                                                        │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│ Sync SUCCESS!                                          │
+│ Time updated                                           │
+│                                                        │
+│                                                        │
+│                                                        │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+**After Failure:**
+```
+┌────────────────────────────────────────────────────────┐
+│ WiFi Settings                                          │ ← Inverted
+│                                                        │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│ Sync FAILED                                            │
+│ Check WiFi                                             │
+│                                                        │
+│                                                        │
+│                                                        │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+### Features
+
+1. ✅ **Visual sync status** - See if time is synced
+2. ✅ **Last sync time** - Know when last updated
+3. ✅ **Sync count** - Track sync history
+4. ✅ **Time source** - Know where time comes from
+5. ✅ **One-button sync** - Easy WiFi sync
+6. ✅ **Visual feedback** - Shows sync progress
+7. ✅ **Error handling** - Shows if sync fails
+
+### Use Cases
+
+**Use Case 1: Check Sync Status**
+- Navigate to WiFi Settings mode
+- Read sync status and last sync time
+- Verify time source is DS3231 RTC
+
+**Use Case 2: Manual Sync**
+- Navigate to WiFi Settings mode
+- Press Button 2 (GPIO 3)
+- Wait for "Sync SUCCESS!"
+- Time is now updated
+
+**Use Case 3: Troubleshooting**
+- Navigate to WiFi Settings mode
+- Check if "Status: NOT SYNCED"
+- Press Button 2 to attempt sync
+- If "Sync FAILED", check WiFi config
+
+---
+
+## Complete Mode Summary
+
+| Mode | Name | Purpose | Button 2 Action |
+|------|------|---------|----------------|
+| 0 | Dashboard | Full overview | Flag event (shows "FLAG") |
+| 1 | ToF Focus | Large distance grid | No action |
+| 2 | IMU Focus | Detailed IMU data | No action |
+| 3 | Status | System health | No action |
+| 4 | Near Miss | Alert details | Flag event |
+| 5 | WiFi Settings | Time sync control | Trigger WiFi sync |
+
+---
+
+## Button Behavior Summary
+
+### Button 1 (GPIO 20) - Mode Switch
+- **Always:** Cycles through modes
+- **Debounce:** 200ms
+- **LED:** No change
+
+### Button 2 (GPIO 3) - Action (Context-Aware)
+- **Dashboard mode:** Flag event → LED blue flash → Shows "FLAG"
+- **Near Miss mode:** Flag event → LED blue flash
+- **WiFi Settings mode:** WiFi sync → LED blue during sync
+- **Other modes:** No action
+- **Debounce:** Handled by sensor_manager
+
+---
+
+## Visual Indicators
+
+### LED Feedback (GPIO 48 - WS2812)
+
+**Button Press (Dashboard/Near Miss):**
+- Color: Blue
+- Duration: 100ms flash
+- Meaning: Event flagged
+
+**Button Held (Dashboard/Near Miss):**
+- Color: Blue (solid)
+- Duration: While held
+- Meaning: Flagging in progress
+
+**WiFi Sync (WiFi Settings):**
+- Color: Blue (solid)
+- Duration: During sync (5-10 seconds)
+- Meaning: Syncing time
+
+### Display Indicators
+
+**FLAG Indicator (Dashboard):**
+- Location: Page 0, right side
+- Shows: "FLAG" text
+- When: Button 2 pressed/held
+- Example: `12:34:56 LOG 3D FLAG`
+
+**Sync Status (WiFi Settings):**
+- Location: Page 1
+- Shows: "SYNCED" or "NOT SYNCED"
+- Updates: After sync attempt
+
+---
+
+## Testing Checklist
+
+### Dashboard Mode
+- [ ] FLAG indicator appears when Button 2 pressed
+- [ ] FLAG indicator disappears when Button 2 released
+- [ ] LED flashes blue on button press
+- [ ] LED stays blue while button held
+- [ ] Console shows "EVENT FLAGGED" message
+
+### WiFi Settings Mode
+- [ ] Display shows current sync status
+- [ ] Display shows last sync time
+- [ ] Display shows sync count
+- [ ] Display shows time source
+- [ ] Button 2 triggers sync
+- [ ] LED turns blue during sync
+- [ ] Display shows "Connecting..."
+- [ ] Display shows "Sync SUCCESS!" or "Sync FAILED"
+- [ ] Returns to WiFi Settings after 2 seconds
+- [ ] Sync count increments on success
+
+---
+
+**Document Version:** 3.0  
+**Last Updated:** January 26, 2026  
+**Status:** ✅ All 6 modes documented and implemented  
+**New Features:** FLAG indicator, WiFi Settings mode, LED feedback

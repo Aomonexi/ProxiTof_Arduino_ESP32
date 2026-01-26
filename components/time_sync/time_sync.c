@@ -58,6 +58,41 @@ static void time_sync_notification_cb(struct timeval *tv)
     s_time_synced = true;
 }
 
+/**
+ * Validate and auto-correct common timezone mistakes
+ */
+static const char* validate_timezone(const char* tz) {
+    if (!tz || strlen(tz) == 0) {
+        ESP_LOGW(TAG, "No timezone specified, using UTC");
+        return "UTC0";
+    }
+    
+    // Common mistakes - auto-correct with warning
+    if (strcmp(tz, "CST+8") == 0) {
+        ESP_LOGW(TAG, "⚠️  Timezone 'CST+8' is WRONG for UTC+8!");
+        ESP_LOGW(TAG, "    'CST+8' means 8 hours WEST of UTC (US Central)");
+        ESP_LOGW(TAG, "    Auto-correcting to 'CST-8' (8 hours EAST of UTC)");
+        return "CST-8";
+    }
+    if (strcmp(tz, "UTC+8") == 0) {
+        ESP_LOGW(TAG, "⚠️  Timezone 'UTC+8' format is incorrect!");
+        ESP_LOGW(TAG, "    Use '<+08>-8' or 'CST-8' for UTC+8");
+        ESP_LOGW(TAG, "    Auto-correcting to '<+08>-8'");
+        return "<+08>-8";
+    }
+    if (strcmp(tz, "SGT+8") == 0) {
+        ESP_LOGW(TAG, "⚠️  Timezone 'SGT+8' is wrong, correcting to 'SGT-8'");
+        return "SGT-8";
+    }
+    if (strcmp(tz, "PHT+8") == 0) {
+        ESP_LOGW(TAG, "⚠️  Timezone 'PHT+8' is wrong, correcting to 'PHT-8'");
+        return "PHT-8";
+    }
+    
+    // Timezone looks reasonable
+    return tz;
+}
+
 esp_err_t time_sync_init(const char* wifi_ssid, const char* wifi_password, const char* timezone)
 {
     ESP_LOGI(TAG, "Initializing ESP-IDF system time management...");
@@ -126,12 +161,11 @@ esp_err_t time_sync_init(const char* wifi_ssid, const char* wifi_password, const
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "✓ Connected to WiFi");
         
-        // Set timezone first (before SNTP)
-        if (timezone && strlen(timezone) > 0) {
-            ESP_LOGI(TAG, "Setting timezone: %s", timezone);
-            setenv("TZ", timezone, 1);
-            tzset();
-        }
+        // Validate and set timezone first (before SNTP)
+        const char* validated_tz = validate_timezone(timezone);
+        ESP_LOGI(TAG, "Setting timezone: %s", validated_tz);
+        setenv("TZ", validated_tz, 1);
+        tzset();
         
         // Configure SNTP using ESP-IDF official API
         esp_sntp_config_t sntp_config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");

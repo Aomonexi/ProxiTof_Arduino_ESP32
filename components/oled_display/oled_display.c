@@ -13,6 +13,7 @@
 #include "smart_time.h"
 #include "storage_manager.h"
 #include "gps.h"
+#include "sensor_manager.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -447,9 +448,15 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                     gps_status = "---";  // No fix
                 }
                 
-                // Line 1: Time + Logging + GPS
+                // Line 1: Time + Logging + GPS + FLAG indicator
                 char status_line1[32];
-                snprintf(status_line1, sizeof(status_line1), "%s %s %s", time_str, log_status, gps_status);
+                // Check if button is currently pressed (for visual feedback)
+                bool button_active = sensor_manager_is_button_held();
+                if (button_active) {
+                    snprintf(status_line1, sizeof(status_line1), "%s %s %s FLAG", time_str, log_status, gps_status);
+                } else {
+                    snprintf(status_line1, sizeof(status_line1), "%s %s %s", time_str, log_status, gps_status);
+                }
                 fb_write_text(0, status_line1, false);
                 
                 // Line 2: Min distance + approach rate
@@ -697,6 +704,65 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             }
             break;
             
+        case OLED_MODE_WIFI_SETTINGS:
+            // Yellow zone - WiFi Settings Header
+            fb_write_text(0, "WiFi Settings", true);  // Inverted header
+            
+            // Line 2: Current status
+            {
+                time_status_t time_status;
+                smart_time_get_status(&time_status);
+                
+                char status_line[32];
+                if (time_status.time_synced) {
+                    snprintf(status_line, sizeof(status_line), "Status: SYNCED");
+                } else {
+                    snprintf(status_line, sizeof(status_line), "Status: NOT SYNCED");
+                }
+                fb_write_text(1, status_line, false);
+            }
+            
+            // Blue zone - WiFi information and controls
+            {
+                time_status_t time_status;
+                smart_time_get_status(&time_status);
+                
+                // Line 3: Last sync time
+                if (time_status.time_synced && time_status.last_sync_time > 0) {
+                    time_t now = time(NULL);
+                    time_t hours_ago = (now - time_status.last_sync_time) / 3600;
+                    char sync_line[32];
+                    if (hours_ago < 1) {
+                        snprintf(sync_line, sizeof(sync_line), "Last: <1h ago");
+                    } else if (hours_ago < 24) {
+                        snprintf(sync_line, sizeof(sync_line), "Last: %ldh ago", (long)hours_ago);
+                    } else {
+                        snprintf(sync_line, sizeof(sync_line), "Last: %ldd ago", (long)(hours_ago / 24));
+                    }
+                    fb_write_text(2, sync_line, false);
+                } else {
+                    fb_write_text(2, "Last: Never", false);
+                }
+                
+                // Line 4: Sync count
+                char count_line[32];
+                snprintf(count_line, sizeof(count_line), "Syncs: %lu", (unsigned long)time_status.sync_count);
+                fb_write_text(3, count_line, false);
+                
+                // Line 5: Time source
+                char source_line[32];
+                snprintf(source_line, sizeof(source_line), "Source: %s", smart_time_source_name(time_status.current_source));
+                fb_write_text(4, source_line, false);
+                
+                // Line 6: Empty
+                fb_write_text(5, "", false);
+                
+                // Line 7-8: Instructions
+                fb_write_text(6, "Press ACTION to", false);
+                fb_write_text(7, "sync time (WiFi)", false);
+            }
+            break;
+            
         default:
             break;
     }
@@ -718,7 +784,7 @@ esp_err_t oled_display_set_mode(oled_display_mode_t mode) {
     
     current_config.mode = mode;
     
-    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss"};
+    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings"};
     ESP_LOGI(TAG, "Display mode changed to: %s", mode_names[mode]);
     
     // Show mode change notification
@@ -746,4 +812,55 @@ esp_err_t oled_display_set_brightness(uint8_t brightness) {
 
 oled_display_mode_t oled_display_get_mode(void) {
     return current_config.mode;
+}
+
+
+esp_err_t oled_display_handle_action_button(void) {
+    if (!display_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    oled_display_mode_t mode = current_config.mode;
+    
+    switch (mode) {
+        case OLED_MODE_DASHBOARD:
+        case OLED_MODE_NEAR_MISS:
+            // These modes handle button in main.c for event flagging
+            return ESP_ERR_NOT_SUPPORTED;
+            
+        case OLED_MODE_WIFI_SETTINGS:
+            // Trigger WiFi sync
+            ESP_LOGI(TAG, "WiFi sync requested from display");
+            
+            // Show "Syncing..." message
+            clear_frame_buffer();
+            fb_write_text(0, "WiFi Settings", true);
+            fb_write_text(2, "Connecting...", false);
+            fb_write_text(3, "Please wait", false);
+            update_display_differential();
+            
+            // Trigger sync (this will be called from main.c)
+            esp_err_t ret = smart_time_sync_now();
+            
+            // Show result
+            clear_frame_buffer();
+            fb_write_text(0, "WiFi Settings", true);
+            if (ret == ESP_OK) {
+                fb_write_text(2, "Sync SUCCESS!", false);
+                fb_write_text(3, "Time updated", false);
+            } else {
+                fb_write_text(2, "Sync FAILED", false);
+                fb_write_text(3, "Check WiFi", false);
+            }
+            update_display_differential();
+            
+            // Wait 2 seconds to show result
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            
+            return ret;
+            
+        default:
+            // No action for other modes
+            return ESP_ERR_NOT_SUPPORTED;
+    }
 }

@@ -95,7 +95,7 @@ static bool check_mode_button(void)
             oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
             oled_display_set_mode(next_mode);
             
-            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss"};
+            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings"};
             ESP_LOGI(TAG, "🔄 Display mode changed: %s → %s", 
                      mode_names[current_mode], mode_names[next_mode]);
             
@@ -704,18 +704,58 @@ void app_main(void)
                 }
             }
             
-            // Check button status (simplified - no display spam)
+            // Check button status (check frequently for responsiveness)
             static uint32_t last_button_check = 0;
-            if ((current_time - last_button_check) >= 1000) { // Check every second
+            if ((current_time - last_button_check) >= 50) { // Check every 50ms (20Hz)
                 last_button_check = current_time;
                 
-                if (sensor_manager_is_button_held()) {
-                    uint32_t duration = sensor_manager_get_button_duration();
-                    ESP_LOGI(TAG, "⚠️  BUTTON HELD - Flagging event (Duration: %.1f seconds)", duration / 1000.0f);
-                } else if (sensor_manager_is_button_pressed()) {
-                    ESP_LOGI(TAG, "✓ EVENT FLAGGED - Button released (Timestamp: %lu ms)", 
-                             sensor_manager_get_last_button_press_time());
+                // Get current display mode to determine button behavior
+                oled_display_mode_t current_mode = config.oled_enabled ? oled_display_get_mode() : 0;
+                
+                // Context-aware button handling
+                if (current_mode == 0 || current_mode == 4) {  // Dashboard or Near-Miss mode
+                    // Button 2 (GPIO 3): Manual event flagging
+                    if (sensor_manager_is_button_held()) {
+                        uint32_t duration = sensor_manager_get_button_duration();
+                        
+                        // Blue LED while button is held
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 0, 0, 255);  // Blue
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        // Log every second while held
+                        static uint32_t last_held_log = 0;
+                        if ((current_time - last_held_log) >= 1000) {
+                            ESP_LOGI(TAG, "⚠️  BUTTON HELD - Flagging event (Duration: %.1f seconds)", duration / 1000.0f);
+                            last_held_log = current_time;
+                        }
+                    } else if (sensor_manager_is_button_pressed()) {
+                        ESP_LOGI(TAG, "✓ EVENT FLAGGED - Button released (Timestamp: %lu ms)", 
+                                 sensor_manager_get_last_button_press_time());
+                        
+                        // Flash blue LED briefly
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 0, 0, 255);  // Blue
+                            led_strip_refresh(led_strip);
+                            vTaskDelay(pdMS_TO_TICKS(100));  // 100ms flash
+                        }
+                    }
+                } else if (current_mode == 5 && config.oled_enabled) {  // WiFi Settings mode
+                    // Button 2 (GPIO 3): Trigger WiFi sync
+                    if (sensor_manager_is_button_pressed()) {
+                        ESP_LOGI(TAG, "🌐 WiFi sync triggered from button");
+                        
+                        // Blue LED during sync
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 0, 0, 255);  // Blue
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        oled_display_handle_action_button();
+                    }
                 }
+                // Other modes: Button 2 does nothing
             }
             
             // Check mode switch button (only if OLED is enabled)

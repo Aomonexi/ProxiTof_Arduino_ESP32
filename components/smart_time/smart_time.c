@@ -182,18 +182,33 @@ esp_err_t smart_time_init(int ds3231_sda, int ds3231_scl,
     esp_err_t ret = smart_time_get(&timeinfo);
     
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "✓ Time available from %s", smart_time_source_name(status.current_source));
-        ESP_LOGI(TAG, "Current time: %04d-%02d-%02d %02d:%02d:%02d",
-                 timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
-                 timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        time_t t = mktime(&timeinfo);
+        // Check if time is reasonable (after Jan 1, 2024)
+        if (t > 1704067200) {
+            ESP_LOGI(TAG, "✓ Time available from %s", smart_time_source_name(status.current_source));
+            ESP_LOGI(TAG, "Current time: %04d-%02d-%02d %02d:%02d:%02d",
+                     timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                     timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            ESP_LOGI(TAG, "✓ DS3231 time valid, skipping NTP sync (saves power)");
+            last_maintenance = time(NULL);
+            return ESP_OK;  // Don't sync NTP if DS3231 time is valid
+        } else {
+            ESP_LOGW(TAG, "DS3231 time invalid (year %d < 2024)", timeinfo.tm_year + 1900);
+        }
     } else {
         ESP_LOGW(TAG, "No valid time source available");
-        
-        // Try NTP sync if WiFi is available
-        if (wifi_enabled) {
-            ESP_LOGI(TAG, "Attempting initial NTP sync...");
-            sync_from_ntp();
+    }
+    
+    // DS3231 time invalid or not available - try NTP sync if WiFi is available
+    if (wifi_enabled) {
+        ESP_LOGI(TAG, "Attempting initial NTP sync...");
+        esp_err_t sync_ret = sync_from_ntp();
+        if (sync_ret != ESP_OK) {
+            ESP_LOGW(TAG, "Initial NTP sync failed, will retry later");
         }
+    } else {
+        ESP_LOGW(TAG, "WiFi disabled, cannot sync time");
+        ESP_LOGW(TAG, "💡 Enable WiFi in config.txt or use USB command: time_set YYYY-MM-DD HH:MM:SS");
     }
     
     // Store sync interval

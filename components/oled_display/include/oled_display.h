@@ -23,6 +23,7 @@ typedef enum {
     OLED_MODE_IMU_FOCUS,        // Large IMU display
     OLED_MODE_STATUS,           // System status
     OLED_MODE_NEAR_MISS,        // Near-miss alert details
+    OLED_MODE_WIFI_SETTINGS,    // WiFi control and time sync
     OLED_MODE_MAX
 } oled_display_mode_t;
 
@@ -82,6 +83,16 @@ esp_err_t oled_display_clear(void);
  * @return Current display mode
  */
 oled_display_mode_t oled_display_get_mode(void);
+
+/**
+ * Handle action button press (context-aware)
+ * - Dashboard/Near-Miss mode: Flag event
+ * - WiFi Settings mode: Toggle WiFi / Trigger sync
+ * - Other modes: No action
+ * 
+ * @return ESP_OK if action was handled
+ */
+esp_err_t oled_display_handle_action_button(void);
 
 #ifdef __cplusplus
 }
