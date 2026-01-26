@@ -28,6 +28,10 @@ static const char *TAG = "MAIN";
 // LED Configuration
 #define RGB_LED_PIN GPIO_NUM_48
 
+// Mode Switch Button Configuration
+#define MODE_BUTTON_PIN GPIO_NUM_20
+#define MODE_BUTTON_DEBOUNCE_MS 200
+
 // Distance thresholds (in mm)
 #define CLOSE_THRESHOLD 100    // < 10cm = RED
 #define MEDIUM_THRESHOLD 500   // 10-50cm = YELLOW, > 50cm = GREEN
@@ -40,6 +44,69 @@ static const char *TAG = "MAIN";
 
 static led_strip_handle_t led_strip = NULL;
 static data_processor_handle_t *data_processor = NULL;
+
+// Mode button state
+static uint32_t last_mode_button_press = 0;
+static bool last_mode_button_state = true;  // Pull-up, so HIGH when not pressed
+
+/**
+ * Initialize mode switch button GPIO
+ */
+static esp_err_t init_mode_button(void)
+{
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << MODE_BUTTON_PIN),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    
+    esp_err_t err = gpio_config(&io_conf);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Mode button GPIO config failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    
+    ESP_LOGI(TAG, "✓ Mode switch button initialized (GPIO %d)", MODE_BUTTON_PIN);
+    ESP_LOGI(TAG, "💡 Press button to cycle through display modes");
+    return ESP_OK;
+}
+
+/**
+ * Check mode button and cycle display mode if pressed
+ * Returns true if mode was changed
+ */
+static bool check_mode_button(void)
+{
+    uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    
+    // Read button state (active LOW with pull-up)
+    bool current_state = (gpio_get_level(MODE_BUTTON_PIN) == 0);
+    
+    // Detect falling edge (button press)
+    if (current_state && !last_mode_button_state) {
+        // Check debounce
+        if ((current_time - last_mode_button_press) >= MODE_BUTTON_DEBOUNCE_MS) {
+            last_mode_button_press = current_time;
+            
+            // Cycle to next display mode
+            oled_display_mode_t current_mode = oled_display_get_mode();
+            oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
+            oled_display_set_mode(next_mode);
+            
+            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status"};
+            ESP_LOGI(TAG, "🔄 Display mode changed: %s → %s", 
+                     mode_names[current_mode], mode_names[next_mode]);
+            
+            last_mode_button_state = current_state;
+            return true;
+        }
+    }
+    
+    last_mode_button_state = current_state;
+    return false;
+}
 
 /**
  * Initialize RGB LED
@@ -150,6 +217,12 @@ void app_main(void)
     err = init_led();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "LED initialization failed, continuing without LED");
+    }
+    
+    // Initialize mode switch button
+    err = init_mode_button();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Mode button initialization failed, continuing without mode switching");
     }
     
     // Initialize sensor manager
@@ -375,11 +448,12 @@ void app_main(void)
     }
     
     // =========================================================================
-    // OLED DISPLAY INITIALIZATION (REAL-TIME 60 FPS VISUALIZATION)
+    // OLED DISPLAY INITIALIZATION (REAL-TIME 60 FPS VISUALIZATION - SPI MODE)
     // =========================================================================
     if (config.oled_enabled) {
         ESP_LOGI(TAG, "Initializing OLED display (SSD1306 128x64 SPI)...");
-        ESP_LOGI(TAG, "Wiring: SCK=7, MOSI=1, DC=19, CS=20, RST=21");
+        ESP_LOGI(TAG, "Wiring: SCK=GPIO7, MOSI=GPIO1, DC=GPIO35, RST=GPIO21");
+        ESP_LOGI(TAG, "4-wire SPI mode (no CS pin required)");
         
         err = oled_display_init();
         if (err == ESP_OK) {
@@ -393,7 +467,7 @@ void app_main(void)
             oled_display_set_brightness(config.oled_brightness);
         } else {
             ESP_LOGW(TAG, "❌ OLED display initialization failed: %s", esp_err_to_name(err));
-            ESP_LOGW(TAG, "💡 Check wiring: SCK=7, MOSI=1, DC=19, CS=20, RST=21");
+            ESP_LOGW(TAG, "💡 Check wiring: SCK=GPIO7, MOSI=GPIO1, DC=GPIO35, RST=GPIO21, VCC=3.3V");
             ESP_LOGW(TAG, "💡 System will continue without OLED display");
         }
     } else {
@@ -642,6 +716,11 @@ void app_main(void)
                     ESP_LOGI(TAG, "✓ EVENT FLAGGED - Button released (Timestamp: %lu ms)", 
                              sensor_manager_get_last_button_press_time());
                 }
+            }
+            
+            // Check mode switch button (only if OLED is enabled)
+            if (config.oled_enabled) {
+                check_mode_button();
             }
         } else {
             // USB MSC mode - show blue LED and minimal processing

@@ -14,11 +14,12 @@
 | **BNO08x IMU** | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | ✅ Ready | 9-DOF @ 100Hz |
 | **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Ready | **Conflict-free pins** |
 | **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Ready | Battery-backed time |
-| **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21 | ✅ Ready | 128x64 @ 60Hz (4-wire, no CS) |
+| **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21 | ✅ Ready | 128x64 @ 60Hz (4-wire SPI, no CS) |
 | **Neo-M9N GPS** | UART | TX=44, RX=43 | ✅ Ready | Location tracking @ 1-5Hz |
 | **Buzzer** | PWM | GPIO 45 | ✅ Ready | Near-miss audio alert |
 | **Potentiometer** | ADC | GPIO 46 (ADC2_CH5) | ⏳ Optional | Volume control (0-3.3V) |
 | **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Ready | Manual event flagging |
+| **Mode Button** | GPIO | GPIO 20 (with pull-up) | ✅ Ready | OLED display mode cycling |
 | **WS2812 LED** | GPIO | GPIO 48 | ✅ Built-in | Status indicator |
 
 ---
@@ -71,7 +72,8 @@ DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
                     ║                                  ║
                     ║  GPIO 45 ──────────────── Buzzer ║ (PWM)
                     ║  GPIO 46 ──────────────── Pot    ║ (ADC - Optional)
-                    ║  GPIO 3  ──────────────── Button ║
+                    ║  GPIO 3  ──────────────── Button ║ (Flag Event)
+                    ║  GPIO 20 ──────────────── Button ║ (Mode Switch)
                     ║  GPIO 48 ──────────────── LED    ║ (Built-in)
                     ║                                  ║
                     ╚══════════════════════════════════╝
@@ -177,6 +179,28 @@ Terminal 2          →    GND
 - Pull-up: Internal (INPUT_PULLUP)
 - Active: LOW (pressed = 0V)
 - Debounce: 200ms in software
+
+### 4.5. Mode Switch Button (GPIO) - OLED Display Mode Cycling
+
+```
+Push Button         →    ESP32-S3
+───────────              ─────────
+Terminal 1          →    GPIO 20
+Terminal 2          →    GND
+```
+
+**Configuration:**
+- Type: Normally Open (NO) momentary
+- Pull-up: Internal (INPUT_PULLUP)
+- Active: LOW (pressed = 0V)
+- Debounce: 200ms in software
+- Function: Cycles through OLED display modes (Dashboard → ToF Focus → IMU Focus → Status → Dashboard)
+
+**Display Modes:**
+1. **Dashboard** - Full overview (ToF grid + IMU + Stats)
+2. **ToF Focus** - Large 4x4 distance grid with bar graphs
+3. **IMU Focus** - Detailed orientation and acceleration
+4. **Status** - System health and component status
 
 ### 5. WS2812 RGB LED (GPIO) - Status Indicator
 
@@ -315,9 +339,10 @@ idf.py build flash monitor
 
 ## 📊 GPIO Pin Usage Summary
 
-### Used Pins (26 total)
+### Used Pins (28 total)
 | GPIO | Function | Component |
 |------|----------|-----------|
+| 0 | SPI CS | OLED Display |
 | 1 | SPI MOSI | OLED Display |
 | 2 | SDMMC D0 | SD Card |
 | 3 | Button Input | Flag Button |
@@ -336,6 +361,7 @@ idf.py build flash monitor
 | 16 | SDMMC D1 | SD Card |
 | 17 | SDMMC D2 | SD Card |
 | 18 | SDMMC D3 | SD Card |
+| 20 | Button Input | Mode Switch Button |
 | 21 | RST | OLED Display |
 | 35 | DC | OLED Display |
 | 43 | UART RX | Neo-M9N GPS |
@@ -344,8 +370,8 @@ idf.py build flash monitor
 | 46 | ADC | Potentiometer (Optional) |
 | 48 | LED Data | WS2812 |
 
-### Available for Future Expansion (12+ pins)
-- GPIO 19-20, 36-37, 38-42, 47
+### Available for Future Expansion (10+ pins)
+- GPIO 19, 36-37, 38-42, 47
 - Perfect for: Additional sensors, external buttons, displays
 
 ---
@@ -480,24 +506,35 @@ GND            --> GND
 ### 6. OLED Display (SSD1306 128x64 SPI)
 
 ```
-ESP32-S3          OLED SSD1306
---------          ------------
-GPIO 7  (SCK)  --> SCK (Clock)
-GPIO 1  (MOSI) --> MOSI (Data)
-GPIO 35 (DC)   --> DC (Data/Command)
-GPIO 21 (RST)  --> RES (Reset)
-3.3V           --> VCC
-GND            --> GND
+ESP32-S3          OLED SSD1306 (7-pin)
+--------          --------------------
+GND            --> Pin 1: GND
+3.3V           --> Pin 2: VCC_IN (⚠️ 3.3V NOT 5V!)
+GPIO 7  (SCK)  --> Pin 3: D0 (Clock)
+GPIO 1  (MOSI) --> Pin 4: D1 (Data/MOSI)
+GPIO 21 (RST)  --> Pin 5: RES (Reset)
+GPIO 35 (DC)   --> Pin 6: D/C (Data/Command)
+GPIO 0  (CS)   --> Pin 7: CS (Chip Select)
 ```
 
+**⚠️ IMPORTANT PIN MAPPING:**
+- **D0 on display = SCK (Clock)** - NOT "Data 0"!
+- **D1 on display = MOSI (Data)** - NOT "Data 1"!
+- **CS pin IS present** - Must be connected to GPIO 0
+- **No MISO needed** - Display is write-only (doesn't send data back)
+
 **Notes:**
-- 0.96" OLED display (128x64 pixels, dual-color: yellow + blue)
-- **4-wire SPI mode** (NO CS pin - this is normal!)
-- SPI interface for high-speed updates (60 FPS capable)
-- Separate SPI bus from IMU (different pins)
-- Real-time sensor visualization
-- 4 display modes: Dashboard, ToF Focus, IMU Focus, Status
-- **Dual-color zones**: Top 16 pixels = YELLOW (alerts), Bottom 48 pixels = BLUE (data)
+- 7-pin SPI OLED module (not 4-wire I2C)
+- VCC must be 3.3V (NOT 5V!)
+- All 7 wires must be connected
+- SPI3 bus (separate from IMU on SPI2)
+- Real-time sensor visualization at 60 FPS
+- Dual-color zones: Top 16 pixels = YELLOW (alerts), Bottom 48 pixels = BLUE (data)
+
+**Critical Wiring:**
+- VCC = 3.3V (5V will damage display!)
+- All 7 pins must be connected (including CS)
+- D0 = Clock, D1 = Data (confusing labels but correct)
 
 ### 7. Neo-M9N GPS Module (UART)
 
