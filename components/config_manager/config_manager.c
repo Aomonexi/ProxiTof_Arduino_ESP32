@@ -30,7 +30,7 @@ void config_load_defaults(system_config_t *config) {
     config->display_compact_mode = false;
     // OLED Display defaults
     config->oled_enabled = true;
-    config->oled_refresh_hz = 60;  // 60 FPS for smooth display
+    config->oled_refresh_hz = 60;  // 60 Hz with frame buffer - smooth and flicker-free!
     config->oled_brightness = 128;  // Medium brightness (0-255)
     config->oled_mode = 0;  // Dashboard mode
     config->oled_flip = false;

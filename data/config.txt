@@ -22,7 +22,7 @@ DISPLAY_COMPACT_MODE=false
 
 # OLED Display Configuration (0.96" SSD1306 SPI)
 OLED_ENABLED=true
-OLED_REFRESH_HZ=60  # 1-60 Hz (60 recommended for smooth display)
+OLED_REFRESH_HZ=20  # 10-30 Hz recommended (20 = smooth without flicker)
 OLED_BRIGHTNESS=128  # 0-255 (128 = medium)
 OLED_MODE=0  # 0=Dashboard, 1=ToF Focus, 2=IMU Focus, 3=Status
 OLED_FLIP=false  # Rotate display 180 degrees
