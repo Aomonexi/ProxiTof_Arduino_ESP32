@@ -13,6 +13,7 @@ idf_component_register(
         usb_flash_partition
         display_manager
         oled_display
+        gps
         led_strip
         driver
 )

@@ -60,14 +60,14 @@
 2499	3953	7911158413346023	esp-idf/tcp_transport/CMakeFiles/__idf_tcp_transport.dir/transport_socks_proxy.c.obj	b9554b9cf8d76222
 8324	9705	7911158471600354	esp-idf/esp_driver_twai/CMakeFiles/__idf_esp_driver_twai.dir/esp_twai_onchip.c.obj	404a08fac1119df8
 105170	105999	7911159440062427	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedtls.dir/mps_reader.c.obj	b9280961da67c791
-6671	8324	7911158455064542	esp-idf/driver/CMakeFiles/__idf_driver.dir/deprecated/mcpwm_legacy.c.obj	9fde47e6be46effa
-24158	25493	7911158629927283	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/src/eap_peer/chap.c.obj	2516cc7ba69fd97f
 154851	156169	7911159936868517	esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/common/protocomm.c.obj	b14f9f6087f664f4
+24158	25493	7911158629927283	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/src/eap_peer/chap.c.obj	2516cc7ba69fd97f
+6671	8324	7911158455064542	esp-idf/driver/CMakeFiles/__idf_driver.dir/deprecated/mcpwm_legacy.c.obj	9fde47e6be46effa
 13282	14443	7911158521177879	esp-idf/esp_driver_mcpwm/CMakeFiles/__idf_esp_driver_mcpwm.dir/src/mcpwm_cmpr.c.obj	de80e8a099a190c5
 118716	119964	7911159575520458	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/ervan/esp/v5.5.2/esp-idf/components/mbedtls/port/esp_hardware.c.obj	6524574b075dcb0e
-3742	5139	7911164474279698	esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/esp_spiffs.c.obj	e2c7f97616e85e99
-56801	58297	7911158956364976	esp-idf/esp_driver_usb_serial_jtag/CMakeFiles/__idf_esp_driver_usb_serial_jtag.dir/src/usb_serial_jtag.c.obj	28771d2a197d269c
 106973	107804	7911159458084275	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedtls.dir/ssl_tls13_client.c.obj	5101b0373175f7d8
+56801	58297	7911158956364976	esp-idf/esp_driver_usb_serial_jtag/CMakeFiles/__idf_esp_driver_usb_serial_jtag.dir/src/usb_serial_jtag.c.obj	28771d2a197d269c
+3742	5139	7911164474279698	esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/esp_spiffs.c.obj	e2c7f97616e85e99
 101055	102476	7911159398912393	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_random.c.obj	7a9db33f91430042
 66505	67605	7911159053405648	esp-idf/nvs_flash/libnvs_flash.a	84ea2092110f2f75
 4532	5742	7911158433671716	esp-idf/esp_adc/CMakeFiles/__idf_esp_adc.dir/gdma/adc_dma.c.obj	f1912c79f3bdcc6e
@@ -251,7 +251,7 @@
 89156	90064	7911159279910388	esp-idf/hal/CMakeFiles/__idf_hal.dir/spi_slave_hd_hal.c.obj	9af08bb2489fdc1b
 14285	15573	7911158531211072	esp-idf/esp_driver_mcpwm/CMakeFiles/__idf_esp_driver_mcpwm.dir/src/mcpwm_timer.c.obj	8ba5b0ef7a1dbf53
 11654	11716	7910579275834551	bootloader-prefix/src/bootloader-stamp/bootloader-patch	82b9db22023a84f4
-282	1144	7911996201824967	esp-idf/display_manager/CMakeFiles/__idf_display_manager.dir/display_manager.c.obj	6f8141fca7891f15
+1285	2230	7912247074894194	esp-idf/display_manager/CMakeFiles/__idf_display_manager.dir/display_manager.c.obj	6f8141fca7891f15
 30577	32321	7911158694125731	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/esp_supplicant/src/esp_wps.c.obj	8f87cab151089c4
 111822	112935	7911159506574687	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecdsa.c.obj	11ede8a23ed1480c
 20737	22140	7911158595728658	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/src/crypto/sha256-kdf.c.obj	8b81292f7e29c77a
@@ -278,7 +278,7 @@
 15281	15900	7911158541164475	esp-idf/esp_gdbstub/CMakeFiles/__idf_esp_gdbstub.dir/src/port/xtensa/gdbstub-entry.S.obj	dfa41c344b6c8f78
 71247	72315	7911159100828927	esp-idf/freertos/CMakeFiles/__idf_freertos.dir/FreeRTOS-Kernel/portable/xtensa/xtensa_overlay_os_hook.c.obj	2457340ed3c8f318
 15261	16320	7911158540965001	esp-idf/esp_gdbstub/CMakeFiles/__idf_esp_gdbstub.dir/src/port/xtensa/gdbstub_xtensa.c.obj	d923aaaa50d8e94
-1209	7097	7911376863343677	esp-idf/sensor_manager/CMakeFiles/__idf_sensor_manager.dir/sensor_manager.cpp.obj	55b4827f28d5a019
+1260	8355	7912247074654937	esp-idf/sensor_manager/CMakeFiles/__idf_sensor_manager.dir/sensor_manager.cpp.obj	55b4827f28d5a019
 15492	17106	7911158543278827	esp-idf/esp_driver_spi/CMakeFiles/__idf_esp_driver_spi.dir/src/gpspi/spi_common.c.obj	fdee16730f93bc5f
 78121	79388	7911159169565276	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/esp_memprot.c.obj	fba7abc8f0d3d292
 15573	17085	7911158544086667	esp-idf/esp_driver_spi/CMakeFiles/__idf_esp_driver_spi.dir/src/gpspi/spi_master.c.obj	3c56d0a0d4e45676
@@ -295,11 +295,11 @@
 78528	79795	7911159173634380	esp-idf/esp_security/CMakeFiles/__idf_esp_security.dir/src/init.c.obj	b054365e589d9503
 16320	17812	7911158551556706	esp-idf/esp_wifi/CMakeFiles/__idf_esp_wifi.dir/src/wifi_init.c.obj	e4b84eca1eb4a4cc
 17085	17969	7911158559206259	esp-idf/esp_wifi/CMakeFiles/__idf_esp_wifi.dir/src/wifi_default_ap.c.obj	2af2749e8cc53c9f
-2652	2854	7911996225526004	esp-idf/main/libmain.a	4b97d2f9d82cb136
+2552	2739	7912247545589043	esp-idf/main/libmain.a	4b97d2f9d82cb136
 81418	83069	7911159202537150	esp-idf/heap/CMakeFiles/__idf_heap.dir/heap_caps_init.c.obj	e2ad0d4169ba346d
 16295	17605	7911158551307374	esp-idf/esp_wifi/CMakeFiles/__idf_esp_wifi.dir/src/smartconfig.c.obj	b90129a54b8dfa34
 47671	49540	7911158865068929	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/netif/bridgeif_fdb.c.obj	266621647b790833
-237	1929	7911981424870170	esp-idf/usb_interface/CMakeFiles/__idf_usb_interface.dir/usb_interface.c.obj	ecf167b655fe5246
+1345	2457	7912247075502573	esp-idf/usb_interface/CMakeFiles/__idf_usb_interface.dir/usb_interface.c.obj	ecf167b655fe5246
 15901	17018	7911158547357914	esp-idf/esp_wifi/CMakeFiles/__idf_esp_wifi.dir/src/mesh_event.c.obj	3ad7d78383b1ab7e
 102186	103701	7911159410222175	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/bootloader_flash/src/flash_qio_mode.c.obj	f368b0daf35d9af9
 6805	6887	7910579226786529	esp-idf/soc/CMakeFiles/__idf_soc.dir/dport_access_common.c.obj	9387dcba72e2f7f2
@@ -449,14 +449,14 @@
 32051	34135	7911158708866341	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/esp_supplicant/src/crypto/crypto_mbedtls-rsa.c.obj	35846c56da016b9e
 32271	34347	7911158711070447	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/esp_supplicant/src/crypto/crypto_mbedtls-ec.c.obj	ead32a541606a016
 74773	75350	7911159136084735	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/sleep_mspi.c.obj	2c870fade059b3dc
-216	1306	7912057273502650	esp-idf/smart_time/CMakeFiles/__idf_smart_time.dir/smart_time.c.obj	552daaa236418253
+1267	2112	7912247074714673	esp-idf/smart_time/CMakeFiles/__idf_smart_time.dir/smart_time.c.obj	552daaa236418253
 112229	112994	7911159510653796	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecp_curves_new.c.obj	cd5bf71c735e9cac
 32321	33767	7911158711569116	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/src/crypto/rc4.c.obj	725b4c991ca5e0a9
 144350	144892	7911159831859131	esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir/src/class/audio/audio_device.c.obj	b8057554bd592dba
 32581	34100	7911158714162187	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/esp_supplicant/src/crypto/fastpbkdf2.c.obj	b4266ee78d785aec
 77159	78241	7911159159950943	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/rtc_sleep.c.obj	7aaf8ec943557a5a
 148527	150062	7911159873627518	esp-idf/rtc_ds3231/CMakeFiles/__idf_rtc_ds3231.dir/i2cdev.c.obj	9385216f8ecf66aa
-1941	2165	7911987879582209	esp-idf/oled_display/liboled_display.a	7745cf78699b671f
+8808	9001	7912247150128351	esp-idf/oled_display/liboled_display.a	7745cf78699b671f
 33083	34594	7911158719178777	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/src/crypto/aes-wrap.c.obj	53bd2abe21ee5179
 160019	161017	7911159988550414	esp-idf/esp_https_server/libesp_https_server.a	1de51c6955c7e49d
 33682	35159	7911158725182739	esp-idf/wpa_supplicant/CMakeFiles/__idf_wpa_supplicant.dir/src/crypto/aes-ccm.c.obj	74ca44cbd6496945
@@ -522,7 +522,7 @@
 43319	45359	7911158821555214	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/core/ipv4/igmp.c.obj	c205c648bae6d54f
 66586	67753	7911159054223468	esp-idf/pthread/CMakeFiles/__idf_pthread.dir/pthread.c.obj	279fe9aa5aff54f3
 43763	45658	7911158825983395	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/core/ipv4/ip4_addr.c.obj	6d67f3a9bc75581d
-156414	157481	7911159952496764	esp-idf/data_processor/CMakeFiles/__idf_data_processor.dir/data_processor_c_wrapper.cpp.obj	ba7491a8530c1613
+1305	1964	7912247075103650	esp-idf/data_processor/CMakeFiles/__idf_data_processor.dir/data_processor_c_wrapper.cpp.obj	ba7491a8530c1613
 85158	86303	7911159239937201	esp-idf/hal/CMakeFiles/__idf_hal.dir/uart_hal.c.obj	614ac688486ea437
 43639	45858	7911158824746677	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/core/ipv4/ip4_napt.c.obj	1338ab196210ced3
 126831	128078	7911159656657301	esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/src/ffunicode.c.obj	c07ad059d533d414
@@ -559,14 +559,14 @@
 75660	76696	7911159144960998	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/dma/esp_async_memcpy.c.obj	8e14a061283873cc
 64302	65299	7911159031374522	esp-idf/esp_driver_uart/CMakeFiles/__idf_esp_driver_uart.dir/src/uart_wakeup.c.obj	17d827cfd83f456a
 89496	90429	7911159283321274	esp-idf/hal/CMakeFiles/__idf_hal.dir/cam_hal.c.obj	b64326676e76a6c5
-267	1940	7911987862845305	esp-idf/oled_display/CMakeFiles/__idf_oled_display.dir/oled_display.c.obj	32b72f9e4120815
+1363	3283	7912247075682100	esp-idf/oled_display/CMakeFiles/__idf_oled_display.dir/oled_display.c.obj	32b72f9e4120815
 49487	51874	7911158883220425	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/netif/ppp/eap.c.obj	9bc9f606693d43c6
 49540	51701	7911158883758982	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/netif/ppp/ecp.c.obj	95c79aaf2c8bbe52
 130413	136659	7911159692481569	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/source/report/BNO08xRptARVRStabilizedGameRV.cpp.obj	8d246aad9279205c
 82618	83594	7911159214535087	esp-idf/log/CMakeFiles/__idf_log.dir/src/buffer/log_buffers.c.obj	fe86336b3e32421c
 50025	52126	7911158888606031	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/netif/ppp/eui64.c.obj	853882f2da3522a6
 59145	62764	7911158979802346	esp-idf/nvs_flash/CMakeFiles/__idf_nvs_flash.dir/src/nvs_page.cpp.obj	5b0b9574bda05360
-195	826	7912059512069384	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+315	726	7912247523208849	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
 50444	52424	7911158892794838	esp-idf/lwip/CMakeFiles/__idf_lwip.dir/lwip/src/netif/ppp/ipv6cp.c.obj	56b3f746e00d2bde
 106914	107737	7911159457495838	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedtls.dir/ssl_tls13_server.c.obj	21bd376beed6fd7a
 6969	7051	7910579228422161	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/lcd_periph.c.obj	9bf7d0cbfcb038d8
@@ -623,7 +623,7 @@
 59119	62484	7911158979553007	esp-idf/nvs_flash/CMakeFiles/__idf_nvs_flash.dir/src/nvs_item_hash_list.cpp.obj	965cba2f587b5cc6
 65063	66384	7911159038984196	esp-idf/esp_driver_gptimer/CMakeFiles/__idf_esp_driver_gptimer.dir/src/gptimer_common.c.obj	50fb90cc2d918592
 100218	101707	7911159390534786	esp-idf/esp_mm/CMakeFiles/__idf_esp_mm.dir/esp_cache_utils.c.obj	eb20b559c63c0cbc
-956	1109	7912059521125574	CMakeFiles/bootloader-complete	6b150e306ba23af1
+836	1002	7912247529990736	CMakeFiles/bootloader-complete	6b150e306ba23af1
 59047	62668	7911158978834921	esp-idf/nvs_flash/CMakeFiles/__idf_nvs_flash.dir/src/nvs_cxx_api.cpp.obj	6c5b18eebf762076
 59190	62615	7911158980261116	esp-idf/nvs_flash/CMakeFiles/__idf_nvs_flash.dir/src/nvs_pagemanager.cpp.obj	36dc3637feb21531
 128079	129091	7911159669143935	esp-idf/usb/CMakeFiles/__idf_usb.dir/usb_helpers.c.obj	560b70c8a820b316
@@ -636,7 +636,7 @@
 62721	63819	7911159015566768	esp-idf/nvs_flash/CMakeFiles/__idf_nvs_flash.dir/src/nvs_bootloader.c.obj	30f6b9575db5db89
 85021	86200	7911159238560885	esp-idf/hal/CMakeFiles/__idf_hal.dir/systimer_hal.c.obj	2a2413affd5402f
 62668	65852	7911159015038176	esp-idf/nvs_flash/CMakeFiles/__idf_nvs_flash.dir/src/nvs_types.cpp.obj	4b5528cb5cb078b6
-195	826	7912059512069384	bootloader/bootloader.elf	482983cea5448cc8
+315	726	7912247523208849	bootloader/bootloader.elf	482983cea5448cc8
 87574	88695	7911159264102634	esp-idf/hal/CMakeFiles/__idf_hal.dir/sdm_hal.c.obj	9148b0275f140aba
 63819	65030	7911159026547429	esp-idf/esp_event/CMakeFiles/__idf_esp_event.dir/esp_event.c.obj	e1ea9df73b7df54f
 104055	105016	7911159428912218	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/src/esp_efuse_utility.c.obj	11a9a890250fb518
@@ -691,7 +691,7 @@
 69767	72131	7911159086028474	esp-idf/freertos/CMakeFiles/__idf_freertos.dir/app_startup.c.obj	d2aab6d18d67486c
 115134	116214	7911159539696184	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_cipher.c.obj	a6eb98eda896df9c
 69796	70867	7911159086317709	esp-idf/freertos/CMakeFiles/__idf_freertos.dir/port_common.c.obj	75187b18bc636543
-1006	1209	7911376861306924	esp-idf/esp_app_format/libesp_app_format.a	575c724ff3e7b312
+1033	1260	7912247072382183	esp-idf/esp_app_format/libesp_app_format.a	575c724ff3e7b312
 126946	128185	7911159657814204	esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/port/freertos/ffsystem.c.obj	d5bad510e1353376
 70087	71451	7911159089219947	esp-idf/freertos/CMakeFiles/__idf_freertos.dir/FreeRTOS-Kernel/tasks.c.obj	4a0728a9dc9ab409
 70464	71815	7911159092999854	esp-idf/freertos/CMakeFiles/__idf_freertos.dir/FreeRTOS-Kernel/event_groups.c.obj	f273deb00a1de526
@@ -746,12 +746,12 @@
 80433	81171	7911159192693459	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/i2c_periph.c.obj	3a9ec520950bf01e
 80679	81578	7911159195146892	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/mcpwm_periph.c.obj	6fd7aa5d413f2cc4
 81060	81940	7911159198956719	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/wdt_periph.c.obj	6fba2b42257d5cf6
-216	412	7912059512270580	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
+31914	32104	7912247839199860	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
 80793	81542	7911159196293828	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/mpi_periph.c.obj	2fd81d084f342962
 81171	82131	7911159200073730	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/rtc_io_periph.c.obj	c19a6ec794f7715a
 7082	7158	7910579229549153	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/cam_periph.c.obj	18caafc1f2123c1c
 81192	82641	7911159200273195	esp-idf/heap/CMakeFiles/__idf_heap.dir/heap_caps_base.c.obj	97b40797cd3f464
-29657	30266	7912057573722715	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/.bin_timestamp	a552a06d013bcbf9
+31298	31913	7912247839100516	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/.bin_timestamp	a552a06d013bcbf9
 81542	82533	7911159203773843	esp-idf/heap/CMakeFiles/__idf_heap.dir/tlsf/tlsf.c.obj	94604f639ab0dcc5
 81578	82618	7911159204142873	esp-idf/heap/CMakeFiles/__idf_heap.dir/port/memory_layout_utils.c.obj	dc98783e0726657f
 81798	82982	7911159206336987	esp-idf/heap/CMakeFiles/__idf_heap.dir/port/esp32s3/memory_layout.c.obj	1758ac4509bf2dc1
@@ -792,13 +792,13 @@
 112350	113274	7911159511850597	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/entropy_poll.c.obj	2d26719f55bfa05
 85941	87293	7911159247766279	esp-idf/hal/CMakeFiles/__idf_hal.dir/ledc_hal_iram.c.obj	6cb085d324b8645c
 86303	87659	7911159251386612	esp-idf/hal/CMakeFiles/__idf_hal.dir/rmt_hal.c.obj	a78a9a2e361a5c48
-956	1109	7912059521125574	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+836	1002	7912247529990736	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
 105866	106996	7911159447013852	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedtls.dir/ssl_debug_helpers_generated.c.obj	19870d172b782b47
 86498	87705	7911159253341379	esp-idf/hal/CMakeFiles/__idf_hal.dir/mcpwm_hal.c.obj	8ff21bbe70c2d1f
 2536	3512	7911164462221918	esp-idf/nvs_sec_provider/CMakeFiles/__idf_nvs_sec_provider.dir/nvs_sec_provider.c.obj	52efa3d59feadbc
 86252	87623	7911159250877977	esp-idf/hal/CMakeFiles/__idf_hal.dir/i2c_hal_iram.c.obj	4fe638a85587b320
 86966	88520	7911159258018890	esp-idf/hal/CMakeFiles/__idf_hal.dir/twai_hal_v1.c.obj	266f6eee9b430447
-216	412	7912059512270580	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
+31914	32104	7912247839199860	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
 87113	88282	7911159259484978	esp-idf/hal/CMakeFiles/__idf_hal.dir/gdma_hal_top.c.obj	44817b9efd97b221
 86699	87756	7911159255346030	esp-idf/hal/CMakeFiles/__idf_hal.dir/uhci_hal.c.obj	6006bd8473ce80a3
 87450	88726	7911159262855965	esp-idf/hal/CMakeFiles/__idf_hal.dir/i2s_hal.c.obj	19d85db9b69fa521
@@ -911,7 +911,7 @@
 130448	136691	7911159692840621	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/source/report/BNO08xRptARVRStabilizedRV.cpp.obj	5fdb4926010cdfb2
 103373	104280	7911159422090456	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/esp32s3/esp_efuse_rtc_calib.c.obj	688d74b4ca61905c
 148917	150565	7911159877527098	esp-idf/espressif__esp_tinyusb/CMakeFiles/__idf_espressif__esp_tinyusb.dir/tinyusb.c.obj	b09808d0971a55ae
-88	42032	7912202556759948	build.ninja	4cf67f637545926d
+89	45011	7912262257871557	build.ninja	4cf67f637545926d
 2397	2636	7911996222979167	esp-idf/usb_flash_partition/libusb_flash_partition.a	f7efee3a6775aa5b
 103701	104648	7911159425361708	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/esp32s3/esp_efuse_utility.c.obj	f1fa4922c4653c32
 103852	105170	7911159426877659	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/src/esp_efuse_api.c.obj	33ee492a7f38dea5
@@ -962,7 +962,7 @@
 113103	114134	7911159519390448	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/md5.c.obj	1c935c5c33e125c2
 151604	152616	7911159904395294	esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_date.c.obj	56f8a2434babbd93
 112847	113836	7911159516827288	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/hmac_drbg.c.obj	9004a27e1425f322
-195	1005	7911376853207099	esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj	8f1499d3b05df803
+247	1033	7912247064513194	esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj	835b03a89d2ff743
 113056	114240	7911159518911723	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/md.c.obj	34c389fda153082b
 145855	147155	7911159846908911	esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir/src/portable/synopsys/dwc2/dwc2_common.c.obj	7ae3b2cd594ec7d3
 112994	114180	7911159518293385	esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/lms.c.obj	f57735e4725dca71
@@ -1062,14 +1062,14 @@
 130533	136476	7911159693688349	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/source/report/BNO08xRptAcceleration.cpp.obj	b0f0eed310dce8bc
 136782	143265	7911159756171373	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/source/report/BNO08xRptRVGeneric.cpp.obj	3796d9b88945e645
 136913	143431	7911159757587591	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/source/report/BNO08xRptRVGeomag.cpp.obj	2aab2e7bd09a347
-195	826	7912059512069384	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
+315	726	7912247523208849	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
 136724	143085	7911159755592925	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/source/report/BNO08xRptRV.cpp.obj	11fb05fa97503684
 137232	143518	7911159760679333	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/source/report/BNO08xRptShakeDetector.cpp.obj	43d31254594a0115
 143431	144504	7911159822663705	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/SH2/sh2.c.obj	685d965b0a82b32d
 424	1771	7911164441088385	esp-idf/esp_local_ctrl/CMakeFiles/__idf_esp_local_ctrl.dir/src/esp_local_ctrl_transport_httpd.c.obj	5233f5c9b397d435
 22555	22630	7910579384286180	esp-idf/esp32_BNO08x/CMakeFiles/__idf_esp32_BNO08x.dir/SH2/sh2_util.c.obj	e1b8015cd3d940f6
 143736	144328	7911159825715542	esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir/src/class/midi/midi_device.c.obj	bc160a9a85ee72b6
-1518	21702	7912057487571250	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
+2739	22362	7912247743119165	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
 143518	144245	7911159823541356	esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir/src/class/hid/hid_device.c.obj	34ac60124de267ef
 143486	144350	7911159823212231	esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir/src/class/cdc/cdc_device.c.obj	1855cfc72c9004bf
 144504	145115	7911159833395019	esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir/src/class/video/video_device.c.obj	379adbc3cb760a62
@@ -1112,7 +1112,7 @@
 154621	155667	7911159934564673	esp-idf/protobuf-c/libprotobuf-c.a	2b6de033625f6953
 156075	157621	7911159949105827	esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/security/security2.c.obj	8ede1fa7f0b363cd
 156382	157292	7911159952167635	esp-idf/json/CMakeFiles/__idf_json.dir/cJSON/cJSON_Utils.c.obj	81b069f665be5e9e
-157036	158804	7911159958710155	esp-idf/data_processor/CMakeFiles/__idf_data_processor.dir/data_processor.cpp.obj	e9bf18c31818f83
+1326	2440	7912247075303205	esp-idf/data_processor/CMakeFiles/__idf_data_processor.dir/data_processor.cpp.obj	e9bf18c31818f83
 154134	155504	7911159929697675	esp-idf/console/libconsole.a	ce8a7df7a602c6
 153606	154520	7911159924421783	esp-idf/espressif__esp_tinyusb/libespressif__esp_tinyusb.a	75c89c3f4c58553f
 2169	2397	7911996220694412	esp-idf/storage_manager/libstorage_manager.a	7752e772226baf94
@@ -1138,7 +1138,7 @@
 375	1211	7911164440599692	esp-idf/esp_local_ctrl/CMakeFiles/__idf_esp_local_ctrl.dir/proto-c/esp_local_ctrl.pb-c.c.obj	4062e71202898a4a
 265	1805	7911164439502623	esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/rgb/esp_lcd_panel_rgb.c.obj	4226dd69c9a5b10b
 455	897	7911164441407535	esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_init.c.obj	33a543a98215a1c
-7097	7290	7911376922218909	esp-idf/sensor_manager/libsensor_manager.a	400aca366a3a7b2b
+8355	8558	7912247145593307	esp-idf/sensor_manager/libsensor_manager.a	400aca366a3a7b2b
 1675	2071	7911164453604942	esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_sha.c.obj	ab4d909eb2036710
 1771	2289	7911164454562386	esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_crc.c.obj	cb10aec686202d77
 1211	2536	7911164448967334	esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_flash.c.obj	146e8c7dc16097b7
@@ -1149,10 +1149,10 @@
 2444	3681	7911164461294396	esp-idf/mqtt/CMakeFiles/__idf_mqtt.dir/esp-mqtt/lib/platform_esp32_idf.c.obj	c5064172648cbb2e
 290	1272	7911164439751954	esp-idf/protocomm/libprotocomm.a	c0c5522c6e38844f
 2615	3329	7911164463009805	esp-idf/perfmon/CMakeFiles/__idf_perfmon.dir/xtensa_perfmon_access.c.obj	85b2d45da43aa0b2
-1307	1518	7912057284227560	esp-idf/smart_time/libsmart_time.a	af979c916e29a028
+8558	8793	7912247147628809	esp-idf/smart_time/libsmart_time.a	af979c916e29a028
 25464	25583	7910579413368460	esp-idf/perfmon/CMakeFiles/__idf_perfmon.dir/xtensa_perfmon_masks.c.obj	606de17c7e05d863
 2859	3742	7911164465443307	esp-idf/perfmon/CMakeFiles/__idf_perfmon.dir/xtensa_perfmon_apis.c.obj	753f0a3b6cd7ae26
-2410	2652	7911996223107005	esp-idf/display_manager/libdisplay_manager.a	9051634571cb08b2
+8793	9009	7912247149978781	esp-idf/display_manager/libdisplay_manager.a	9051634571cb08b2
 2882	4078	7911164465682667	esp-idf/rt/CMakeFiles/__idf_rt.dir/FreeRTOS_POSIX_mqueue.c.obj	83f3e1b364f5602b
 6770	7606	7911164504558782	esp-idf/esp_lcd/libesp_lcd.a	32ace8b56c023488
 2979	4194	7911164466640104	esp-idf/rt/CMakeFiles/__idf_rt.dir/FreeRTOS_POSIX_utils.c.obj	3c7e46d4f254c750
@@ -1170,9 +1170,9 @@
 5399	6077	7911164490845428	esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/proto-c/wifi_ctrl.pb-c.c.obj	d5064dad117ec9ac
 5139	6407	7911164488252357	esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/scheme_console.c.obj	9b8395e65033c47f
 5521	6770	7911164492062174	esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/scheme_softap.c.obj	163791e7e36cbd4d
-318	1543	7911996202184007	esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj	3713d3e59bff343a
-233	479	7911981851236719	esp-idf/usb_interface/libusb_interface.a	b880f8345e6606ea
-5540	6464	7911164492261643	esp-idf/data_processor/libdata_processor.a	416b191cb69d6fe8
+295	2552	7912247523009390	esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj	3713d3e59bff343a
+9009	9204	7912247152132992	esp-idf/usb_interface/libusb_interface.a	b880f8345e6606ea
+8577	8859	7912247147808339	esp-idf/data_processor/libdata_processor.a	416b191cb69d6fe8
 6234	7036	7911164499203113	esp-idf/esp_driver_cam/libesp_driver_cam.a	a8dca42d0a0c918a
 6464	7214	7911164501496962	esp-idf/esp_hid/libesp_hid.a	e019ce7451f08c82
 6819	7661	7911164505047477	esp-idf/esp_local_ctrl/libesp_local_ctrl.a	1205176f0be59d69
@@ -1186,230 +1186,86 @@
 7606	8327	7911164512916448	esp-idf/wifi_provisioning/libwifi_provisioning.a	e5c2d85b006ec4d8
 11716	28932	7910579447985143	bootloader-prefix/src/bootloader-stamp/bootloader-configure	6badd80ed0d4c229
 11716	28932	7910579447985143	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure	6badd80ed0d4c229
-195	826	7912059512069384	bootloader/bootloader.bin	482983cea5448cc8
-195	826	7912059512069384	bootloader/bootloader.map	482983cea5448cc8
-195	826	7912059512069384	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-195	826	7912059512069384	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-195	826	7912059512069384	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-826	955	7912059518375843	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-826	955	7912059518375843	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-956	1109	7912059521125574	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-956	1109	7912059521125574	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-1518	21702	7912057487571250	esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-21702	29657	7912057488179623	proxitof.elf	63f5ec8f65410b8f
-29657	30266	7912057573722715	.bin_timestamp	a552a06d013bcbf9
-1109	22101	7912059521215324	CMakeFiles/flash	57c004e62f3494a6
-1109	22101	7912059521215324	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/flash	57c004e62f3494a6
-108	45897	7912202556759948	build.ninja	4cf67f637545926d
-207	553	7912202559992985	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-207	553	7912202559992985	bootloader/bootloader.elf	482983cea5448cc8
-207	553	7912202559992985	bootloader/bootloader.bin	482983cea5448cc8
-207	553	7912202559992985	bootloader/bootloader.map	482983cea5448cc8
-207	553	7912202559992985	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-207	553	7912202559992985	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-207	553	7912202559992985	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-207	553	7912202559992985	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-554	641	7912202563458854	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-554	641	7912202563458854	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-642	803	7912202565832513	CMakeFiles/bootloader-complete	6b150e306ba23af1
-642	803	7912202565832513	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-642	803	7912202565832513	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-642	803	7912202565832513	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-189	893	7912202559811799	esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj	8620c45ccaeb6395
-894	1121	7912202566859771	esp-idf/esp_app_format/libesp_app_format.a	575c724ff3e7b312
-1135	3058	7912202569273322	esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj	3713d3e59bff343a
-220	588	7912203771207693	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-220	588	7912203771207693	bootloader/bootloader.elf	482983cea5448cc8
-220	588	7912203771207693	bootloader/bootloader.bin	482983cea5448cc8
-220	588	7912203771207693	bootloader/bootloader.map	482983cea5448cc8
-220	588	7912203771207693	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-220	588	7912203771207693	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-220	588	7912203771207693	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-220	588	7912203771207693	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-589	679	7912203774891905	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-589	679	7912203774891905	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-679	851	7912203777435099	CMakeFiles/bootloader-complete	6b150e306ba23af1
-679	851	7912203777435099	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-679	851	7912203777435099	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-679	851	7912203777435099	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-205	1647	7912203771058369	esp-idf/oled_display/CMakeFiles/__idf_oled_display.dir/oled_display.c.obj	32b72f9e4120815
-1648	1874	7912203785480609	esp-idf/oled_display/liboled_display.a	7745cf78699b671f
-1874	2094	7912203787749727	esp-idf/main/libmain.a	4b97d2f9d82cb136
-2094	20597	7912203974419330	esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-2094	20597	7912203974419330	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-20597	28389	7912203974967848	proxitof.elf	63f5ec8f65410b8f
-28390	28973	7912204058638822	.bin_timestamp	a552a06d013bcbf9
-28390	28973	7912204058638822	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/.bin_timestamp	a552a06d013bcbf9
-28973	29168	7912204058735515	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-28973	29168	7912204058735515	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-214	439	7912204309269475	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-214	439	7912204309269475	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-194	564	7912204309070018	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-194	564	7912204309070018	bootloader/bootloader.elf	482983cea5448cc8
-194	564	7912204309070018	bootloader/bootloader.bin	482983cea5448cc8
-194	564	7912204309070018	bootloader/bootloader.map	482983cea5448cc8
-194	564	7912204309070018	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-194	564	7912204309070018	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-194	564	7912204309070018	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-194	564	7912204309070018	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-564	656	7912204312779837	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-564	656	7912204312779837	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-656	822	7912204315267336	CMakeFiles/bootloader-complete	6b150e306ba23af1
-656	822	7912204315267336	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-656	822	7912204315267336	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-656	822	7912204315267336	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-822	21721	7912204315357499	CMakeFiles/flash	57c004e62f3494a6
-822	21721	7912204315357499	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/flash	57c004e62f3494a6
-234	621	7912220996214434	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-234	621	7912220996214434	bootloader/bootloader.elf	482983cea5448cc8
-234	621	7912220996214434	bootloader/bootloader.bin	482983cea5448cc8
-234	621	7912220996214434	bootloader/bootloader.map	482983cea5448cc8
-234	621	7912220996214434	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-234	621	7912220996214434	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-234	621	7912220996214434	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-234	621	7912220996214434	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-621	721	7912221000087995	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-621	721	7912221000087995	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-721	893	7912221002710987	CMakeFiles/bootloader-complete	6b150e306ba23af1
-721	893	7912221002710987	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-721	893	7912221002710987	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-721	893	7912221002710987	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-212	1794	7912220995999350	esp-idf/oled_display/CMakeFiles/__idf_oled_display.dir/oled_display.c.obj	32b72f9e4120815
-1795	2477	7912221011821845	esp-idf/oled_display/liboled_display.a	7745cf78699b671f
-2477	24385	7912221237165753	esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-2477	24385	7912221237165753	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-24385	32705	7912221237723900	proxitof.elf	63f5ec8f65410b8f
-32705	33362	7912221327400571	.bin_timestamp	a552a06d013bcbf9
-32705	33362	7912221327400571	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/.bin_timestamp	a552a06d013bcbf9
-33362	33568	7912221327490332	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-33362	33568	7912221327490332	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-245	462	7912223885564430	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-245	462	7912223885564430	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-202	585	7912223885364517	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-202	585	7912223885364517	bootloader/bootloader.elf	482983cea5448cc8
-202	585	7912223885364517	bootloader/bootloader.bin	482983cea5448cc8
-202	585	7912223885364517	bootloader/bootloader.map	482983cea5448cc8
-202	585	7912223885364517	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-202	585	7912223885364517	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-202	585	7912223885364517	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-202	585	7912223885364517	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-586	683	7912223888968086	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-586	683	7912223888968086	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-683	864	7912223891652635	CMakeFiles/bootloader-complete	6b150e306ba23af1
-683	864	7912223891652635	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-683	864	7912223891652635	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-683	864	7912223891652635	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-864	21793	7912223891762318	CMakeFiles/flash	57c004e62f3494a6
-864	21793	7912223891762318	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/flash	57c004e62f3494a6
-257	626	7912227016506899	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-257	626	7912227016506899	bootloader/bootloader.elf	482983cea5448cc8
-257	626	7912227016506899	bootloader/bootloader.bin	482983cea5448cc8
-257	626	7912227016506899	bootloader/bootloader.map	482983cea5448cc8
-257	626	7912227016506899	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-257	626	7912227016506899	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-257	626	7912227016506899	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-257	626	7912227016506899	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-627	778	7912227020199810	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-627	778	7912227020199810	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-778	940	7912227023251645	CMakeFiles/bootloader-complete	6b150e306ba23af1
-778	940	7912227023251645	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-778	940	7912227023251645	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-778	940	7912227023251645	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-208	7155	7912227016270756	esp-idf/sensor_manager/CMakeFiles/__idf_sensor_manager.dir/sensor_manager.cpp.obj	55b4827f28d5a019
-7155	7510	7912227085486995	esp-idf/sensor_manager/libsensor_manager.a	400aca366a3a7b2b
-7510	26850	7912227281863964	esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-7510	26850	7912227281863964	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-26850	35017	7912227282433008	proxitof.elf	63f5ec8f65410b8f
-35017	35613	7912227369975479	.bin_timestamp	a552a06d013bcbf9
-35017	35613	7912227369975479	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/.bin_timestamp	a552a06d013bcbf9
-35613	35808	7912227370065204	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-35613	35808	7912227370065204	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-228	455	7912227548784410	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-228	455	7912227548784410	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-208	580	7912227548583016	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-208	580	7912227548583016	bootloader/bootloader.elf	482983cea5448cc8
-208	580	7912227548583016	bootloader/bootloader.bin	482983cea5448cc8
-208	580	7912227548583016	bootloader/bootloader.map	482983cea5448cc8
-208	580	7912227548583016	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-208	580	7912227548583016	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-208	580	7912227548583016	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-208	580	7912227548583016	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-580	679	7912227552309478	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-580	679	7912227552309478	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-679	860	7912227555007310	CMakeFiles/bootloader-complete	6b150e306ba23af1
-679	860	7912227555007310	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-679	860	7912227555007310	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-679	860	7912227555007310	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-860	21807	7912227555108572	CMakeFiles/flash	57c004e62f3494a6
-860	21807	7912227555108572	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/flash	57c004e62f3494a6
-388	864	7912237603470762	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-388	864	7912237603470762	bootloader/bootloader.elf	482983cea5448cc8
-388	864	7912237603470762	bootloader/bootloader.bin	482983cea5448cc8
-388	864	7912237603470762	bootloader/bootloader.map	482983cea5448cc8
-388	864	7912237603470762	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-388	864	7912237603470762	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-388	864	7912237603470762	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-388	864	7912237603470762	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-864	955	7912237608243101	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-864	955	7912237608243101	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-955	1176	7912237611255058	CMakeFiles/bootloader-complete	6b150e306ba23af1
-955	1176	7912237611255058	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-955	1176	7912237611255058	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-955	1176	7912237611255058	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-210	2192	7912237603131668	esp-idf/oled_display/CMakeFiles/__idf_oled_display.dir/oled_display.c.obj	32b72f9e4120815
-2193	2416	7912237621517648	esp-idf/oled_display/liboled_display.a	7745cf78699b671f
-246	595	7912238587974367	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-246	595	7912238587974367	bootloader/bootloader.elf	482983cea5448cc8
-246	595	7912238587974367	bootloader/bootloader.bin	482983cea5448cc8
-246	595	7912238587974367	bootloader/bootloader.map	482983cea5448cc8
-246	595	7912238587974367	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-246	595	7912238587974367	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-246	595	7912238587974367	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-246	595	7912238587974367	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-595	685	7912238591465326	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-595	685	7912238591465326	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-686	836	7912238593788816	CMakeFiles/bootloader-complete	6b150e306ba23af1
-686	836	7912238593788816	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-686	836	7912238593788816	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-686	836	7912238593788816	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-219	578	7912239268157747	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-219	578	7912239268157747	bootloader/bootloader.elf	482983cea5448cc8
-219	578	7912239268157747	bootloader/bootloader.bin	482983cea5448cc8
-219	578	7912239268157747	bootloader/bootloader.map	482983cea5448cc8
-219	578	7912239268157747	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-219	578	7912239268157747	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-219	578	7912239268157747	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-219	578	7912239268157747	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-579	670	7912239271758127	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-579	670	7912239271758127	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-670	829	7912239274171568	CMakeFiles/bootloader-complete	6b150e306ba23af1
-670	829	7912239274171568	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-670	829	7912239274171568	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-670	829	7912239274171568	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-204	1980	7912239268018008	esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj	3713d3e59bff343a
-1981	2201	7912239285775688	esp-idf/main/libmain.a	4b97d2f9d82cb136
-2201	20958	7912239474986279	esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-2201	20958	7912239474986279	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
-20958	29051	7912239475554375	proxitof.elf	63f5ec8f65410b8f
-29052	29645	7912239562343481	.bin_timestamp	a552a06d013bcbf9
-29052	29645	7912239562343481	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/.bin_timestamp	a552a06d013bcbf9
-29645	29846	7912239562433229	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-29645	29846	7912239562433229	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-232	426	7912241579702155	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-232	426	7912241579702155	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
-210	871	7912241579472476	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-210	871	7912241579472476	bootloader/bootloader.elf	482983cea5448cc8
-210	871	7912241579472476	bootloader/bootloader.bin	482983cea5448cc8
-210	871	7912241579472476	bootloader/bootloader.map	482983cea5448cc8
-210	871	7912241579472476	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
-210	871	7912241579472476	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
-210	871	7912241579472476	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
-210	871	7912241579472476	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
-872	970	7912241586095846	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-872	970	7912241586095846	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
-970	1155	7912241588831252	CMakeFiles/bootloader-complete	6b150e306ba23af1
-970	1155	7912241588831252	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-970	1155	7912241588831252	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
-970	1155	7912241588831252	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
-1155	22315	7912241588921047	CMakeFiles/flash	57c004e62f3494a6
-1155	22315	7912241588921047	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/flash	57c004e62f3494a6
+315	726	7912247523208849	bootloader/bootloader.bin	482983cea5448cc8
+315	726	7912247523208849	bootloader/bootloader.map	482983cea5448cc8
+315	726	7912247523208849	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+315	726	7912247523208849	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
+315	726	7912247523208849	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
+727	835	7912247527327846	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+727	835	7912247527327846	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+836	1002	7912247529990736	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+836	1002	7912247529990736	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
+2739	22362	7912247743119165	esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
+22362	31297	7912247743687572	proxitof.elf	63f5ec8f65410b8f
+31298	31913	7912247839100516	.bin_timestamp	a552a06d013bcbf9
+32104	53295	7912247841106174	CMakeFiles/flash	57c004e62f3494a6
+32104	53295	7912247841106174	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/flash	57c004e62f3494a6
+93	39803	7912262257871557	build.ninja	4cf67f637545926d
+276	980	7912262261799565	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+276	980	7912262261799565	bootloader/bootloader.elf	482983cea5448cc8
+276	980	7912262261799565	bootloader/bootloader.bin	482983cea5448cc8
+276	980	7912262261799565	bootloader/bootloader.map	482983cea5448cc8
+276	980	7912262261799565	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+276	980	7912262261799565	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
+276	980	7912262261799565	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
+276	980	7912262261799565	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
+980	1208	7912262268840748	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+980	1208	7912262268840748	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+1208	1663	7912262275463053	CMakeFiles/bootloader-complete	6b150e306ba23af1
+1208	1663	7912262275463053	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+1208	1663	7912262275463053	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
+1208	1663	7912262275463053	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+218	1759	7912262261211132	esp-idf/data_processor/CMakeFiles/__idf_data_processor.dir/data_processor_c_wrapper.cpp.obj	ba7491a8530c1613
+201	2223	7912262261051564	esp-idf/smart_time/CMakeFiles/__idf_smart_time.dir/smart_time.c.obj	552daaa236418253
+210	2229	7912262261131449	esp-idf/display_manager/CMakeFiles/__idf_display_manager.dir/display_manager.c.obj	6f8141fca7891f15
+235	2623	7912262261380681	esp-idf/usb_interface/CMakeFiles/__idf_usb_interface.dir/usb_interface.c.obj	ecf167b655fe5246
+226	2906	7912262261300915	esp-idf/data_processor/CMakeFiles/__idf_data_processor.dir/data_processor.cpp.obj	e9bf18c31818f83
+192	7203	7912262260952092	esp-idf/sensor_manager/CMakeFiles/__idf_sensor_manager.dir/sensor_manager.cpp.obj	55b4827f28d5a019
+231	645	7912263177886120	esp-idf/sensor_manager/libsensor_manager.a	400aca366a3a7b2b
+274	868	7912263178314978	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+274	868	7912263178314978	bootloader/bootloader.elf	482983cea5448cc8
+274	868	7912263178314978	bootloader/bootloader.bin	482983cea5448cc8
+274	868	7912263178314978	bootloader/bootloader.map	482983cea5448cc8
+274	868	7912263178314978	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+274	868	7912263178314978	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
+274	868	7912263178314978	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
+274	868	7912263178314978	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
+645	977	7912263182025064	esp-idf/smart_time/libsmart_time.a	af979c916e29a028
+661	1005	7912263182184631	esp-idf/data_processor/libdata_processor.a	416b191cb69d6fe8
+868	1020	7912263184259094	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+868	1020	7912263184259094	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+1021	1210	7912263187570238	CMakeFiles/bootloader-complete	6b150e306ba23af1
+1021	1210	7912263187570238	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+1021	1210	7912263187570238	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
+1021	1210	7912263187570238	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+977	1219	7912263185346196	esp-idf/display_manager/libdisplay_manager.a	9051634571cb08b2
+1219	1418	7912263187769716	esp-idf/usb_interface/libusb_interface.a	b880f8345e6606ea
+252	2195	7912263178095561	esp-idf/oled_display/CMakeFiles/__idf_oled_display.dir/oled_display.c.obj	32b72f9e4120815
+2196	2403	7912263197533618	esp-idf/oled_display/liboled_display.a	7745cf78699b671f
+264	2575	7912263178215252	esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj	3713d3e59bff343a
+2575	2777	7912263201323852	esp-idf/main/libmain.a	4b97d2f9d82cb136
+2778	21653	7912263391558339	esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
+2778	21653	7912263391558339	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/ld/sections.ld	6e51e2e5f574aca5
+21654	29738	7912263392106866	proxitof.elf	63f5ec8f65410b8f
+29738	30372	7912263479200258	.bin_timestamp	a552a06d013bcbf9
+29738	30372	7912263479200258	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/.bin_timestamp	a552a06d013bcbf9
+30372	30595	7912263479299720	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
+30372	30595	7912263479299720	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
+224	426	7912265017723041	esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
+224	426	7912265017723041	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esptool_py/CMakeFiles/app_check_size	842a2983d5621046
+204	547	7912265017523247	bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+204	547	7912265017523247	bootloader/bootloader.elf	482983cea5448cc8
+204	547	7912265017523247	bootloader/bootloader.bin	482983cea5448cc8
+204	547	7912265017523247	bootloader/bootloader.map	482983cea5448cc8
+204	547	7912265017523247	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	482983cea5448cc8
+204	547	7912265017523247	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.elf	482983cea5448cc8
+204	547	7912265017523247	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.bin	482983cea5448cc8
+204	547	7912265017523247	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader/bootloader.map	482983cea5448cc8
+548	633	7912265020960687	bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+548	633	7912265020960687	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install	b603029f72209b3b
+633	793	7912265023332008	CMakeFiles/bootloader-complete	6b150e306ba23af1
+633	793	7912265023332008	bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+633	793	7912265023332008	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete	6b150e306ba23af1
+633	793	7912265023332008	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	6b150e306ba23af1
+793	22219	7912265023411911	CMakeFiles/flash	57c004e62f3494a6
+793	22219	7912265023411911	D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/flash	57c004e62f3494a6

@@ -146,6 +146,16 @@ uint32_t sensor_manager_get_timestamp(void);
 void sensor_manager_get_health(sensor_health_t *health);
 
 /**
+ * Reinitialize IMU sensor
+ * 
+ * Attempts to reinitialize the BNO08x IMU sensor.
+ * Useful when IMU fails to initialize at startup or stops responding.
+ * 
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t sensor_manager_reinit_imu(void);
+
+/**
  * Get last button press timestamp
  * 
  * @return Timestamp of last button press in milliseconds

@@ -739,3 +739,31 @@ i2c_master_bus_handle_t sensor_manager_get_i2c_bus(void)
 {
     return i2c_bus_handle;
 }
+
+esp_err_t sensor_manager_reinit_imu(void)
+{
+    ESP_LOGI(TAG, "Reinitializing IMU sensor...");
+    
+    // Clean up existing IMU instance
+    if (imu != nullptr) {
+        ESP_LOGI(TAG, "Deleting existing IMU instance...");
+        delete imu;
+        imu = nullptr;
+        imu_initialized = false;
+        health.imu_healthy = false;
+    }
+    
+    // Wait a bit for cleanup
+    vTaskDelay(pdMS_TO_TICKS(200));
+    
+    // Reinitialize IMU using the same init function
+    esp_err_t err = init_imu_sensor();
+    
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "✓ IMU reinitialized successfully");
+    } else {
+        ESP_LOGE(TAG, "✗ IMU reinitialization failed: %s", esp_err_to_name(err));
+    }
+    
+    return err;
+}

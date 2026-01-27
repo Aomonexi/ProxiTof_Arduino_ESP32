@@ -12,6 +12,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
+#include "driver/uart.h"
 #include "smart_time.h"
 #include "storage_manager.h"
 #include "gps.h"
@@ -786,6 +787,96 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             }
             break;
             
+        case OLED_MODE_GPS:
+            // Yellow zone - GPS Status Header
+            {
+                gps_data_t gps_data;
+                esp_err_t gps_err = gps_read(&gps_data);
+                
+                if (gps_err == ESP_OK && gps_data.valid) {
+                    // GPS has fix
+                    char fix_line[32];
+                    if (gps_data.satellites_used >= 4) {
+                        snprintf(fix_line, sizeof(fix_line), "GPS: 3D FIX (%dsat)", gps_data.satellites_used);
+                    } else if (gps_data.satellites_used >= 3) {
+                        snprintf(fix_line, sizeof(fix_line), "GPS: 2D FIX (%dsat)", gps_data.satellites_used);
+                    } else {
+                        snprintf(fix_line, sizeof(fix_line), "GPS: FIX (%dsat)", gps_data.satellites_used);
+                    }
+                    fb_write_text(0, fix_line, false);
+                    
+                    // HDOP (accuracy indicator)
+                    char hdop_line[32];
+                    snprintf(hdop_line, sizeof(hdop_line), "HDOP: %.1f", gps_data.hdop);
+                    fb_write_text(1, hdop_line, false);
+                } else {
+                    // No fix
+                    fb_write_text(0, "GPS: SEARCHING", false);
+                    
+                    gps_stats_t stats;
+                    gps_get_stats(&stats);
+                    char stats_line[32];
+                    snprintf(stats_line, sizeof(stats_line), "Parsed: %lu", (unsigned long)stats.sentences_parsed);
+                    fb_write_text(1, stats_line, false);
+                }
+            }
+            
+            // Blue zone - GPS Data
+            {
+                gps_data_t gps_data;
+                esp_err_t gps_err = gps_read(&gps_data);
+                
+                if (gps_err == ESP_OK && gps_data.valid) {
+                    // Line 3: Latitude
+                    char lat_line[32];
+                    snprintf(lat_line, sizeof(lat_line), "Lat: %.6f%c", 
+                            fabs(gps_data.latitude), 
+                            gps_data.latitude >= 0 ? 'N' : 'S');
+                    fb_write_text(2, lat_line, false);
+                    
+                    // Line 4: Longitude
+                    char lon_line[32];
+                    snprintf(lon_line, sizeof(lon_line), "Lon: %.6f%c", 
+                            fabs(gps_data.longitude), 
+                            gps_data.longitude >= 0 ? 'E' : 'W');
+                    fb_write_text(3, lon_line, false);
+                    
+                    // Line 5: Altitude
+                    char alt_line[32];
+                    snprintf(alt_line, sizeof(alt_line), "Alt: %.1fm", gps_data.altitude_m);
+                    fb_write_text(4, alt_line, false);
+                    
+                    // Line 6: Speed
+                    char speed_line[32];
+                    snprintf(speed_line, sizeof(speed_line), "Spd: %.1fkm/h", gps_data.speed_kmh);
+                    fb_write_text(5, speed_line, false);
+                    
+                    // Line 7: Heading
+                    char heading_line[32];
+                    snprintf(heading_line, sizeof(heading_line), "Hdg: %.0fdeg", gps_data.heading_deg);
+                    fb_write_text(6, heading_line, false);
+                    
+                    // Line 8: Time since update
+                    uint32_t age_ms = gps_get_time_since_update();
+                    char age_line[32];
+                    if (age_ms < 1000) {
+                        snprintf(age_line, sizeof(age_line), "Age: %lums", (unsigned long)age_ms);
+                    } else {
+                        snprintf(age_line, sizeof(age_line), "Age: %.1fs", age_ms / 1000.0f);
+                    }
+                    fb_write_text(7, age_line, false);
+                } else {
+                    // No fix - show waiting message
+                    fb_write_text(2, "Waiting for", false);
+                    fb_write_text(3, "satellite fix...", false);
+                    fb_write_text(4, "", false);
+                    fb_write_text(5, "This may take", false);
+                    fb_write_text(6, "1-5 minutes", false);
+                    fb_write_text(7, "outdoors", false);
+                }
+            }
+            break;
+            
         case OLED_MODE_SHUTDOWN:
             // Yellow zone - Shutdown Warning (INVERTED for attention!)
             if (!shutdown_confirmation_pending) {
@@ -860,7 +951,7 @@ esp_err_t oled_display_set_mode(oled_display_mode_t mode) {
     
     current_config.mode = mode;
     
-    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "Shutdown"};
+    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "GPS", "Shutdown"};
     ESP_LOGI(TAG, "Display mode changed to: %s", mode_names[mode]);
     
     // Show mode change notification
@@ -966,6 +1057,82 @@ esp_err_t oled_display_handle_action_button(void) {
             vTaskDelay(pdMS_TO_TICKS(2000));
             
             return ret;
+            
+        case OLED_MODE_GPS:
+            // Trigger GPS reconnect
+            ESP_LOGI(TAG, "GPS reconnect requested from display");
+            
+            // Show reconnecting message
+            clear_frame_buffer();
+            fb_write_text(0, "GPS Reconnect", true);
+            fb_write_text(2, "Reinitializing..", false);
+            update_display_differential();
+            vTaskDelay(pdMS_TO_TICKS(500));
+            
+            // Deinitialize and reinitialize GPS
+            gps_deinit();
+            vTaskDelay(pdMS_TO_TICKS(200));
+            
+            esp_err_t gps_ret = gps_init(UART_NUM_1, 44, 43, 9600);
+            
+            if (gps_ret == ESP_OK) {
+                // Success
+                clear_frame_buffer();
+                fb_write_text(0, "GPS Reconnect", true);
+                fb_write_text(2, "SUCCESS!", false);
+                fb_write_text(3, "Searching sats..", false);
+                update_display_differential();
+            } else {
+                // Failed
+                clear_frame_buffer();
+                fb_write_text(0, "GPS Reconnect", true);
+                fb_write_text(2, "FAILED", false);
+                fb_write_text(3, "Check wiring", false);
+                update_display_differential();
+            }
+            
+            // Wait 2 seconds to show result
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            
+            return gps_ret;
+            
+        case OLED_MODE_IMU_FOCUS:
+            // Trigger IMU rescan
+            ESP_LOGI(TAG, "IMU rescan requested from display");
+            
+            // Show rescanning message
+            clear_frame_buffer();
+            fb_write_text(0, "IMU Rescan", true);
+            fb_write_text(2, "Reinitializing..", false);
+            fb_write_text(3, "Please wait", false);
+            update_display_differential();
+            vTaskDelay(pdMS_TO_TICKS(500));
+            
+            // Reinitialize IMU
+            esp_err_t imu_ret = sensor_manager_reinit_imu();
+            
+            if (imu_ret == ESP_OK) {
+                // Success
+                clear_frame_buffer();
+                fb_write_text(0, "IMU Rescan", true);
+                fb_write_text(2, "SUCCESS!", false);
+                fb_write_text(3, "IMU ready", false);
+                update_display_differential();
+            } else {
+                // Failed
+                clear_frame_buffer();
+                fb_write_text(0, "IMU Rescan", true);
+                fb_write_text(2, "FAILED", false);
+                fb_write_text(3, "Check wiring", false);
+                fb_write_text(5, "Or restart", false);
+                fb_write_text(6, "device", false);
+                update_display_differential();
+            }
+            
+            // Wait 2 seconds to show result
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            
+            return imu_ret;
             
         case OLED_MODE_SHUTDOWN:
             // Handle shutdown confirmation

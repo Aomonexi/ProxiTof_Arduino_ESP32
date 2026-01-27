@@ -358,6 +358,78 @@ fb_write_text(6, "Accel (m/s2):", false);  // Added "(m/s2)"
 Page 7: "0.98 0.02 9.81"
 ```
 
+### Button Actions
+
+**Button 1 (GPIO 20):**
+- Action: Cycle to next mode
+- Next mode: Status
+
+**Button 2 (GPIO 3):**
+- Action: Rescan IMU
+- LED: Yellow during rescan
+- Display: Shows "Reinitializing..." → "SUCCESS!" or "FAILED"
+- Duration: ~2 seconds
+- Result: IMU sensor reinitialized, reports enabled
+
+### IMU Rescan Feature
+
+**When to Use:**
+- IMU failed to initialize at startup
+- IMU stopped responding
+- IMU data appears frozen or incorrect
+- After sensor timeout error
+
+**How to Use:**
+1. Navigate to IMU Focus mode (Mode 2)
+2. Press ACTION button (GPIO 3)
+3. Wait for result (2-3 seconds)
+4. IMU will reinitialize with timeout protection
+
+**What Happens:**
+1. Delete existing IMU instance
+2. Wait 200ms for cleanup
+3. Reinitialize BNO08x with timeout (5 seconds)
+4. Enable rotation vector, accelerometer, gyroscope
+5. Display result (SUCCESS/FAILED)
+
+**Success:**
+```
+┌────────────────────────────────────────┐
+│ IMU Rescan         (INVERTED)          │
+│                                        │
+├────────────────────────────────────────┤
+│                                        │
+│ SUCCESS!                               │
+│ IMU ready                              │
+│                                        │
+│                                        │
+│                                        │
+│                                        │
+└────────────────────────────────────────┘
+```
+
+**Failure:**
+```
+┌────────────────────────────────────────┐
+│ IMU Rescan         (INVERTED)          │
+│                                        │
+├────────────────────────────────────────┤
+│                                        │
+│ FAILED                                 │
+│ Check wiring                           │
+│                                        │
+│ Or restart                             │
+│ device                                 │
+│                                        │
+└────────────────────────────────────────┘
+```
+
+**Benefits:**
+- No need to restart entire device
+- Quick recovery from IMU timeout
+- Useful for debugging wiring issues
+- Maintains ToF and other sensors running
+
 ### ✅ Fixes Applied
 
 1. ✅ **Page 0 shows sample rate** - "IMU 100Hz" instead of wrong jerk
@@ -928,11 +1000,230 @@ Page 7: (empty)
 | 3 | Status | System health | No action |
 | 4 | Near Miss | Alert details | Flag event |
 | 5 | WiFi Settings | Time sync control | Trigger WiFi sync |
-| 6 | Shutdown | Safe power-off | Confirm shutdown |
+| 6 | GPS | Location & satellites | No action |
+| 7 | Shutdown | Safe power-off | Confirm shutdown |
 
 ---
 
-## Mode 6: Shutdown (NEW!)
+## Mode 6: GPS (NEW!)
+
+**Purpose**: GPS location tracking and satellite status
+
+### Layout Diagram
+
+**With GPS Fix:**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
+├────────────────────────────────────────────────────────┤
+│ Page 0: GPS: 3D FIX (8sat)                             │ ← Fix status
+│ Page 1: HDOP: 1.2                                      │ ← Accuracy
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: Lat: 1.234567N                                │ ← Latitude
+│ Page 3: Lon: 103.123456E                              │ ← Longitude
+│ Page 4: Alt: 45.2m                                    │ ← Altitude
+│ Page 5: Spd: 12.5km/h                                 │ ← Speed
+│ Page 6: Hdg: 135deg                                   │ ← Heading
+│ Page 7: Age: 250ms                                    │ ← Data age
+└────────────────────────────────────────────────────────┘
+```
+
+**Without GPS Fix (Searching):**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
+├────────────────────────────────────────────────────────┤
+│ Page 0: GPS: SEARCHING                                 │ ← Status
+│ Page 1: Parsed: 1234                                   │ ← Sentences parsed
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: Waiting for                                   │
+│ Page 3: satellite fix...                              │
+│ Page 4:                                               │
+│ Page 5: This may take                                 │
+│ Page 6: 1-5 minutes                                   │
+│ Page 7: outdoors                                      │
+└────────────────────────────────────────────────────────┘
+```
+
+### GPS Data Displayed
+
+**Yellow Zone:**
+
+**Page 0: Fix Status**
+- Format: `GPS: <status> (<satellites>sat)`
+- Status types:
+  - `3D FIX` - 4+ satellites (best)
+  - `2D FIX` - 3 satellites (good)
+  - `FIX` - 1-2 satellites (poor)
+  - `SEARCHING` - No fix yet
+
+**Page 1: HDOP (Horizontal Dilution of Precision)**
+- Format: `HDOP: <value>`
+- Lower is better:
+  - < 1.0 = Excellent
+  - 1.0-2.0 = Good
+  - 2.0-5.0 = Moderate
+  - > 5.0 = Poor
+
+**Blue Zone (With Fix):**
+
+**Page 2: Latitude**
+- Format: `Lat: <degrees>N/S`
+- 6 decimal places (~0.1m precision)
+- N = North, S = South
+
+**Page 3: Longitude**
+- Format: `Lon: <degrees>E/W`
+- 6 decimal places (~0.1m precision)
+- E = East, W = West
+
+**Page 4: Altitude**
+- Format: `Alt: <meters>m`
+- Meters above sea level
+- 1 decimal place
+
+**Page 5: Speed**
+- Format: `Spd: <speed>km/h`
+- Speed over ground
+- 1 decimal place
+
+**Page 6: Heading**
+- Format: `Hdg: <degrees>deg`
+- Course over ground
+- 0-360 degrees (0=North, 90=East, 180=South, 270=West)
+
+**Page 7: Data Age**
+- Format: `Age: <time>ms` or `Age: <time>s`
+- Time since last GPS update
+- Helps detect stale data
+
+### Button Actions
+
+**Button 1 (GPIO 20):**
+- Action: Cycle to next mode
+- Next mode: Shutdown
+
+**Button 2 (GPIO 3):**
+- Action: Reconnect GPS
+- LED: Green during reconnect
+- Display: Shows "Reinitializing..." → "SUCCESS!" or "FAILED"
+- Duration: ~2 seconds
+- Result: GPS module reinitialized, starts searching for satellites again
+
+### GPS Reconnect Feature
+
+**When to Use:**
+- GPS failed to initialize at startup
+- GPS stopped responding
+- Want to force a fresh satellite search
+- After moving to a new location
+
+**How to Use:**
+1. Navigate to GPS mode (Mode 6)
+2. Press ACTION button (GPIO 3)
+3. Wait for result (2 seconds)
+4. GPS will restart and search for satellites
+
+### GPS Hardware
+
+**Module:** Neo-M9N (u-blox)  
+**Interface:** UART (9600 baud)  
+**Protocol:** NMEA 0183  
+**Update Rate:** 1-5 Hz  
+
+**Wiring:**
+```
+ESP32 GPIO 44 (TX) → GPS RX  (Crossover!)
+ESP32 GPIO 43 (RX) ← GPS TX  (Crossover!)
+GPS VCC → 5V
+GPS GND → GND
+```
+
+**⚠️ Important:** UART wiring is crossover (TX→RX, RX→TX). This is correct!
+
+### Features
+
+1. ✅ **Real-time location** - Latitude, longitude, altitude
+2. ✅ **Speed tracking** - Ground speed in km/h
+3. ✅ **Heading display** - Course over ground
+4. ✅ **Satellite count** - Number of satellites in use
+5. ✅ **Fix quality** - 2D/3D fix indication
+6. ✅ **Accuracy indicator** - HDOP value
+7. ✅ **Data freshness** - Age since last update
+8. ✅ **Search status** - Shows when acquiring fix
+
+### Use Cases
+
+**Use Case 1: Check GPS Status**
+- Navigate to GPS mode (Mode 6)
+- Check if "SEARCHING" or "FIX"
+- Verify satellite count (need 4+ for 3D fix)
+- Check HDOP (lower is better)
+
+**Use Case 2: View Current Location**
+- Wait for GPS fix (1-5 minutes outdoors)
+- Read latitude and longitude
+- Note altitude above sea level
+- Check data age (should be < 1 second)
+
+**Use Case 3: Track Movement**
+- Monitor speed while moving
+- Check heading direction
+- Verify location updates
+
+**Use Case 4: Troubleshooting**
+- If "SEARCHING" for > 5 minutes:
+  - Move outdoors (GPS needs sky view)
+  - Check antenna orientation (up)
+  - Verify wiring (TX=44, RX=43)
+  - Check 5V power supply
+
+### GPS Geo-Tagging for Near-Miss Events
+
+**Current Implementation:**
+- GPS data is read but not yet logged with near-miss events
+- GPS component is initialized and running
+- Location data is available via `gps_read()`
+
+**Future Implementation (note-9):**
+- Add GPS coordinates to near-miss event logs
+- Tag each near-miss with:
+  - Latitude/Longitude
+  - Altitude
+  - Speed
+  - Heading
+  - Timestamp
+  - Satellite count
+  - HDOP (accuracy)
+
+**Benefits:**
+- Map near-miss locations
+- Identify dangerous areas
+- Correlate with road conditions
+- Analyze speed vs. near-miss frequency
+- Provide context for AI/ML training
+
+### Testing Checklist
+
+- [ ] GPS mode appears in cycle (after WiFi Settings)
+- [ ] Display shows "SEARCHING" initially
+- [ ] Satellite count increases over time
+- [ ] Fix acquired within 5 minutes outdoors
+- [ ] Latitude/longitude displayed correctly
+- [ ] Altitude shows reasonable value
+- [ ] Speed updates when moving
+- [ ] Heading updates when turning
+- [ ] HDOP value is reasonable (< 5.0)
+- [ ] Data age stays < 1 second
+- [ ] No crashes or freezes
+
+---
+
+## Mode 7: Shutdown (UPDATED - was Mode 6)
 
 **Purpose**: Safe system shutdown with data protection
 
@@ -1213,22 +1504,29 @@ I (15845) MAIN: Entering deep sleep...
 |------|------|---------|----------------|
 | 0 | Dashboard | Full overview | Flag event (shows "FLAG") |
 | 1 | ToF Focus | Large distance grid | No action |
-| 2 | IMU Focus | Detailed IMU data | No action |
+| 2 | IMU Focus | Detailed IMU data | Rescan IMU |
+| 3 | Status | System health | No action |
+| 4 | Near Miss | Alert details | Flag event |
+| 5 | WiFi Settings | Time sync control | Trigger WiFi sync |
+| 6 | GPS | Location & satellites | Reconnect GPS |
+| 7 | Shutdown | Safe power-off | Confirm shutdown |
 
 ---
 
 ## Button Behavior Summary
 
 ### Button 1 (GPIO 20) - Mode Switch
-- **Always:** Cycles through modes (Dashboard → ToF → IMU → Status → Near Miss → WiFi → Shutdown → Dashboard)
+- **Always:** Cycles through modes (Dashboard → ToF → IMU → Status → Near Miss → WiFi → GPS → Shutdown → Dashboard)
 - **Shutdown mode:** Cancels shutdown confirmation and returns to Dashboard
 - **Debounce:** 200ms
 - **LED:** No change
 
 ### Button 2 (GPIO 3) - Action (Context-Aware)
 - **Dashboard mode:** Flag event → LED blue flash → Shows "FLAG"
+- **IMU Focus mode:** Rescan IMU (coming soon) → LED yellow
 - **Near Miss mode:** Flag event → LED blue flash
 - **WiFi Settings mode:** WiFi sync → LED blue during sync
+- **GPS mode:** Reconnect GPS → LED green during reconnect
 - **Shutdown mode:** Confirm shutdown → LED RED → Two-step confirmation
 - **Other modes:** No action
 - **Debounce:** Handled by sensor_manager
@@ -1315,7 +1613,7 @@ I (15845) MAIN: Entering deep sleep...
 
 ---
 
-**Document Version:** 4.0  
+**Document Version:** 5.0  
 **Last Updated:** January 27, 2026  
-**Status:** ✅ All 7 modes documented and implemented  
-**New Features:** FLAG indicator, WiFi Settings mode, Shutdown mode, LED feedback
+**Status:** ✅ All 8 modes documented and implemented  
+**New Features:** FLAG indicator, WiFi Settings mode, GPS mode, Shutdown mode, LED feedback

@@ -19,8 +19,10 @@
 #include "usb_flash_partition.h"
 #include "display_manager.h"
 #include "oled_display.h"
+#include "gps.h"
 #include "led_strip.h"
 #include "driver/gpio.h"
+#include "driver/uart.h"
 #include "tusb.h"
 #include "data_processor_c_wrapper.h"
 
@@ -32,6 +34,12 @@ static const char *TAG = "MAIN";
 // Mode Switch Button Configuration
 #define MODE_BUTTON_PIN GPIO_NUM_20
 #define MODE_BUTTON_DEBOUNCE_MS 200
+
+// GPS Configuration (Neo-M9N)
+#define GPS_UART_NUM UART_NUM_1
+#define GPS_TX_PIN GPIO_NUM_44  // ESP32 TX → GPS RX
+#define GPS_RX_PIN GPIO_NUM_43  // ESP32 RX ← GPS TX
+#define GPS_BAUD_RATE 9600
 
 // Distance thresholds (in mm)
 #define CLOSE_THRESHOLD 100    // < 10cm = RED
@@ -96,7 +104,7 @@ static bool check_mode_button(void)
             oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
             oled_display_set_mode(next_mode);
             
-            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "Shutdown"};
+            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "GPS", "Shutdown"};
             ESP_LOGI(TAG, "🔄 Display mode changed: %s → %s", 
                      mode_names[current_mode], mode_names[next_mode]);
             
@@ -235,6 +243,25 @@ void app_main(void)
     }
     
     ESP_LOGI(TAG, "✓ Sensor manager initialized successfully");
+    ESP_LOGI(TAG, "");
+    
+    // =========================================================================
+    // GPS MODULE INITIALIZATION (Neo-M9N)
+    // =========================================================================
+    ESP_LOGI(TAG, "Initializing GPS module (Neo-M9N)...");
+    ESP_LOGI(TAG, "Wiring: TX=GPIO44 (ESP32→GPS RX), RX=GPIO43 (ESP32←GPS TX)");
+    ESP_LOGI(TAG, "UART crossover wiring is CORRECT (TX→RX, RX→TX)");
+    
+    err = gps_init(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, GPS_BAUD_RATE);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "✓ GPS initialized (waiting for satellite fix)");
+        ESP_LOGI(TAG, "💡 GPS fix may take 1-5 minutes outdoors");
+        ESP_LOGI(TAG, "💡 Check GPS mode (Mode 6) to see status");
+    } else {
+        ESP_LOGW(TAG, "❌ GPS initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "💡 Check wiring: TX=44, RX=43, VCC=5V, GND=GND");
+        ESP_LOGW(TAG, "💡 System will continue without GPS");
+    }
     ESP_LOGI(TAG, "");
     
     // =========================================================================
@@ -796,7 +823,33 @@ void app_main(void)
                         
                         oled_display_handle_action_button();
                     }
-                } else if (current_mode == 6 && oled_available) {  // Shutdown mode
+                } else if (current_mode == 2 && oled_available) {  // IMU Focus mode
+                    // Button 2 (GPIO 3): Trigger IMU rescan
+                    if (sensor_manager_is_button_pressed()) {
+                        ESP_LOGI(TAG, "🔄 IMU rescan triggered from button");
+                        
+                        // Yellow LED during rescan
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 255, 255, 0);  // Yellow
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        oled_display_handle_action_button();
+                    }
+                } else if (current_mode == 6 && oled_available) {  // GPS mode
+                    // Button 2 (GPIO 3): Trigger GPS reconnect
+                    if (sensor_manager_is_button_pressed()) {
+                        ESP_LOGI(TAG, "📡 GPS reconnect triggered from button");
+                        
+                        // Green LED during reconnect
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 0, 255, 0);  // Green
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        oled_display_handle_action_button();
+                    }
+                } else if (current_mode == 7 && oled_available) {  // Shutdown mode
                     // Button 2 (GPIO 3): Confirm shutdown
                     if (sensor_manager_is_button_pressed()) {
                         ESP_LOGW(TAG, "🔴 Shutdown button pressed");
