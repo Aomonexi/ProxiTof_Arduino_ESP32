@@ -432,16 +432,18 @@ void app_main(void)
     ESP_LOGI(TAG, "Starting real-time sensor display in 2 seconds...");
     
     // Initialize display manager with config from SD card
+    // Using COMPACT mode to avoid serial output freezes (50-100ms with full boxes)
+    // Compact mode prints 2-3 lines instead of big ASCII boxes (~5ms vs 100ms)
     display_config.refresh_rate_hz = config.display_refresh_hz;  // Use config value
-    display_config.show_tof_grid = true;        // Show ToF 4x4 grid
-    display_config.show_imu_data = true;        // Show IMU orientation/acceleration
+    display_config.show_tof_grid = true;        // Show ToF 4x4 grid (compact)
+    display_config.show_imu_data = true;        // Show IMU data (compact)
     display_config.show_system_stats = true;    // Show logging statistics
-    display_config.compact_mode = config.display_compact_mode;    // Use config value
+    display_config.compact_mode = true;         // FORCE compact mode for performance
     
     err = display_manager_init(&display_config);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ Display manager initialized (%d Hz)", config.display_refresh_hz);
-        ESP_LOGI(TAG, "💡 Use 'display refresh HZ' to change refresh rate");
+        ESP_LOGI(TAG, "✓ Display manager initialized (COMPACT mode for performance)");
+        ESP_LOGI(TAG, "💡 Serial output: 2-3 lines instead of ASCII boxes");
     } else {
         ESP_LOGW(TAG, "Display manager initialization failed: %s", esp_err_to_name(err));
         ESP_LOGW(TAG, "System will use basic console output");
@@ -688,19 +690,18 @@ void app_main(void)
             }
             
             // Display update using display manager (handles timing automatically)
-            if (tof_count > 0 || imu_count > 0) {
-                uint16_t min_dist = get_min_distance(&tof_data);
-                display_manager_update(&tof_data, &imu_data, min_dist);
+            // Always update to ensure smooth display, even if sensor data hasn't changed
+            // Reuse min_dist from LED update above
+            display_manager_update(&tof_data, &imu_data, min_dist);
+            
+            // Update OLED display at configured refresh rate (60 FPS by default)
+            if (config.oled_enabled) {
+                static uint32_t last_oled_update = 0;
+                uint32_t oled_interval_ms = 1000 / config.oled_refresh_hz;
                 
-                // Update OLED display at configured refresh rate (60 FPS by default)
-                if (config.oled_enabled) {
-                    static uint32_t last_oled_update = 0;
-                    uint32_t oled_interval_ms = 1000 / config.oled_refresh_hz;
-                    
-                    if ((current_time - last_oled_update) >= oled_interval_ms) {
-                        oled_display_update(&tof_data, &imu_data, min_dist);
-                        last_oled_update = current_time;
-                    }
+                if ((current_time - last_oled_update) >= oled_interval_ms) {
+                    oled_display_update(&tof_data, &imu_data, min_dist);
+                    last_oled_update = current_time;
                 }
             }
             

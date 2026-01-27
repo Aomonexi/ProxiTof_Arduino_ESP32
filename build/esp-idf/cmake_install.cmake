@@ -584,16 +584,6 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
-  include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
   include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rtc_ds3231/cmake_install.cmake")
 endif()
 
@@ -605,6 +595,16 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
   include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)

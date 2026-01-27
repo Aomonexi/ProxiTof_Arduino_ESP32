@@ -6,6 +6,7 @@
  */
 
 #include "storage_manager.h"
+#include "smart_time.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
@@ -226,9 +227,9 @@ static void storage_maintenance(void) {
         emergency_flush_needed = true;
     }
     
-    // Perform emergency flush if needed
+    // Perform emergency flush if needed (SILENT - no logging to avoid serial lag)
     if (emergency_flush_needed && buffer_size() > 0) {
-        ESP_LOGI(TAG, "🔄 Periodic flush: %zu entries (%.1f%% full)", buffer_size(), buffer_fill);
+        // Removed: ESP_LOGI(TAG, "🔄 Periodic flush: %zu entries (%.1f%% full)", buffer_size(), buffer_fill);
         storage_manager_flush();  // Use the existing flush function
         emergency_flush_needed = false;
     }
@@ -380,24 +381,29 @@ esp_err_t storage_manager_init(void) {
 // =============================================================================
 
 static esp_err_t create_date_directory(char *dir_path, size_t max_len) {
-    time_t now;
     struct tm timeinfo;
     
-    time(&now);
+    // Use smart_time to get time from best available source (DS3231 or Internal RTC)
+    esp_err_t time_ret = smart_time_get(&timeinfo);
     
-    // Check if time is valid (after year 2020 and before year 2030)
-    if (now < 1577836800 || now > 1893456000) {  // Jan 1, 2020 to Jan 1, 2030
-        ESP_LOGW(TAG, "System time not synchronized (timestamp: %ld)", now);
-        ESP_LOGW(TAG, "💡 Smart time system will handle time management");
-        ESP_LOGW(TAG, "💡 Use USB Serial JTAG command: TIME:2026-01-07 15:30:00");
-        // Set to current date as fallback
+    if (time_ret != ESP_OK) {
+        ESP_LOGW(TAG, "Smart time not available, using fallback date");
+        // Set to fallback date
         timeinfo.tm_year = 2026 - 1900;  // Years since 1900
-        timeinfo.tm_mon = 1 - 1;         // Month (0-11) - January
-        timeinfo.tm_mday = 7;            // Day of month
+        timeinfo.tm_mon = 1 - 1;         // Month (0-11) - January  
+        timeinfo.tm_mday = 10;           // Day of month
     } else {
-        localtime_r(&now, &timeinfo);
-        ESP_LOGI(TAG, "Using system time: %04d-%02d-%02d", 
-                 timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
+        // Validate year is reasonable (2024-2030)
+        int year = timeinfo.tm_year + 1900;
+        if (year < 2024 || year > 2030) {
+            ESP_LOGW(TAG, "Time year out of range (%d), using fallback", year);
+            timeinfo.tm_year = 2026 - 1900;
+            timeinfo.tm_mon = 1 - 1;
+            timeinfo.tm_mday = 10;
+        } else {
+            ESP_LOGI(TAG, "Using system time: %04d-%02d-%02d", 
+                     timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
+        }
     }
     
     // Format: /sdcard/YYYYMMDD (no special characters for maximum FAT32 compatibility)
@@ -616,8 +622,12 @@ esp_err_t storage_manager_flush(void) {
     uint32_t flushed = 0;
     log_entry_t entry;
     
-    // Write all buffered entries
-    while (buffer_pop(&entry)) {
+    // Flush in smaller batches to avoid long blocking periods
+    // Max 50 entries per flush = ~10ms write time instead of 100ms
+    const uint32_t MAX_FLUSH_BATCH = 50;
+    
+    // Write buffered entries (up to MAX_FLUSH_BATCH)
+    while (buffer_pop(&entry) && flushed < MAX_FLUSH_BATCH) {
         // Write CSV row
         fprintf(log_file, "%lu", entry.timestamp_ms);
         
@@ -655,8 +665,9 @@ esp_err_t storage_manager_flush(void) {
         current_file_size = ftell(log_file);
         stats.current_file_size = current_file_size;
         
-        // Only log every 10th flush to reduce console spam
-        if (stats.flush_count % 10 == 0) {
+        // Only log every 100th flush to reduce console spam (was 10)
+        // At 50 entries per flush, this logs every ~5000 entries
+        if (stats.flush_count % 100 == 0) {
             ESP_LOGI(TAG, "✓ Flushed %lu entries (%lu total, %lu bytes)", 
                      flushed, stats.entries_logged, current_file_size);
         }

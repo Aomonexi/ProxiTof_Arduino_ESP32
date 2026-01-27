@@ -74,6 +74,14 @@ void config_print(const system_config_t *config);
  */
 bool config_file_exists(void);
 
+/**
+ * Get pointer to global configuration
+ * Returns the configuration loaded at startup
+ * 
+ * @return Pointer to global config (never NULL)
+ */
+const system_config_t* config_manager_get_config(void);
+
 #ifdef __cplusplus
 }
 #endif

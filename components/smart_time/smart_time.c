@@ -60,9 +60,15 @@ static esp_err_t update_internal_rtc(struct tm *timeinfo) {
     struct timeval tv = { .tv_sec = t };
     settimeofday(&tv, NULL);
     
-    ESP_LOGI(TAG, "✓ Internal RTC updated: %04d-%02d-%02d %02d:%02d:%02d",
-             timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
-             timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    // Rate-limit logging: only log once per minute to avoid spam
+    static time_t last_log_time = 0;
+    time_t now = time(NULL);
+    if (now - last_log_time >= 60) {  // Log every 60 seconds
+        ESP_LOGI(TAG, "✓ Internal RTC synced with DS3231: %04d-%02d-%02d %02d:%02d:%02d",
+                 timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
+                 timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+        last_log_time = now;
+    }
     
     return ESP_OK;
 }
@@ -108,11 +114,33 @@ static esp_err_t sync_from_ntp(void) {
         
         // Update DS3231 if available
         if (ds3231_enabled && status.ds3231_available) {
+            ESP_LOGI(TAG, "Writing time to DS3231...");
+            ESP_LOGI(TAG, "  Time to write: %04d-%02d-%02d %02d:%02d:%02d",
+                     timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                     timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            
             esp_err_t ds_ret = ds3231_set_time(&ds3231_dev, &timeinfo);
             if (ds_ret == ESP_OK) {
                 ESP_LOGI(TAG, "✓ DS3231 updated from NTP");
+                
+                // Verify write by reading back
+                struct tm verify_time;
+                ds_ret = ds3231_get_time(&ds3231_dev, &verify_time);
+                if (ds_ret == ESP_OK) {
+                    ESP_LOGI(TAG, "✓ DS3231 readback: %04d-%02d-%02d %02d:%02d:%02d",
+                             verify_time.tm_year + 1900, verify_time.tm_mon + 1, verify_time.tm_mday,
+                             verify_time.tm_hour, verify_time.tm_min, verify_time.tm_sec);
+                } else {
+                    ESP_LOGW(TAG, "Failed to read back from DS3231: %s", esp_err_to_name(ds_ret));
+                }
             } else {
                 ESP_LOGW(TAG, "Failed to update DS3231: %s", esp_err_to_name(ds_ret));
+            }
+        } else {
+            if (!ds3231_enabled) {
+                ESP_LOGW(TAG, "DS3231 not enabled in config");
+            } else {
+                ESP_LOGW(TAG, "DS3231 not available (I2C communication failed)");
             }
         }
         
@@ -183,29 +211,43 @@ esp_err_t smart_time_init(int ds3231_sda, int ds3231_scl,
     
     if (ret == ESP_OK) {
         time_t t = mktime(&timeinfo);
-        // Check if time is reasonable (after Jan 1, 2024)
-        if (t > 1704067200) {
+        int year = timeinfo.tm_year + 1900;
+        
+        ESP_LOGI(TAG, "DS3231 returned time: %04d-%02d-%02d %02d:%02d:%02d",
+                 year, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                 timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        
+        // Check if time is reasonable (2024-2030) AND not the default factory time
+        // Factory default is often 2026-10-01 18:30:00 or 2000-01-01 00:00:00
+        bool is_factory_default = (year == 2026 && timeinfo.tm_mon == 9 && timeinfo.tm_mday == 1 && 
+                                   timeinfo.tm_hour == 18 && timeinfo.tm_min == 30);
+        bool is_year_2000 = (year == 2000);
+        
+        if (is_factory_default) {
+            ESP_LOGW(TAG, "⚠️  DS3231 has factory default time (2026-10-01 18:30)");
+            ESP_LOGW(TAG, "💡 This means DS3231 has never been synced");
+            ESP_LOGW(TAG, "💡 Go to WiFi Settings mode and press ACTION button to sync time");
+        } else if (is_year_2000) {
+            ESP_LOGW(TAG, "⚠️  DS3231 time is year 2000 (never set)");
+            ESP_LOGW(TAG, "💡 Go to WiFi Settings mode and press ACTION button to sync time");
+        } else if (t > 1704067200 && year >= 2024 && year <= 2030) {
+            // Time looks valid and reasonable
             ESP_LOGI(TAG, "✓ Time available from %s", smart_time_source_name(status.current_source));
-            ESP_LOGI(TAG, "Current time: %04d-%02d-%02d %02d:%02d:%02d",
-                     timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
-                     timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
             ESP_LOGI(TAG, "✓ DS3231 time valid, skipping NTP sync (saves power)");
             last_maintenance = time(NULL);
             return ESP_OK;  // Don't sync NTP if DS3231 time is valid
         } else {
-            ESP_LOGW(TAG, "DS3231 time invalid (year %d < 2024)", timeinfo.tm_year + 1900);
+            ESP_LOGW(TAG, "DS3231 time out of range (year %d)", year);
         }
     } else {
         ESP_LOGW(TAG, "No valid time source available");
     }
     
-    // DS3231 time invalid or not available - try NTP sync if WiFi is available
+    // DS3231 time invalid or not available - DON'T auto-sync NTP at startup
+    // User must manually trigger sync from WiFi Settings mode to save boot time
     if (wifi_enabled) {
-        ESP_LOGI(TAG, "Attempting initial NTP sync...");
-        esp_err_t sync_ret = sync_from_ntp();
-        if (sync_ret != ESP_OK) {
-            ESP_LOGW(TAG, "Initial NTP sync failed, will retry later");
-        }
+        ESP_LOGI(TAG, "WiFi credentials configured");
+        ESP_LOGI(TAG, "💡 Go to WiFi Settings mode and press ACTION button to sync time");
     } else {
         ESP_LOGW(TAG, "WiFi disabled, cannot sync time");
         ESP_LOGW(TAG, "💡 Enable WiFi in config.txt or use USB command: time_set YYYY-MM-DD HH:MM:SS");

@@ -614,7 +614,7 @@ bool sensor_manager_is_button_pressed(void)
     // AND enough time has passed since last press (prevent repeat triggers)
     if (current_state && 
         (current_time - last_button_read_time) >= BUTTON_DEBOUNCE_MS &&
-        (current_time - last_button_press_time) >= 1000) {  // 1 second between presses
+        (current_time - last_button_press_time) >= 200) {  // 200ms between presses (was 1000ms)
         
         last_button_press_time = current_time;
         uint32_t duration = current_time - button_press_start_time;

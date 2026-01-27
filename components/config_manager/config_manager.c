@@ -14,6 +14,10 @@ static const char *TAG = "CONFIG";
 
 #define CONFIG_FILE_PATH "/sdcard/config.txt"
 
+// Global configuration (loaded at startup)
+static system_config_t g_config;
+static bool g_config_loaded = false;
+
 void config_load_defaults(system_config_t *config) {
     if (!config) return;
     
@@ -53,6 +57,11 @@ esp_err_t config_load_from_sd(system_config_t *config) {
     if (!file) {
         ESP_LOGW(TAG, "Config file not found: %s", CONFIG_FILE_PATH);
         ESP_LOGI(TAG, "Using default configuration");
+        
+        // Store in global config
+        memcpy(&g_config, config, sizeof(system_config_t));
+        g_config_loaded = true;
+        
         return ESP_ERR_NOT_FOUND;
     }
     
@@ -145,6 +154,10 @@ esp_err_t config_load_from_sd(system_config_t *config) {
     
     fclose(file);
     
+    // Store in global config
+    memcpy(&g_config, config, sizeof(system_config_t));
+    g_config_loaded = true;
+    
     ESP_LOGI(TAG, "✓ Configuration loaded from SD card");
     return ESP_OK;
 }
@@ -235,4 +248,13 @@ void config_print(const system_config_t *config) {
         ESP_LOGI(TAG, "    Brightness: %d/255", config->oled_brightness);
         ESP_LOGI(TAG, "    Mode: %d", config->oled_mode);
     }
+}
+
+const system_config_t* config_manager_get_config(void) {
+    if (!g_config_loaded) {
+        ESP_LOGW(TAG, "Config not loaded yet, returning defaults");
+        config_load_defaults(&g_config);
+        g_config_loaded = true;
+    }
+    return &g_config;
 }

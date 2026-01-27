@@ -45,8 +45,8 @@ Dashboard → ToF Focus → IMU Focus → Status → Near Miss → WiFi Settings
 ┌────────────────────────────────────────────────────────┐
 │ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
 ├────────────────────────────────────────────────────────┤
-│ Page 0: HH:MM:SS LOG 3D FLAG                          │ ← Time, logging, GPS, FLAG
-│ Page 1: XXXmm +XXXmm/s                                 │ ← Distance + approach rate
+│ Page 0: YYYY-MM-DD HH:MM:SS                            │ ← Date + Time
+│ Page 1: LOG 3D 450mm                                   │ ← Logging, GPS, distance
 ├────────────────────────────────────────────────────────┤
 │ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
 ├────────────────────────────────────────────────────────┤
@@ -61,17 +61,41 @@ Dashboard → ToF Focus → IMU Focus → Status → Near Miss → WiFi Settings
 
 ### New Features
 
-**FLAG Indicator (Page 0):**
-- Shows "FLAG" when Button 2 (GPIO 3) is pressed
+**Date Display (Page 0):**
+- Shows full date and time: "YYYY-MM-DD HH:MM:SS"
+- Example: `2026-01-27 14:23:45`
+- Helps verify logging is working properly
+- Inverts when Button 2 pressed (FLAG indicator)
+
+**FLAG Indicator (Page 0 & 1):**
+- Both status lines invert when Button 2 (GPIO 3) is pressed
 - Visual confirmation of manual event flagging
-- Example: `12:34:56 LOG 3D FLAG` (when button held)
-- Example: `12:34:56 LOG 3D` (normal)
+- Example: `2026-01-27 14:23:45` (inverted when button held)
+- Example: `LOG 3D 450mm` (inverted when button held)
 
 ### Implementation Details
 
 **Yellow Zone (Status Bar):**
 
-**Page 0: Time + Logging + GPS**
+**Page 0: Date + Time (INVERTED when button pressed)**
+```c
+// Format date and time
+char date_str[16] = "YYYY-MM-DD";
+if (smart_time_get(&timeinfo) == ESP_OK) {
+    strftime(date_str, sizeof(date_str), "%Y-%m-%d", &timeinfo);
+}
+char status_line1[32];
+snprintf(status_line1, sizeof(status_line1), "%s %s", date_str, time_str);
+fb_write_text(0, status_line1, button_active);  // Invert when button pressed
+```
+
+**Example Output:**
+```
+Page 0: "2026-01-27 14:23:45"  ← Normal
+Page 0: "2026-01-27 14:23:45"  ← Inverted when button pressed
+```
+
+**Page 1: Logging + GPS + Distance (INVERTED when button pressed)**
 ```c
 // Get GPS fix status (not hardcoded!)
 gps_data_t gps_data;
@@ -87,30 +111,24 @@ if (gps_read(&gps_data) == ESP_OK && gps_data.valid) {
 } else {
     gps_status = "---";  // No fix
 }
-```
 
-**Example Output:**
-```
-Page 0: "14:23:45 LOG 3D"   ← GPS has 3D fix
-Page 0: "14:23:45 --- ---"  ← Not logging, no GPS
-```
-
-**Page 1: Distance + Approach Rate**
-```c
 // Show approach rate if significant (> 1mm/s)
+char status_line2[32];
 if (fabsf(approach_rate) > 1.0f) {
-    snprintf(status_line2, sizeof(status_line2), "%dmm %+.0fmm/s", 
-            min_distance, approach_rate);
+    snprintf(status_line2, sizeof(status_line2), "%s %s %dmm %+.0f", 
+            log_status, gps_status, min_distance, approach_rate);
 } else {
-    snprintf(status_line2, sizeof(status_line2), "%dmm", min_distance);
+    snprintf(status_line2, sizeof(status_line2), "%s %s %dmm", 
+            log_status, gps_status, min_distance);
 }
+fb_write_text(1, status_line2, button_active);  // Invert when button pressed
 ```
 
 **Example Output:**
 ```
-Page 1: "450mm -523mm/s"  ← Approaching at 523mm/s
-Page 1: "450mm +123mm/s"  ← Receding at 123mm/s
-Page 1: "450mm"           ← Stationary
+Page 1: "LOG 3D 450mm"       ← GPS has 3D fix, stationary
+Page 1: "LOG 3D 450mm -523"  ← Approaching at 523mm/s
+Page 1: "--- --- 450mm"      ← Not logging, no GPS
 ```
 
 **Blue Zone (ToF Grid - Pages 2-5):**
