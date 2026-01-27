@@ -6,6 +6,7 @@
  */
 
 #include "oled_display.h"
+#include "proxitof_logo.h"
 #include "ssd1306.h"
 #include "font8x8_basic.h"
 #include "esp_log.h"
@@ -77,6 +78,11 @@ typedef struct {
 } near_miss_state_t;
 
 static near_miss_state_t nm_state = {0};
+
+// Shutdown confirmation state
+static bool shutdown_confirmation_pending = false;
+static uint32_t shutdown_confirmation_time = 0;
+static bool shutdown_confirmed = false;
 static bool near_miss_active = false;
 static char near_miss_reasons[4][32] = {"", "", "", ""};
 static int near_miss_reason_count = 0;
@@ -780,6 +786,52 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             }
             break;
             
+        case OLED_MODE_SHUTDOWN:
+            // Yellow zone - Shutdown Warning (INVERTED for attention!)
+            if (!shutdown_confirmation_pending) {
+                // First press - show warning
+                fb_write_text(0, "!SHUTDOWN MODE!", true);  // Inverted
+                fb_write_text(1, "Press ACTION", true);     // Inverted
+            } else {
+                // Second press pending - show confirmation
+                fb_write_text(0, "!CONFIRM SHUTDOWN!", true);  // Inverted
+                fb_write_text(1, "Press ACTION again", true);  // Inverted
+            }
+            
+            // Blue zone - Instructions and warnings
+            if (!shutdown_confirmation_pending) {
+                // First screen - explain what will happen
+                fb_write_text(2, "This will:", false);
+                fb_write_text(3, "1. Stop logging", false);
+                fb_write_text(4, "2. Save all data", false);
+                fb_write_text(5, "3. Power off", false);
+                fb_write_text(6, "", false);
+                fb_write_text(7, "Press MODE cancel", false);
+            } else {
+                // Confirmation screen - final warning
+                fb_write_text(2, "Are you sure?", false);
+                fb_write_text(3, "", false);
+                fb_write_text(4, "ACTION = Confirm", false);
+                fb_write_text(5, "MODE = Cancel", false);
+                fb_write_text(6, "", false);
+                
+                // Show countdown timer (10 seconds to confirm)
+                uint32_t now = sensor_manager_get_timestamp();
+                uint32_t elapsed = (now - shutdown_confirmation_time) / 1000;
+                uint32_t remaining = 10 - elapsed;
+                
+                if (remaining > 0) {
+                    char timer[32];
+                    snprintf(timer, sizeof(timer), "Timeout: %lus", (unsigned long)remaining);
+                    fb_write_text(7, timer, false);
+                } else {
+                    // Timeout - cancel confirmation
+                    shutdown_confirmation_pending = false;
+                    fb_write_text(7, "TIMEOUT - Cancelled", false);
+                }
+            }
+            break;
+            
         default:
             break;
     }
@@ -799,9 +851,16 @@ esp_err_t oled_display_set_mode(oled_display_mode_t mode) {
         return ESP_ERR_INVALID_ARG;
     }
     
+    // Cancel shutdown confirmation if leaving shutdown mode
+    if (current_config.mode == OLED_MODE_SHUTDOWN && mode != OLED_MODE_SHUTDOWN) {
+        shutdown_confirmation_pending = false;
+        shutdown_confirmed = false;
+        ESP_LOGI(TAG, "Shutdown cancelled - mode changed");
+    }
+    
     current_config.mode = mode;
     
-    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings"};
+    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "Shutdown"};
     ESP_LOGI(TAG, "Display mode changed to: %s", mode_names[mode]);
     
     // Show mode change notification
@@ -908,8 +967,107 @@ esp_err_t oled_display_handle_action_button(void) {
             
             return ret;
             
+        case OLED_MODE_SHUTDOWN:
+            // Handle shutdown confirmation
+            if (!shutdown_confirmation_pending) {
+                // First press - enter confirmation mode
+                shutdown_confirmation_pending = true;
+                shutdown_confirmation_time = sensor_manager_get_timestamp();
+                ESP_LOGW(TAG, "Shutdown confirmation requested - press ACTION again to confirm");
+                return ESP_OK;
+            } else {
+                // Second press - confirm shutdown
+                uint32_t now = sensor_manager_get_timestamp();
+                uint32_t elapsed = now - shutdown_confirmation_time;
+                
+                // Check if within 10 second timeout
+                if (elapsed < 10000) {
+                    shutdown_confirmed = true;
+                    ESP_LOGW(TAG, "SHUTDOWN CONFIRMED - System will power down");
+                    
+                    // Show final message
+                    clear_frame_buffer();
+                    fb_write_text(0, "!SHUTTING DOWN!", true);
+                    fb_write_text(1, "", true);
+                    fb_write_text(3, "Saving data...", false);
+                    fb_write_text(4, "Please wait", false);
+                    update_display_differential();
+                    
+                    return ESP_OK;
+                } else {
+                    // Timeout - reset confirmation
+                    shutdown_confirmation_pending = false;
+                    ESP_LOGI(TAG, "Shutdown confirmation timeout - cancelled");
+                    return ESP_ERR_TIMEOUT;
+                }
+            }
+            
         default:
             // No action for other modes
             return ESP_ERR_NOT_SUPPORTED;
     }
+}
+
+bool oled_display_is_shutdown_confirmed(void) {
+    return shutdown_confirmed;
+}
+
+esp_err_t oled_display_show_startup(uint8_t progress, const char *status_text) {
+    if (!display_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Clamp progress to 0-100
+    if (progress > 100) {
+        progress = 100;
+    }
+    
+    // Clear display
+    ssd1306_clear_screen(&dev, false);
+    
+    // ===== YELLOW ZONE (Top 16 pixels, Pages 0-1) - Progress Bar =====
+    // Draw progress bar in yellow zone
+    uint8_t progress_bar[128];
+    int fill_width = (progress * 128) / 100;
+    
+    // Page 0: Top border and fill
+    for (int x = 0; x < 128; x++) {
+        if (x < fill_width) {
+            progress_bar[x] = 0xFF;  // Fully filled
+        } else {
+            progress_bar[x] = 0x81;  // Just borders (top and bottom pixels)
+        }
+    }
+    ssd1306_display_image(&dev, 0, 0, progress_bar, 128);
+    
+    // Page 1: Bottom border and fill
+    for (int x = 0; x < 128; x++) {
+        if (x < fill_width) {
+            progress_bar[x] = 0xFF;  // Fully filled
+        } else {
+            progress_bar[x] = 0x81;  // Just borders
+        }
+    }
+    ssd1306_display_image(&dev, 1, 0, progress_bar, 128);
+    
+    // ===== BLUE ZONE (Bottom 48 pixels, Pages 2-7) - Logo and Status =====
+    // Display Proxitof logo in blue zone (skip yellow zone pages 0-1)
+    // Logo is 64 pixels tall (8 pages), but we only have 48 pixels (6 pages) in blue zone
+    // Display pages 1-6 of the logo (skip first page, fits perfectly in pages 2-7)
+    for (int display_page = 2; display_page <= 7; display_page++) {
+        int logo_page = display_page - 1;  // Logo page 1-6 maps to display pages 2-7
+        ssd1306_display_image(&dev, display_page, 0, &proxitof_logo_ssd1306[logo_page * 128], 128);
+    }
+    
+    // Overlay status text on page 6 (if provided)
+    if (status_text != NULL && strlen(status_text) > 0) {
+        ssd1306_display_text(&dev, 6, status_text, strlen(status_text), false);
+    }
+    
+    // Overlay progress percentage on page 7
+    char progress_str[16];
+    snprintf(progress_str, sizeof(progress_str), "%d%%", progress);
+    ssd1306_display_text(&dev, 7, progress_str, strlen(progress_str), false);
+    
+    return ESP_OK;
 }

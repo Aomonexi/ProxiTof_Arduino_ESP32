@@ -24,6 +24,7 @@ typedef enum {
     OLED_MODE_STATUS,           // System status
     OLED_MODE_NEAR_MISS,        // Near-miss alert details
     OLED_MODE_WIFI_SETTINGS,    // WiFi control and time sync
+    OLED_MODE_SHUTDOWN,         // Safe shutdown confirmation
     OLED_MODE_MAX
 } oled_display_mode_t;
 
@@ -93,6 +94,24 @@ oled_display_mode_t oled_display_get_mode(void);
  * @return ESP_OK if action was handled
  */
 esp_err_t oled_display_handle_action_button(void);
+
+/**
+ * Show startup animation with Proxitof logo and loading progress
+ * Displays progress bar in yellow zone while sensors initialize
+ * 
+ * @param progress Progress percentage (0-100)
+ * @param status_text Status message to display (e.g., "Initializing ToF...")
+ * @return ESP_OK on success
+ */
+esp_err_t oled_display_show_startup(uint8_t progress, const char *status_text);
+
+/**
+ * Check if shutdown has been confirmed
+ * Returns true if user pressed action button twice in shutdown mode
+ * 
+ * @return true if shutdown confirmed, false otherwise
+ */
+bool oled_display_is_shutdown_confirmed(void);
 
 #ifdef __cplusplus
 }

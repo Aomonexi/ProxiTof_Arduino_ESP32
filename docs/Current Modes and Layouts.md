@@ -928,13 +928,300 @@ Page 7: (empty)
 | 3 | Status | System health | No action |
 | 4 | Near Miss | Alert details | Flag event |
 | 5 | WiFi Settings | Time sync control | Trigger WiFi sync |
+| 6 | Shutdown | Safe power-off | Confirm shutdown |
+
+---
+
+## Mode 6: Shutdown (NEW!)
+
+**Purpose**: Safe system shutdown with data protection
+
+### Layout Diagram
+
+**Initial Screen (First Press):**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall) - INVERTED    │
+├────────────────────────────────────────────────────────┤
+│ Page 0: !SHUTDOWN MODE!                                │ ← Warning (inverted)
+│ Page 1: Press ACTION                                   │ ← Instruction (inverted)
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: This will:                                     │ ← Header
+│ Page 3: 1. Stop logging                                │ ← Action 1
+│ Page 4: 2. Save all data                               │ ← Action 2
+│ Page 5: 3. Power off                                   │ ← Action 3
+│ Page 6:                                                │ ← Empty
+│ Page 7: Press MODE cancel                              │ ← Cancel instruction
+└────────────────────────────────────────────────────────┘
+```
+
+**Confirmation Screen (Second Press Pending):**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall) - INVERTED    │
+├────────────────────────────────────────────────────────┤
+│ Page 0: !CONFIRM SHUTDOWN!                             │ ← Final warning (inverted)
+│ Page 1: Press ACTION again                             │ ← Instruction (inverted)
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: Are you sure?                                  │ ← Confirmation
+│ Page 3:                                                │ ← Empty
+│ Page 4: ACTION = Confirm                               │ ← Confirm instruction
+│ Page 5: MODE = Cancel                                  │ ← Cancel instruction
+│ Page 6:                                                │ ← Empty
+│ Page 7: Timeout: 8s                                    │ ← Countdown timer
+└────────────────────────────────────────────────────────┘
+```
+
+**Shutdown In Progress:**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall) - INVERTED    │
+├────────────────────────────────────────────────────────┤
+│ Page 0: !SHUTTING DOWN!                                │ ← Status (inverted)
+│ Page 1:                                                │ ← Empty (inverted)
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2:                                                │ ← Empty
+│ Page 3: Saving data...                                 │ ← Progress
+│ Page 4: Please wait                                    │ ← Instruction
+│ Page 5:                                                │ ← Empty
+│ Page 6:                                                │ ← Empty
+│ Page 7:                                                │ ← Empty
+└────────────────────────────────────────────────────────┘
+```
+
+### Shutdown Sequence
+
+**Step 1: Enter Shutdown Mode**
+- User presses Button 1 (GPIO 20) to cycle to Shutdown mode
+- Display shows warning and instructions
+- Yellow zone inverted for high visibility
+
+**Step 2: First Confirmation**
+- User presses Button 2 (GPIO 3) - ACTION button
+- Display changes to confirmation screen
+- 10-second countdown timer starts
+- LED turns RED
+
+**Step 3: Cancel (Optional)**
+- User can press Button 1 (GPIO 20) - MODE button to cancel
+- Returns to Dashboard mode
+- Confirmation state is reset
+
+**Step 4: Timeout (Optional)**
+- If user doesn't press ACTION within 10 seconds
+- Confirmation is automatically cancelled
+- Display shows "TIMEOUT - Cancelled"
+
+**Step 5: Final Confirmation**
+- User presses Button 2 (GPIO 3) again within 10 seconds
+- Shutdown sequence begins
+- Display shows "SHUTTING DOWN!"
+
+**Step 6: Shutdown Process**
+1. Stop data logging
+2. Flush all buffered data to SD card
+3. Stop sensor readings
+4. Save final state
+5. Display "Safe to power off"
+6. Enter deep sleep mode
+7. LED turns off
+
+### Safety Features
+
+**Two-Step Confirmation:**
+- Prevents accidental shutdown
+- First press: Shows what will happen
+- Second press: Final confirmation required
+
+**10-Second Timeout:**
+- Confirmation expires after 10 seconds
+- Prevents stuck confirmation state
+- User must be intentional
+
+**Cancel Anytime:**
+- Press MODE button to cancel
+- Works at any stage before final confirmation
+- Returns to Dashboard safely
+
+**Data Protection:**
+- All data flushed to SD card
+- Logging stopped gracefully
+- No data loss or corruption
+
+**Visual Feedback:**
+- Inverted yellow zone for attention
+- Clear instructions at each step
+- Countdown timer shows remaining time
+- LED turns RED during shutdown
+
+### Button Behavior
+
+**Button 1 (GPIO 20) - MODE:**
+- **Initial screen:** Cycles to next mode (Dashboard)
+- **Confirmation screen:** Cancels shutdown, returns to Dashboard
+- **Effect:** Resets confirmation state
+
+**Button 2 (GPIO 3) - ACTION:**
+- **Initial screen:** Enters confirmation mode (first press)
+- **Confirmation screen:** Confirms shutdown (second press)
+- **LED:** Turns RED when pressed
+- **Timeout:** Must press within 10 seconds
+
+### LED Indicators
+
+**Shutdown Mode:**
+- **Initial:** Normal operation LED (distance-based)
+- **First press:** RED (solid)
+- **Confirmation:** RED (solid)
+- **Shutdown:** RED → OFF
+
+### Use Cases
+
+**Use Case 1: Normal Shutdown**
+1. Cycle to Shutdown mode (Button 1)
+2. Read warning message
+3. Press ACTION button (Button 2)
+4. Read confirmation screen
+5. Press ACTION button again within 10 seconds
+6. Wait for "Safe to power off" message
+7. Switch off device power
+
+**Use Case 2: Accidental Entry**
+1. Cycle to Shutdown mode (Button 1)
+2. Realize mistake
+3. Press MODE button (Button 1) to cancel
+4. Returns to Dashboard
+
+**Use Case 3: Confirmation Timeout**
+1. Cycle to Shutdown mode (Button 1)
+2. Press ACTION button (Button 2)
+3. Wait more than 10 seconds
+4. Confirmation automatically cancelled
+5. Display shows "TIMEOUT - Cancelled"
+
+### Implementation Details
+
+**State Tracking:**
+```c
+static bool shutdown_confirmation_pending = false;
+static uint32_t shutdown_confirmation_time = 0;
+static bool shutdown_confirmed = false;
+```
+
+**Confirmation Logic:**
+```c
+// First press
+if (!shutdown_confirmation_pending) {
+    shutdown_confirmation_pending = true;
+    shutdown_confirmation_time = sensor_manager_get_timestamp();
+}
+// Second press (within 10 seconds)
+else if (elapsed < 10000) {
+    shutdown_confirmed = true;
+    // Begin shutdown sequence
+}
+```
+
+**Shutdown Sequence:**
+```c
+if (oled_display_is_shutdown_confirmed()) {
+    // 1. Stop logging
+    storage_manager_stop_logging();
+    
+    // 2. Flush data
+    storage_manager_flush();
+    
+    // 3. Final message
+    ESP_LOGI(TAG, "Safe to power off");
+    
+    // 4. Deep sleep
+    esp_deep_sleep_start();
+}
+```
+
+### Console Output
+
+**Shutdown Sequence:**
+```
+W (12345) MAIN: 🔴 Shutdown button pressed
+W (12345) MAIN: 
+W (12345) MAIN: ╔════════════════════════════════════════════════╗
+W (12345) MAIN: ║  🔴 SHUTDOWN CONFIRMED - POWERING DOWN         ║
+W (12345) MAIN: ╚════════════════════════════════════════════════╝
+W (12345) MAIN: 
+I (12345) MAIN: Stopping data logging...
+I (12845) MAIN: Flushing data to SD card...
+I (13845) MAIN: Stopping sensors...
+I (13845) MAIN: ✓ All data saved
+I (13845) MAIN: ✓ Safe to power off
+I (13845) MAIN: 
+I (13845) MAIN: You can now switch off the device
+I (15845) MAIN: Entering deep sleep...
+```
+
+### Benefits
+
+**Data Safety:**
+- No risk of corrupted files
+- All data properly saved
+- Clean shutdown sequence
+
+**User Safety:**
+- Two-step confirmation prevents accidents
+- Clear visual feedback
+- Timeout prevents stuck state
+
+**Battery Safety:**
+- Proper deep sleep mode
+- Minimal power consumption
+- Safe to disconnect power
+
+**Operational Safety:**
+- Sensors stopped gracefully
+- No hanging processes
+- Clean system state
+
+### Testing Checklist
+
+- [ ] Shutdown mode appears in mode cycle
+- [ ] Initial screen shows warning and instructions
+- [ ] First ACTION press enters confirmation mode
+- [ ] Confirmation screen shows countdown timer
+- [ ] Timer counts down from 10 to 0
+- [ ] MODE button cancels at any stage
+- [ ] Timeout after 10 seconds cancels confirmation
+- [ ] Second ACTION press (within 10s) triggers shutdown
+- [ ] LED turns RED during shutdown
+- [ ] Data logging stops
+- [ ] All data flushed to SD card
+- [ ] Display shows "Safe to power off"
+- [ ] System enters deep sleep
+- [ ] LED turns off
+- [ ] No data corruption after power-off
+
+---
+
+## Complete Mode Summary (Updated)
+
+| Mode | Name | Purpose | Button 2 Action |
+|------|------|---------|----------------|
+| 0 | Dashboard | Full overview | Flag event (shows "FLAG") |
+| 1 | ToF Focus | Large distance grid | No action |
+| 2 | IMU Focus | Detailed IMU data | No action |
 
 ---
 
 ## Button Behavior Summary
 
 ### Button 1 (GPIO 20) - Mode Switch
-- **Always:** Cycles through modes
+- **Always:** Cycles through modes (Dashboard → ToF → IMU → Status → Near Miss → WiFi → Shutdown → Dashboard)
+- **Shutdown mode:** Cancels shutdown confirmation and returns to Dashboard
 - **Debounce:** 200ms
 - **LED:** No change
 
@@ -942,6 +1229,7 @@ Page 7: (empty)
 - **Dashboard mode:** Flag event → LED blue flash → Shows "FLAG"
 - **Near Miss mode:** Flag event → LED blue flash
 - **WiFi Settings mode:** WiFi sync → LED blue during sync
+- **Shutdown mode:** Confirm shutdown → LED RED → Two-step confirmation
 - **Other modes:** No action
 - **Debounce:** Handled by sensor_manager
 
@@ -966,6 +1254,11 @@ Page 7: (empty)
 - Duration: During sync (5-10 seconds)
 - Meaning: Syncing time
 
+**Shutdown (Shutdown Mode):**
+- Color: RED (solid)
+- Duration: During shutdown sequence
+- Meaning: System powering down
+
 ### Display Indicators
 
 **FLAG Indicator (Dashboard):**
@@ -978,6 +1271,11 @@ Page 7: (empty)
 - Location: Page 1
 - Shows: "SYNCED" or "NOT SYNCED"
 - Updates: After sync attempt
+
+**Shutdown Warning (Shutdown Mode):**
+- Location: Pages 0-1 (inverted)
+- Shows: "!SHUTDOWN MODE!" or "!CONFIRM SHUTDOWN!"
+- Style: White text on black (high visibility)
 
 ---
 
@@ -1002,9 +1300,22 @@ Page 7: (empty)
 - [ ] Returns to WiFi Settings after 2 seconds
 - [ ] Sync count increments on success
 
+### Shutdown Mode
+- [ ] Mode appears in cycle after WiFi Settings
+- [ ] Initial screen shows warning
+- [ ] First ACTION press enters confirmation
+- [ ] Confirmation screen shows countdown
+- [ ] MODE button cancels shutdown
+- [ ] Timeout cancels after 10 seconds
+- [ ] Second ACTION press triggers shutdown
+- [ ] LED turns RED during shutdown
+- [ ] Data is saved properly
+- [ ] System enters deep sleep
+- [ ] No data corruption
+
 ---
 
-**Document Version:** 3.0  
-**Last Updated:** January 26, 2026  
-**Status:** ✅ All 6 modes documented and implemented  
-**New Features:** FLAG indicator, WiFi Settings mode, LED feedback
+**Document Version:** 4.0  
+**Last Updated:** January 27, 2026  
+**Status:** ✅ All 7 modes documented and implemented  
+**New Features:** FLAG indicator, WiFi Settings mode, Shutdown mode, LED feedback

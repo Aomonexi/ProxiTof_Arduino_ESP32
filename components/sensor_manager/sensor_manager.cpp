@@ -356,9 +356,67 @@ static esp_err_t init_imu_sensor(void)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Initializing (takes ~2s)...");
-
-    if (!imu->initialize()) {
+    ESP_LOGI(TAG, "Initializing (takes ~2s, timeout 5s)...");
+    
+    // Create a flag to track initialization completion
+    volatile bool init_complete = false;
+    volatile bool init_success = false;
+    
+    // Create a task to run initialization with timeout protection
+    auto init_task = [](void* arg) {
+        struct init_params {
+            BNO08x* imu;
+            volatile bool* complete;
+            volatile bool* success;
+        };
+        init_params* params = (init_params*)arg;
+        
+        *params->success = params->imu->initialize();
+        *params->complete = true;
+        vTaskDelete(NULL);
+    };
+    
+    struct init_params {
+        BNO08x* imu;
+        volatile bool* complete;
+        volatile bool* success;
+    } params = {imu, &init_complete, &init_success};
+    
+    TaskHandle_t init_task_handle;
+    xTaskCreate(init_task, "imu_init", 4096, &params, 5, &init_task_handle);
+    
+    // Wait up to 5 seconds for initialization
+    uint32_t start_time = sensor_manager_get_timestamp();
+    while (!init_complete && (sensor_manager_get_timestamp() - start_time) < 5000) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    
+    // Check if initialization timed out
+    if (!init_complete) {
+        ESP_LOGE(TAG, "");
+        ESP_LOGE(TAG, "✗ BNO08x initialization TIMEOUT (5 seconds)!");
+        ESP_LOGE(TAG, "");
+        ESP_LOGE(TAG, "This usually means:");
+        ESP_LOGE(TAG, "  1. Sensor is not responding on SPI bus");
+        ESP_LOGE(TAG, "  2. MISO line not connected or wrong pin (GPIO%d)", IMU_MISO_PIN);
+        ESP_LOGE(TAG, "  3. Protocol pins misconfigured (P0=3.3V, P1=3.3V, BT=float)");
+        ESP_LOGE(TAG, "  4. Power supply issue (check 3.3V with multimeter)");
+        ESP_LOGE(TAG, "");
+        ESP_LOGE(TAG, "💡 Try pressing RESET button to retry initialization");
+        ESP_LOGE(TAG, "");
+        
+        // Kill the stuck task
+        vTaskDelete(init_task_handle);
+        
+        delete imu;
+        imu = nullptr;
+        health.imu_healthy = false;
+        health.imu_error_count++;
+        return ESP_FAIL;
+    }
+    
+    // Check if initialization failed
+    if (!init_success) {
         ESP_LOGE(TAG, "");
         ESP_LOGE(TAG, "✗ BNO08x initialization FAILED!");
         ESP_LOGE(TAG, "");
@@ -597,29 +655,34 @@ bool sensor_manager_is_button_pressed(void)
     // Read button state (active low with pull-up)
     bool current_state = (gpio_get_level(FLAG_BUTTON_PIN) == 0);
     
-    // Debouncing logic - track state changes
+    // Detect state changes
     if (current_state != last_button_state) {
+        // State changed - update tracking
         last_button_read_time = current_time;
-        last_button_state = current_state;
         
-        // Track when button was first pressed
-        if (current_state) {
+        // Detect button press (HIGH to LOW transition)
+        if (current_state && !last_button_state) {
             button_press_start_time = current_time;
         }
         
-        return false;  // Don't trigger on state change, wait for stability
-    }
-    
-    // Check if button has been stable LOW for debounce period
-    // AND enough time has passed since last press (prevent repeat triggers)
-    if (current_state && 
-        (current_time - last_button_read_time) >= BUTTON_DEBOUNCE_MS &&
-        (current_time - last_button_press_time) >= 200) {  // 200ms between presses (was 1000ms)
+        // Detect button release (LOW to HIGH transition) - THIS IS THE TRIGGER!
+        if (!current_state && last_button_state) {
+            uint32_t press_duration = current_time - button_press_start_time;
+            
+            // Only trigger if:
+            // 1. Button was held for at least debounce time (prevents glitches)
+            // 2. Enough time passed since last press (prevents double-triggers)
+            if (press_duration >= BUTTON_DEBOUNCE_MS && 
+                (current_time - last_button_press_time) >= 150) {  // 150ms between presses
+                
+                last_button_press_time = current_time;
+                last_button_state = current_state;
+                ESP_LOGI(TAG, "Button pressed (held for %lu ms)", press_duration);
+                return true;
+            }
+        }
         
-        last_button_press_time = current_time;
-        uint32_t duration = current_time - button_press_start_time;
-        ESP_LOGI(TAG, "Button pressed at %lu ms (held for %lu ms)", current_time, duration);
-        return true;
+        last_button_state = current_state;
     }
     
     return false;

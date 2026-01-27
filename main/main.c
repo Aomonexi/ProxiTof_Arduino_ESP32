@@ -9,6 +9,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_sleep.h"
 #include "sensor_manager.h"
 #include "storage_manager.h"
 #include "smart_time.h"
@@ -95,7 +96,7 @@ static bool check_mode_button(void)
             oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
             oled_display_set_mode(next_mode);
             
-            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings"};
+            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "Shutdown"};
             ESP_LOGI(TAG, "🔄 Display mode changed: %s → %s", 
                      mode_names[current_mode], mode_names[next_mode]);
             
@@ -452,6 +453,7 @@ void app_main(void)
     // =========================================================================
     // OLED DISPLAY INITIALIZATION (REAL-TIME 60 FPS VISUALIZATION - SPI MODE)
     // =========================================================================
+    bool oled_available = false;
     if (config.oled_enabled) {
         ESP_LOGI(TAG, "Initializing OLED display (SSD1306 128x64 SPI)...");
         ESP_LOGI(TAG, "Wiring: SCK=GPIO7, MOSI=GPIO1, DC=GPIO35, RST=GPIO21");
@@ -459,14 +461,53 @@ void app_main(void)
         
         err = oled_display_init();
         if (err == ESP_OK) {
+            oled_available = true;
             ESP_LOGI(TAG, "✓ OLED display initialized successfully");
             ESP_LOGI(TAG, "📺 Real-time sensor visualization at %d FPS", config.oled_refresh_hz);
             ESP_LOGI(TAG, "🎨 Display mode: %d (0=Dashboard, 1=ToF, 2=IMU, 3=Status)", config.oled_mode);
             ESP_LOGI(TAG, "💡 Brightness: %d/255", config.oled_brightness);
             
             // Set initial configuration
-            oled_display_set_mode((oled_display_mode_t)config.oled_mode);
             oled_display_set_brightness(config.oled_brightness);
+            
+            // =========================================================================
+            // STARTUP ANIMATION - Show Proxitof logo with loading progress
+            // =========================================================================
+            ESP_LOGI(TAG, "");
+            ESP_LOGI(TAG, "╔════════════════════════════════════════════╗");
+            ESP_LOGI(TAG, "║   Starting Startup Animation               ║");
+            ESP_LOGI(TAG, "╚════════════════════════════════════════════╝");
+            ESP_LOGI(TAG, "");
+            
+            // Stage 1: Display initialization (0%)
+            oled_display_show_startup(0, "Starting...");
+            vTaskDelay(pdMS_TO_TICKS(300));
+            
+            // Stage 2: Sensor manager ready (20%)
+            oled_display_show_startup(20, "Sensors ready");
+            vTaskDelay(pdMS_TO_TICKS(300));
+            
+            // Stage 3: Storage initialized (40%)
+            oled_display_show_startup(40, "Storage ready");
+            vTaskDelay(pdMS_TO_TICKS(300));
+            
+            // Stage 4: Time system ready (60%)
+            oled_display_show_startup(60, "Time sync ready");
+            vTaskDelay(pdMS_TO_TICKS(300));
+            
+            // Stage 5: USB system ready (80%)
+            oled_display_show_startup(80, "USB ready");
+            vTaskDelay(pdMS_TO_TICKS(300));
+            
+            // Stage 6: All systems ready (100%)
+            oled_display_show_startup(100, "System ready!");
+            vTaskDelay(pdMS_TO_TICKS(800));
+            
+            ESP_LOGI(TAG, "✓ Startup animation complete");
+            ESP_LOGI(TAG, "");
+            
+            // Now set the actual display mode
+            oled_display_set_mode((oled_display_mode_t)config.oled_mode);
         } else {
             ESP_LOGW(TAG, "❌ OLED display initialization failed: %s", esp_err_to_name(err));
             ESP_LOGW(TAG, "💡 Check wiring: SCK=GPIO7, MOSI=GPIO1, DC=GPIO35, RST=GPIO21, VCC=3.3V");
@@ -695,7 +736,7 @@ void app_main(void)
             display_manager_update(&tof_data, &imu_data, min_dist);
             
             // Update OLED display at configured refresh rate (60 FPS by default)
-            if (config.oled_enabled) {
+            if (oled_available) {
                 static uint32_t last_oled_update = 0;
                 uint32_t oled_interval_ms = 1000 / config.oled_refresh_hz;
                 
@@ -711,7 +752,7 @@ void app_main(void)
                 last_button_check = current_time;
                 
                 // Get current display mode to determine button behavior
-                oled_display_mode_t current_mode = config.oled_enabled ? oled_display_get_mode() : 0;
+                oled_display_mode_t current_mode = oled_available ? oled_display_get_mode() : 0;
                 
                 // Context-aware button handling
                 if (current_mode == 0 || current_mode == 4) {  // Dashboard or Near-Miss mode
@@ -742,7 +783,7 @@ void app_main(void)
                             vTaskDelay(pdMS_TO_TICKS(100));  // 100ms flash
                         }
                     }
-                } else if (current_mode == 5 && config.oled_enabled) {  // WiFi Settings mode
+                } else if (current_mode == 5 && oled_available) {  // WiFi Settings mode
                     // Button 2 (GPIO 3): Trigger WiFi sync
                     if (sensor_manager_is_button_pressed()) {
                         ESP_LOGI(TAG, "🌐 WiFi sync triggered from button");
@@ -755,12 +796,67 @@ void app_main(void)
                         
                         oled_display_handle_action_button();
                     }
+                } else if (current_mode == 6 && oled_available) {  // Shutdown mode
+                    // Button 2 (GPIO 3): Confirm shutdown
+                    if (sensor_manager_is_button_pressed()) {
+                        ESP_LOGW(TAG, "🔴 Shutdown button pressed");
+                        
+                        // Red LED during shutdown
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 255, 0, 0);  // Red
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        oled_display_handle_action_button();
+                        
+                        // Check if shutdown was confirmed
+                        if (oled_display_is_shutdown_confirmed()) {
+                            ESP_LOGW(TAG, "");
+                            ESP_LOGW(TAG, "╔════════════════════════════════════════════════╗");
+                            ESP_LOGW(TAG, "║  🔴 SHUTDOWN CONFIRMED - POWERING DOWN         ║");
+                            ESP_LOGW(TAG, "╚════════════════════════════════════════════════╝");
+                            ESP_LOGW(TAG, "");
+                            
+                            // Stop data logging
+                            ESP_LOGI(TAG, "Stopping data logging...");
+                            storage_manager_stop_logging();
+                            vTaskDelay(pdMS_TO_TICKS(500));
+                            
+                            // Flush all data to SD card
+                            ESP_LOGI(TAG, "Flushing data to SD card...");
+                            storage_manager_flush();
+                            vTaskDelay(pdMS_TO_TICKS(1000));
+                            
+                            // Stop sensors
+                            ESP_LOGI(TAG, "Stopping sensors...");
+                            // ToF and IMU will be stopped when power is cut
+                            
+                            // Final display message
+                            ESP_LOGI(TAG, "✓ All data saved");
+                            ESP_LOGI(TAG, "✓ Safe to power off");
+                            ESP_LOGI(TAG, "");
+                            ESP_LOGI(TAG, "You can now switch off the device");
+                            
+                            // Show final message on OLED
+                            vTaskDelay(pdMS_TO_TICKS(1000));
+                            
+                            // Turn off LED
+                            if (led_strip != NULL) {
+                                led_strip_clear(led_strip);
+                            }
+                            
+                            // Enter deep sleep (effectively powers down)
+                            ESP_LOGI(TAG, "Entering deep sleep...");
+                            vTaskDelay(pdMS_TO_TICKS(2000));
+                            esp_deep_sleep_start();
+                        }
+                    }
                 }
                 // Other modes: Button 2 does nothing
             }
             
             // Check mode switch button (only if OLED is enabled)
-            if (config.oled_enabled) {
+            if (oled_available) {
                 check_mode_button();
             }
         } else {

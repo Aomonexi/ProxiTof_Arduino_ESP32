@@ -40,7 +40,7 @@ extern "C" {
 // Configuration Constants
 // =============================================================================
 
-#define BUTTON_DEBOUNCE_MS  200  // Increased to reduce false triggers
+#define BUTTON_DEBOUNCE_MS  50   // Reduced for better responsiveness (was 200ms)
 #define I2C_MASTER_FREQ_HZ  100000  // Reduced from 400kHz to 100kHz for stability
 #define SPI_MASTER_FREQ_HZ  1000000
 
