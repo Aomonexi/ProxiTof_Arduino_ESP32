@@ -788,36 +788,54 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             break;
             
         case OLED_MODE_GPS:
-            // Yellow zone - GPS Status Header
+            // Yellow zone - GPS Status Header with Satellite Progress Bar
             {
                 gps_data_t gps_data;
                 esp_err_t gps_err = gps_read(&gps_data);
                 
                 if (gps_err == ESP_OK && gps_data.valid) {
-                    // GPS has fix
+                    // GPS has fix - show fix type and satellite count
                     char fix_line[32];
+                    const char* fix_type = "FIX";
                     if (gps_data.satellites_used >= 4) {
-                        snprintf(fix_line, sizeof(fix_line), "GPS: 3D FIX (%dsat)", gps_data.satellites_used);
+                        fix_type = "3D FIX";
                     } else if (gps_data.satellites_used >= 3) {
-                        snprintf(fix_line, sizeof(fix_line), "GPS: 2D FIX (%dsat)", gps_data.satellites_used);
-                    } else {
-                        snprintf(fix_line, sizeof(fix_line), "GPS: FIX (%dsat)", gps_data.satellites_used);
+                        fix_type = "2D FIX";
                     }
+                    snprintf(fix_line, sizeof(fix_line), "GPS: %s (%dsat)", fix_type, gps_data.satellites_used);
                     fb_write_text(0, fix_line, false);
                     
-                    // HDOP (accuracy indicator)
-                    char hdop_line[32];
-                    snprintf(hdop_line, sizeof(hdop_line), "HDOP: %.1f", gps_data.hdop);
-                    fb_write_text(1, hdop_line, false);
+                    // HDOP (accuracy indicator) + UTC Time
+                    char hdop_time_line[32];
+                    snprintf(hdop_time_line, sizeof(hdop_time_line), "HDOP:%.1f %02d:%02d:%02d", 
+                            gps_data.hdop, gps_data.hour, gps_data.minute, gps_data.second);
+                    fb_write_text(1, hdop_time_line, false);
                 } else {
-                    // No fix
+                    // No fix - show searching status with satellite progress bar
                     fb_write_text(0, "GPS: SEARCHING", false);
                     
+                    // Get stats to show progress
                     gps_stats_t stats;
                     gps_get_stats(&stats);
-                    char stats_line[32];
-                    snprintf(stats_line, sizeof(stats_line), "Parsed: %lu", (unsigned long)stats.sentences_parsed);
-                    fb_write_text(1, stats_line, false);
+                    
+                    // Read current GPS data even if not valid (to get satellite count)
+                    gps_data_t temp_data;
+                    gps_read(&temp_data);
+                    uint8_t sats = temp_data.satellites_used;
+                    
+                    // Satellite progress bar: [====    ] 4/12
+                    char sat_bar[32];
+                    int bar_width = 10;  // 10 characters for bar
+                    int filled = (sats * bar_width) / 12;  // Assume 12 sats max for display
+                    if (filled > bar_width) filled = bar_width;
+                    
+                    char bar[12] = {0};
+                    for (int i = 0; i < bar_width; i++) {
+                        bar[i] = (i < filled) ? '=' : ' ';
+                    }
+                    
+                    snprintf(sat_bar, sizeof(sat_bar), "[%s]%d/12", bar, sats);
+                    fb_write_text(1, sat_bar, false);
                 }
             }
             
@@ -841,22 +859,34 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                             gps_data.longitude >= 0 ? 'E' : 'W');
                     fb_write_text(3, lon_line, false);
                     
-                    // Line 5: Altitude
-                    char alt_line[32];
-                    snprintf(alt_line, sizeof(alt_line), "Alt: %.1fm", gps_data.altitude_m);
-                    fb_write_text(4, alt_line, false);
+                    // Line 5: Altitude + Date
+                    char alt_date_line[32];
+                    snprintf(alt_date_line, sizeof(alt_date_line), "Alt:%.0fm %02d/%02d/%04d", 
+                            gps_data.altitude_m, gps_data.day, gps_data.month, gps_data.year);
+                    fb_write_text(4, alt_date_line, false);
                     
-                    // Line 6: Speed
+                    // Line 6: Speed (both km/h and m/s)
                     char speed_line[32];
-                    snprintf(speed_line, sizeof(speed_line), "Spd: %.1fkm/h", gps_data.speed_kmh);
+                    snprintf(speed_line, sizeof(speed_line), "Spd:%.1fkm/h %.1fm/s", 
+                            gps_data.speed_kmh, gps_data.speed_ms);
                     fb_write_text(5, speed_line, false);
                     
-                    // Line 7: Heading
+                    // Line 7: Heading with compass direction
                     char heading_line[32];
-                    snprintf(heading_line, sizeof(heading_line), "Hdg: %.0fdeg", gps_data.heading_deg);
+                    const char* compass = "N";
+                    float hdg = gps_data.heading_deg;
+                    if (hdg >= 337.5 || hdg < 22.5) compass = "N";
+                    else if (hdg >= 22.5 && hdg < 67.5) compass = "NE";
+                    else if (hdg >= 67.5 && hdg < 112.5) compass = "E";
+                    else if (hdg >= 112.5 && hdg < 157.5) compass = "SE";
+                    else if (hdg >= 157.5 && hdg < 202.5) compass = "S";
+                    else if (hdg >= 202.5 && hdg < 247.5) compass = "SW";
+                    else if (hdg >= 247.5 && hdg < 292.5) compass = "W";
+                    else if (hdg >= 292.5 && hdg < 337.5) compass = "NW";
+                    snprintf(heading_line, sizeof(heading_line), "Hdg: %.0fdeg (%s)", hdg, compass);
                     fb_write_text(6, heading_line, false);
                     
-                    // Line 8: Time since update
+                    // Line 8: Data age
                     uint32_t age_ms = gps_get_time_since_update();
                     char age_line[32];
                     if (age_ms < 1000) {
@@ -866,13 +896,31 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                     }
                     fb_write_text(7, age_line, false);
                 } else {
-                    // No fix - show waiting message
-                    fb_write_text(2, "Waiting for", false);
-                    fb_write_text(3, "satellite fix...", false);
-                    fb_write_text(4, "", false);
+                    // No fix - show acquisition progress
+                    gps_stats_t stats;
+                    gps_get_stats(&stats);
+                    
+                    fb_write_text(2, "Acquiring sats..", false);
+                    
+                    // Show parsed sentences count
+                    char parsed_line[32];
+                    snprintf(parsed_line, sizeof(parsed_line), "Parsed: %lu", (unsigned long)stats.sentences_parsed);
+                    fb_write_text(3, parsed_line, false);
+                    
+                    // Show time to first fix if available
+                    if (stats.first_fix_acquired) {
+                        char ttff_line[32];
+                        snprintf(ttff_line, sizeof(ttff_line), "TTFF: %lus", (unsigned long)stats.time_to_first_fix_s);
+                        fb_write_text(4, ttff_line, false);
+                    } else {
+                        fb_write_text(4, "", false);
+                    }
+                    
                     fb_write_text(5, "This may take", false);
-                    fb_write_text(6, "1-5 minutes", false);
-                    fb_write_text(7, "outdoors", false);
+                    fb_write_text(6, "1-5 min outdoors", false);
+                    
+                    // Show PPS status hint
+                    fb_write_text(7, "PPS blink=time OK", false);
                 }
             }
             break;
@@ -951,7 +999,7 @@ esp_err_t oled_display_set_mode(oled_display_mode_t mode) {
     
     current_config.mode = mode;
     
-    const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "GPS", "Shutdown"};
+    const char *mode_names[] = {"Dashboard", "Status", "ToF Focus", "IMU Focus", "GPS", "Near Miss", "WiFi Settings", "Shutdown"};
     ESP_LOGI(TAG, "Display mode changed to: %s", mode_names[mode]);
     
     // Show mode change notification
@@ -1073,7 +1121,8 @@ esp_err_t oled_display_handle_action_button(void) {
             gps_deinit();
             vTaskDelay(pdMS_TO_TICKS(200));
             
-            esp_err_t gps_ret = gps_init(UART_NUM_1, 44, 43, 9600);
+            // Reinitialize with correct pins: GPIO 38 (TX), 47 (RX), 38400 baud
+            esp_err_t gps_ret = gps_init(UART_NUM_1, 38, 47, 38400);
             
             if (gps_ret == ESP_OK) {
                 // Success

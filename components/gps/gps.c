@@ -256,6 +256,10 @@ static void gps_task(void *arg)
     
     ESP_LOGI(TAG, "GPS task started, waiting for NMEA sentences...");
     
+    uint32_t last_debug_time = 0;
+    uint32_t bytes_received_total = 0;
+    uint32_t no_data_count = 0;
+    
     while (1) {
         // Read data from UART
         int len = uart_read_bytes(gps_state.uart_num, data, GPS_UART_BUF_SIZE - 1, 
@@ -263,6 +267,19 @@ static void gps_task(void *arg)
         
         if (len > 0) {
             data[len] = '\0';
+            bytes_received_total += len;
+            no_data_count = 0;  // Reset no-data counter
+            
+            // Debug: Print raw NMEA data every 5 seconds
+            uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            if (now - last_debug_time > 5000) {
+                ESP_LOGI(TAG, "📡 GPS UART active: %d bytes received (total: %lu)", len, bytes_received_total);
+                
+                // Print first 50 bytes as hex to see what we're actually receiving
+                ESP_LOG_BUFFER_HEXDUMP(TAG, data, len > 50 ? 50 : len, ESP_LOG_INFO);
+                
+                last_debug_time = now;
+            }
             
             // Process byte by byte
             for (int i = 0; i < len; i++) {
@@ -285,6 +302,20 @@ static void gps_task(void *arg)
                 else if (sentence_pos > 0 && sentence_pos < GPS_SENTENCE_MAX_LEN - 1) {
                     sentence[sentence_pos++] = c;
                 }
+            }
+        } else {
+            // No data received
+            no_data_count++;
+            
+            // Warn if no data for 5 seconds (50 iterations × 100ms)
+            if (no_data_count == 50) {
+                ESP_LOGW(TAG, "⚠️  No GPS data received for 5 seconds");
+                ESP_LOGW(TAG, "💡 Check: 1) GPS powered? 2) TX/RX wiring? 3) Baud rate (115200)?");
+            }
+            
+            // Periodic warning every 30 seconds
+            if (no_data_count % 300 == 0 && no_data_count > 0) {
+                ESP_LOGW(TAG, "⚠️  Still no GPS data after %lu seconds", no_data_count / 10);
             }
         }
         

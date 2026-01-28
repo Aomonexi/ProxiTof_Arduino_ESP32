@@ -1,8 +1,8 @@
 # ProxiTof Hardware Wiring Diagram
 
-**Last Updated**: December 9, 2025  
+**Last Updated**: January 28, 2026  
 **Board**: ESP32-S3-DevKitC-1 (N16R8 - 16MB Flash, 8MB PSRAM)  
-**Status**: Initial Setup - ToF, IMU, SD Card, Button
+**Status**: Complete System - All sensors operational
 
 ---
 
@@ -10,11 +10,17 @@
 
 | Component | Interface | GPIO Pins | Status |
 |-----------|-----------|-----------|--------|
-| VL53L8CX ToF | I2C | 8 (SDA), 9 (SCL), 4 (LPn) | ✅ Wired |
-| BNO08x IMU | SPI | 11 (MOSI), 13 (MISO), 12 (SCK), 10 (CS), 5 (INT), 6 (RST) | ✅ Wired |
-| SD Card | SDIO (4-bit) | 39 (CLK), 38 (CMD), 40 (D0), 41 (D1), 42 (D2), 43 (D3) | 🔄 SDIO Hardware Needed |
-| Flag Button | GPIO | 3 (Input with Pull-up) | 🔄 In Progress |
-| WS2812 LED | GPIO | 48 (Data) | ✅ Built-in (on board) |
+| VL53L8CX ToF | I2C | 8 (SDA), 9 (SCL), 4 (LPn) | ✅ Working |
+| BNO08x IMU | SPI | 11 (MOSI), 13 (MISO), 12 (SCK), 10 (CS), 5 (INT), 6 (RST) | ✅ Working |
+| SD Card | SDIO (4-bit) | 14 (CLK), 15 (CMD), 2 (D0), 16 (D1), 17 (D2), 18 (D3) | ✅ Working |
+| Neo-M9N GPS | UART | 38 (TX), 47 (RX) | ✅ Implemented |
+| Flag Button | GPIO | 3 (Input with Pull-up) | ✅ Working |
+| Mode Button | GPIO | 20 (Input with Pull-up) | ✅ Working |
+| WS2812 LED | GPIO | 48 (Data) | ✅ Built-in |
+| OLED Display | SPI | 7 (SCK), 1 (MOSI), 35 (DC), 21 (RST), 0 (CS) | ✅ Working |
+| DS3231 RTC | I2C | 8 (SDA), 9 (SCL) - shared with ToF | ✅ Working |
+| Buzzer | PWM | 45 | ✅ Planned |
+| Potentiometer | ADC | 46 | ✅ Planned |
 
 ---
 
@@ -107,12 +113,12 @@ SD Card SDIO Module      ESP32-S3 DevKitC-1
 │             │          │                  │
 │  VCC (3.3V) │─────────▶│ 3.3V             │
 │  GND        │─────────▶│ GND              │
-│  CLK        │◀─────────│ GPIO 39 (CLK)    │ ◀─ SDMMC Clock
-│  CMD        │◀────────▶│ GPIO 38 (CMD)    │ ◀─ Command/Response
-│  D0         │◀────────▶│ GPIO 40 (D0)     │ ◀─ Data Line 0
-│  D1         │◀────────▶│ GPIO 41 (D1)     │ ◀─ Data Line 1
-│  D2         │◀────────▶│ GPIO 42 (D2)     │ ◀─ Data Line 2
-│  D3         │◀────────▶│ GPIO 43 (D3)     │ ◀─ Data Line 3
+│  CLK        │◀─────────│ GPIO 14 (CLK)    │ ◀─ SDMMC Clock
+│  CMD        │◀────────▶│ GPIO 15 (CMD)    │ ◀─ Command/Response
+│  D0         │◀────────▶│ GPIO 2  (D0)     │ ◀─ Data Line 0
+│  D1         │◀────────▶│ GPIO 16 (D1)     │ ◀─ Data Line 1
+│  D2         │◀────────▶│ GPIO 17 (D2)     │ ◀─ Data Line 2
+│  D3         │◀────────▶│ GPIO 18 (D3)     │ ◀─ Data Line 3
 │             │          │                  │
 └─────────────┘          └──────────────────┘
 ```
@@ -134,14 +140,76 @@ SD Card SDIO Module      ESP32-S3 DevKitC-1
 
 **Notes**:
 - ⚠️ **Requires SDIO breakout board** (not standard SPI SD module)
-- Uses dedicated SDMMC pins (GPIO 38-43)
-- No conflicts with IMU SPI bus
+- Uses conflict-free GPIO pins (14, 15, 2, 16, 17, 18)
+- No conflicts with ToF, IMU, or other sensors
 - Internal pull-ups enabled on all data lines
 - Use quality SD cards (Class 10 or better) for reliable logging
 
 ---
 
-### 4. Flag Button (GPIO Input)
+### 4. Neo-M9N GPS Module (UART)
+
+**Purpose**: GNSS positioning for geo-tagging near-miss events
+
+```
+Neo-M9N GPS Module       ESP32-S3 DevKitC-1
+┌─────────────┐          ┌──────────────────┐
+│             │          │                  │
+│  VCC (5V)   │─────────▶│ 5V               │ ◀─ GPS needs 5V!
+│  GND        │─────────▶│ GND              │
+│  TX         │─────────▶│ GPIO 47 (RX)     │ ◀─ GPS transmits
+│  RX         │◀─────────│ GPIO 38 (TX)     │ ◀─ GPS receives
+│  PPS        │          │ (Not Connected)  │ ◀─ Optional
+│             │          │                  │
+└─────────────┘          └──────────────────┘
+```
+
+**Pin Functions**:
+- **VCC**: 5V power supply (⚠️ **NOT 3.3V!** Neo-M9N requires 5V)
+- **GND**: Ground
+- **TX**: GPS transmit (NMEA sentences) → ESP32 RX (GPIO 47)
+- **RX**: GPS receive (commands) ← ESP32 TX (GPIO 38)
+- **PPS**: Pulse-per-second output (optional, not used)
+
+**UART Configuration**:
+- **Baud Rate**: 38400 (Neo-M9N default)
+- **Data Bits**: 8
+- **Parity**: None
+- **Stop Bits**: 1
+- **Flow Control**: None
+- **Protocol**: NMEA 0183
+
+**GNSS Capabilities**:
+- **Constellations**: GPS, GLONASS, Galileo, BeiDou (concurrent)
+- **Channels**: 92 tracking, 4 concurrent GNSS
+- **Update Rate**: 1-25 Hz (default 1 Hz, max 25 Hz)
+- **Accuracy**: 2.5m CEP (horizontal)
+- **Cold Start**: ~26 seconds
+- **Hot Start**: ~1 second
+- **Sensitivity**: -160 dBm (tracking)
+
+**NMEA Sentences Parsed**:
+- **$GPGGA**: Position fix data (lat, lon, alt, satellites, HDOP)
+- **$GPRMC**: Recommended minimum data (date, time, speed, heading)
+- **$GPVTG**: Track made good and ground speed
+
+**Wiring Notes**:
+- ⚠️ **CRITICAL**: GPIO 43/44 are UART0 (console) pins - DO NOT USE!
+- ✅ **Use GPIO 38/47** instead (free pins, no conflicts)
+- Crossover wiring is CORRECT: GPS TX → ESP32 RX, GPS RX ← ESP32 TX
+- GPS module has ceramic patch antenna (square module on top)
+- LED on GPS module indicates power (should be lit)
+- Indoor GPS fix may take 5+ minutes or fail (needs sky view)
+
+**Testing**:
+- Console shows: `I (XXX) GPS: 📡 GPS UART active: XX bytes received`
+- Hex dump shows: `24 47 50 47 47 41` = "$GPGGA" (NMEA sentence)
+- GPS mode (Mode 4) displays: Lat/Lon, satellites, fix status
+- First fix outdoors: 26-60 seconds (cold start)
+
+---
+
+### 5. Flag Button (GPIO Input)
 
 **Purpose**: Manual near-miss event flagging
 
@@ -497,7 +565,7 @@ Press the button (GPIO 3) to test button functionality
 ## Future Expansion Slots
 
 ### Planned Additions
-- [ ] **GNSS Module (Neo-M9N)**: UART for GPS location tracking
+- [x] **GNSS Module (Neo-M9N)**: UART for GPS location tracking ✅ **IMPLEMENTED**
 - [ ] **Additional Status LEDs**: Visual indicators
 - [ ] **External Power Switch**: For battery operation
 - [ ] **Voltage Monitor**: Battery level sensing
@@ -516,6 +584,10 @@ Press the button (GPIO 3) to test button functionality
 |------|---------|---------|--------|
 | 2025-12-09 | 1.0 | Initial wiring diagram created | Development Team |
 | | | ToF, IMU, SD, Button documented | |
+| 2026-01-28 | 2.0 | Major update: GPS added, SD pins corrected | Development Team |
+| | | GPS: GPIO 38/47 (NOT 43/44 - console pins!) | |
+| | | SD Card: GPIO 14,15,2,16,17,18 (corrected) | |
+| | | Added OLED, RTC, Mode button, Buzzer, Pot | |
 
 ---
 

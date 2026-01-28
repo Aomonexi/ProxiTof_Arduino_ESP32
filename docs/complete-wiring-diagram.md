@@ -1,8 +1,8 @@
 # ProxiTof Complete Wiring Reference - CONSOLIDATED
 
-**Last Updated**: December 24, 2024  
+**Last Updated**: January 28, 2026  
 **Board**: ESP32-S3-DevKitC-1 (N16R8 - 16MB Flash, 8MB PSRAM)  
-**Status**: All Components Documented - Ready for Implementation
+**Status**: All Components Documented and Operational
 
 ---
 
@@ -10,17 +10,17 @@
 
 | Component | Interface | GPIO Pins | Status | Notes |
 |-----------|-----------|-----------|--------|-------|
-| **VL53L8CX ToF** | I2C | SDA=8, SCL=9, LPN=4 | ✅ Ready | 4x4 distance grid @ 60Hz |
-| **BNO08x IMU** | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | ✅ Ready | 9-DOF @ 100Hz |
-| **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Ready | **Conflict-free pins** |
-| **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Ready | Battery-backed time |
-| **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21 | ✅ Ready | 128x64 @ 60Hz (4-wire SPI, no CS) |
-| **Neo-M9N GPS** | UART | TX=44, RX=43 | ✅ Ready | Location tracking @ 1-5Hz |
+| **VL53L8CX ToF** | I2C | SDA=8, SCL=9, LPN=4 | ✅ Working | 4x4 distance grid @ 60Hz |
+| **BNO08x IMU** | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | ✅ Working | 9-DOF @ 100Hz |
+| **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Working | **Conflict-free pins** |
+| **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Working | Battery-backed time |
+| **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21, CS=0 | ✅ Working | 128x64 @ 60Hz (4-wire SPI) |
+| **Neo-M9N GPS** | UART | **TX=38, RX=47** | ✅ Implemented | **CORRECTED** pins (NOT 43/44!) |
 | **Buzzer** | PWM | GPIO 45 | ✅ Ready | Near-miss audio alert |
 | **Potentiometer** | ADC | GPIO 46 (ADC2_CH5) | ⏳ Optional | Volume control (0-3.3V) |
-| **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Ready | Manual event flagging |
-| **Mode Button** | GPIO | GPIO 20 (with pull-up) | ✅ Ready | OLED display mode cycling |
-| **WS2812 LED** | GPIO | GPIO 48 | ✅ Built-in | Status indicator |
+| **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Working | Manual event flagging |
+| **Mode Button** | GPIO | GPIO 20 (with pull-up) | ✅ Working | OLED display mode cycling |
+| **WS2812 LED** | GPIO | GPIO 48 | ✅ Working | Status indicator |
 
 ---
 
@@ -67,8 +67,8 @@ DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
                     ║                                  ║
                     ║              Neo-M9N GPS (UART)  ║
                     ║              ----------------    ║
-                    ║  GPIO 44 (TX)   ──────────────── ║
-                    ║  GPIO 43 (RX)   ──────────────── ║
+                    ║  GPIO 38 (TX)   ──────────────── ║
+                    ║  GPIO 47 (RX)   ──────────────── ║
                     ║                                  ║
                     ║  GPIO 45 ──────────────── Buzzer ║ (PWM)
                     ║  GPIO 46 ──────────────── Pot    ║ (ADC - Optional)
@@ -364,14 +364,14 @@ idf.py build flash monitor
 | 20 | Button Input | Mode Switch Button |
 | 21 | RST | OLED Display |
 | 35 | DC | OLED Display |
-| 43 | UART RX | Neo-M9N GPS |
-| 44 | UART TX | Neo-M9N GPS |
+| 38 | UART TX | Neo-M9N GPS |
 | 45 | PWM | Buzzer |
 | 46 | ADC | Potentiometer (Optional) |
+| 47 | UART RX | Neo-M9N GPS |
 | 48 | LED Data | WS2812 |
 
-### Available for Future Expansion (10+ pins)
-- GPIO 19, 36-37, 38-42, 47
+### Available for Future Expansion (8+ pins)
+- GPIO 19, 36-37, 39-42
 - Perfect for: Additional sensors, external buttons, displays
 
 ---
@@ -536,16 +536,54 @@ GPIO 0  (CS)   --> Pin 7: CS (Chip Select)
 - All 7 pins must be connected (including CS)
 - D0 = Clock, D1 = Data (confusing labels but correct)
 
-### 7. Neo-M9N GPS Module (UART)
+### 7. Neo-M9N GPS Module (UART) - GNSS Positioning
 
 ```
-ESP32-S3          Neo-M9N GPS
---------          -----------
-GPIO 44 (TX)   --> RX (GPS receives data from ESP32)
-GPIO 43 (RX)   --> TX (GPS sends data to ESP32)
-5V             --> VCC (GPS requires 5V, NOT 3.3V!)
+ESP32-S3          Neo-M9N GPS Breakout Board
+--------          --------------------------
+GPIO 38 (TX)   --> RX (GPS receives commands from ESP32)
+GPIO 47 (RX)   <-- TX (GPS sends NMEA data to ESP32)
+5V or 3.3V     --> VCC/VIN (see power note below)
 GND            --> GND
 ```
+
+**⚠️ POWER INPUT - IMPORTANT:**
+Your GPS breakout board determines the voltage:
+
+**Option A: Board with 5V regulator (SparkFun, most breakouts)**
+```
+ESP32 5V → GPS "5V" or "VIN" pin
+```
+- Board has onboard 3.3V regulator
+- Accepts 3.3V-6V input
+- Regulates down to 3.3V for Neo-M9N chip
+- **Use this if your board has a "5V" pin** ✅
+
+**Option B: Board without regulator (bare module)**
+```
+ESP32 3.3V → GPS "VCC" or "3.3V" pin
+```
+- Direct connection to Neo-M9N chip
+- Must be exactly 3.3V
+- No onboard regulator
+- Less common for breakout boards
+
+**How to tell:**
+- If board has **two power pins** (5V and 3.3V) → Use 5V pin
+- If board has **one power pin** labeled "VIN" or "5V" → Use 5V
+- If board has **one power pin** labeled "VCC" or "3.3V" → Use 3.3V
+- Check your board's silkscreen or documentation
+
+**Logic Levels (Always 3.3V):**
+- TX/RX pins are **always 3.3V logic** regardless of power input
+- Safe to connect directly to ESP32-S3 GPIO pins
+- No level shifters needed
+
+**⚠️ CRITICAL PIN CORRECTION:**
+- **OLD (WRONG)**: GPIO 43/44 - These are UART0 (console) pins!
+- **NEW (CORRECT)**: GPIO 38/47 - Free GPIO pins
+- **Why changed**: GPIO 43/44 are hardwired to USB-to-Serial chip for console
+- **Source**: [ESP32-S3 DevKitC Pinout Guide](https://randomnerdtutorials.com/esp32-s3-devkitc-pinout-guide/)
 
 **⚠️ UART Wiring Explanation (TX/RX Crossover)**:
 - **This is CORRECT!** UART connections are always crossover
@@ -558,40 +596,113 @@ GND            --> GND
 ```
 ESP32-S3                    Neo-M9N GPS
 --------                    -----------
-GPIO 44 (TX) ----data----> RX (receives ESP32's data)
-GPIO 43 (RX) <---data----- TX (sends GPS data to ESP32)
+GPIO 38 (TX) ----data----> RX (receives ESP32's commands)
+GPIO 47 (RX) <---data----- TX (sends NMEA sentences to ESP32)
 ```
 
-**Critical Notes:**
-- **Power: 5V required!** (Neo-M9N operates at 5V, not 3.3V)
-- **Logic levels: 3.3V compatible** (TX/RX can connect directly to ESP32)
-- **UART2 interface** (ESP32-S3 has multiple UART ports)
-- **Baud rate: 9600** (default for NMEA output)
-- **Update rate: 1-5 Hz** (configurable)
-- **Cold start: 26 seconds** (first GPS fix)
-- **Hot start: 1 second** (subsequent fixes)
+**Neo-M9N Specifications** (from u-blox datasheet):
 
-**GPS Data Format (NMEA):**
+**Hardware:**
+- **Power Input**: 3.3V-5V (depends on breakout board)
+  - **With regulator**: 5V input → onboard regulator → 3.3V to chip
+  - **Without regulator**: 3.3V direct to chip
+  - **Logic levels**: Always 3.3V (TX/RX safe for ESP32)
+- **Current**: 25 mA typical, 67 mA max (at chip level)
+- **Antenna**: Ceramic patch (integrated) or external via U.FL/SMA
+- **LED**: Power indicator (should be lit when powered)
+- **Battery**: Backup battery for hot start (charges when powered)
+
+**UART Interface:**
+- **Default Baud Rate**: 38400 bps (8N1)
+- **Supported Rates**: 4800, 9600, 19200, 38400, 57600, 115200, 230400
+- **Protocol**: NMEA 0183 (ASCII text)
+- **Data Format**: 8 data bits, no parity, 1 stop bit
+
+**GNSS Performance:**
+- **Constellations**: GPS, GLONASS, Galileo, BeiDou (concurrent)
+- **Channels**: 92 tracking channels
+- **Update Rate**: 1 Hz (default), up to 25 Hz max
+- **Horizontal Accuracy**: 2.0m CEP (multi-GNSS)
+- **Velocity Accuracy**: 0.05 m/s
+- **Heading Accuracy**: 0.3 degrees
+- **Sensitivity**: 
+  - Tracking: -167 dBm
+  - Reacquisition: -160 dBm
+  - Cold start: -148 dBm
+  - Hot start: -159 dBm
+
+**Time to First Fix:**
+- **Cold Start**: 24-29 seconds (no almanac, no position)
+- **Warm Start**: 2-3 seconds (almanac available)
+- **Hot Start**: 1-2 seconds (recent fix, backup battery active)
+- **Backup Battery**: Maintains hot start for 4 hours after power-off
+
+**NMEA Sentences Parsed:**
+- **$GPGGA**: Position fix data (lat, lon, alt, satellites, HDOP, fix quality)
+- **$GPRMC**: Recommended minimum (date, time, speed, heading, status)
+- **$GPVTG**: Track made good and ground speed
+- **$GPGSA**: DOP and active satellites
+- **$GPGSV**: Satellites in view
+
+**Example NMEA Output:**
 ```
 $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47
-       ^^^^^^ ^^^^^^^^^ ^ ^^^^^^^^^^ ^
-       Time   Latitude  N Longitude  E
+       ^^^^^^ ^^^^^^^^^ ^ ^^^^^^^^^^ ^ ^^ ^^^ ^^^^^
+       Time   Latitude  N Longitude  E Sat HDOP Alt
 ```
 
 **What GPS Provides:**
-- Latitude/Longitude (location)
-- Speed (km/h or m/s)
-- Heading (direction of travel)
-- Altitude (meters above sea level)
-- Time (UTC from satellites)
-- Number of satellites (fix quality)
+- **Location**: Latitude/Longitude (decimal degrees)
+- **Altitude**: Meters above sea level
+- **Speed**: km/h or m/s (ground speed)
+- **Heading**: Degrees (0-360, course over ground)
+- **Time**: UTC from satellites (accurate to microseconds)
+- **Date**: Year, month, day from satellites
+- **Fix Quality**: No fix, GPS, DGPS, RTK, etc.
+- **Satellites**: Number of satellites used (4+ needed for 3D fix)
+- **HDOP**: Horizontal dilution of precision (<2.0 = good)
 
 **Why GPS for Near-Miss Detection:**
-- **Location context:** Where did near-miss occur?
-- **Speed validation:** Confirm IMU-derived speed
-- **Route tracking:** Map near-miss hotspots
-- **Time synchronization:** Accurate timestamps
-- **Data enrichment:** Add location to CSV logs
+- **Location Context**: Where did near-miss occur? (geo-tagging)
+- **Speed Validation**: Confirm IMU-derived speed with GPS speed
+- **Route Tracking**: Map near-miss hotspots and dangerous areas
+- **Time Synchronization**: Accurate timestamps from satellites
+- **Data Enrichment**: Add location metadata to CSV logs
+- **Post-Analysis**: Heatmaps, route safety analysis, location clustering
+
+**Testing GPS:**
+```
+Expected Console Output:
+I (5000) GPS: 📡 GPS UART active: 82 bytes received (total: 410)
+I (5000) GPS: 0x3fceb7c0   24 47 50 47 47 41 2c 31  32 33 35 31 39 2c ...
+                            $  G  P  G  G  A  ,  1   2  3  5  1  9  ,
+
+I (30000) GPS: ✓ First GPS fix acquired in 26 seconds
+```
+
+**GPS Mode (Mode 4) Display:**
+- Latitude/Longitude (real coordinates, not 0.000000)
+- Satellites: > 4 (more is better)
+- Fix status: "3D FIX" or "2D FIX" (not "SEARCHING")
+- HDOP: < 2.0 (good accuracy)
+- Speed: km/h and m/s
+- Heading: degrees
+- Altitude: meters
+
+**Troubleshooting:**
+- **No data received**: Check wiring (TX→RX crossover), verify 3.3V power, check LED
+- **Garbled data**: Wrong baud rate - try 9600, 38400, or 115200
+- **No GPS fix**: Move outdoors (needs sky view), wait 1-5 minutes for cold start
+- **Slow fix**: First fix takes 26-60 seconds, subsequent fixes are 1-2 seconds
+- **Indoor testing**: GPS may not get fix indoors, but should still send NMEA sentences
+
+**Critical Notes:**
+- **GPIO 43/44 are UART0 (console)** - DO NOT USE for GPS!
+- **Use GPIO 38/47** - Free pins, no conflicts
+- **3.3V power** - Neo-M9N operates at 3.3V (not 5V)
+- **Crossover wiring** - TX→RX, RX→TX (correct!)
+- **Outdoor testing** - GPS needs clear sky view for fix
+- **Backup battery** - Charges slowly, provides hot start for 4 hours
 
 ### 8. Buzzer (PWM Audio Alert)
 
@@ -798,11 +909,11 @@ The SD card uses dedicated SDMMC pins for high-speed access:
 | BNO08x IMU | 3.3V | 10mA | 15mA |
 | SD Card | 3.3V | 50mA | 200mA |
 | OLED Display | 3.3V | 15mA | 30mA |
-| Neo-M9N GPS | 5V | 25mA | 67mA |
+| Neo-M9N GPS | 3.3V | 25mA | 67mA |
 | Buzzer | 5V | 30mA | 50mA |
 | WS2812 LED | 3.3V | 20mA | 60mA |
-| **Total 3.3V** | **3.3V** | **~195mA** | **~846mA** |
-| **Total 5V** | **5V** | **~55mA** | **~117mA** |
+| **Total 3.3V** | **3.3V** | **~220mA** | **~913mA** |
+| **Total 5V** | **5V** | **~30mA** | **~50mA** |
 
 **Recommendation:** 
 - Use USB power (5V input → 3.3V regulator on DevKit)

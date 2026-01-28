@@ -1,0 +1,147 @@
+╔═══════════════════════════════════════════════════════════════╗
+║          GPS WIRING - FINAL CONFIGURATION SUMMARY             ║
+╚═══════════════════════════════════════════════════════════════╝
+
+DATE: January 28, 2026
+STATUS: ✅ Code Updated | ⚠️ Hardware Rewiring Required
+
+═══════════════════════════════════════════════════════════════
+
+CRITICAL CORRECTIONS MADE:
+
+1. GPIO PINS CHANGED:
+   OLD: GPIO 43/44 (UART0 console pins) ❌
+   NEW: GPIO 38/47 (Free GPIO pins) ✅
+   
+   Reason: GPIO 43/44 are hardwired to USB-to-Serial chip
+
+2. POWER VOLTAGE CORRECTED:
+   OLD: 5V ❌
+   NEW: 3.3V ✅
+   
+   Reason: Neo-M9N operates at 3.3V (confirmed from SparkFun docs)
+
+3. BAUD RATE UPDATED:
+   OLD: 9600 ❌
+   NEW: 38400 ✅
+   
+   Reason: Neo-M9N default is 38400 baud (per u-blox datasheet)
+
+═══════════════════════════════════════════════════════════════
+
+FINAL WIRING CONFIGURATION:
+
+Neo-M9N GPS          ESP32-S3
+-----------          --------
+TX        ───────>   GPIO 47  (ESP32 RX)
+RX        <───────   GPIO 38  (ESP32 TX)
+VCC       ───────>   3.3V     ⚠️ IMPORTANT: 3.3V NOT 5V!
+GND       ───────>   GND
+
+═══════════════════════════════════════════════════════════════
+
+NEO-M9N SPECIFICATIONS (from u-blox datasheet):
+
+Hardware:
+  • Power: 3.3V VCC and I/O
+  • Current: 25 mA typical, 67 mA max
+  • Antenna: Ceramic patch (integrated)
+  • Backup Battery: For hot start (charges when powered)
+
+UART:
+  • Default Baud: 38400 bps (8N1)
+  • Protocol: NMEA 0183 (ASCII)
+  • Update Rate: 1 Hz default, 25 Hz max
+
+GNSS:
+  • Constellations: GPS, GLONASS, Galileo, BeiDou
+  • Channels: 92 tracking
+  • Accuracy: 2.0m horizontal (multi-GNSS)
+  • Cold Start: 24-29 seconds
+  • Hot Start: 1-2 seconds
+
+═══════════════════════════════════════════════════════════════
+
+CODE CONFIGURATION (Already Updated):
+
+File: main/main.c
+
+#define GPS_UART_NUM UART_NUM_1     // UART1
+#define GPS_TX_PIN GPIO_NUM_38      // ESP32 TX → GPS RX
+#define GPS_RX_PIN GPIO_NUM_47      // ESP32 RX ← GPS TX
+#define GPS_BAUD_RATE 38400         // Neo-M9N default
+
+═══════════════════════════════════════════════════════════════
+
+TESTING CHECKLIST:
+
+[ ] 1. Rewire GPS module:
+       - GPS TX → ESP32 GPIO 47
+       - GPS RX → ESP32 GPIO 38
+       - GPS VCC → ESP32 3.3V (NOT 5V!)
+       - GPS GND → ESP32 GND
+
+[ ] 2. Build and flash:
+       idf.py build
+       idf.py flash monitor
+
+[ ] 3. Check console output:
+       ✅ "Wiring: TX=GPIO38, RX=GPIO47"
+       ✅ "Power: 3.3V (Neo-M9N operates at 3.3V)"
+       ✅ "GPS initialized successfully"
+
+[ ] 4. Verify UART activity (every 5 seconds):
+       ✅ "📡 GPS UART active: XX bytes received"
+       ✅ Hex dump shows: 24 47 50 47 47 41 ($GPGGA)
+       ❌ NOT: 54 6f 46 3a (ToF: - console output)
+
+[ ] 5. Wait for GPS fix (outdoors, 1-5 minutes):
+       ✅ "✓ First GPS fix acquired in XX seconds"
+
+[ ] 6. Check GPS mode (Mode 4):
+       ✅ Latitude/Longitude (real coordinates)
+       ✅ Satellites > 4
+       ✅ Fix status: "3D FIX" or "2D FIX"
+       ✅ HDOP < 2.0
+
+═══════════════════════════════════════════════════════════════
+
+DOCUMENTATION UPDATED:
+
+✅ main/main.c - GPIO pins, baud rate, power voltage
+✅ docs/complete-wiring-diagram.md - Full GPS section with specs
+✅ docs/hardware-wiring-diagram.md - GPS section added
+✅ docs/GPS_WIRING_CORRECTION_CRITICAL.md - Detailed explanation
+✅ GPS_FINAL_CONFIGURATION.md - Complete reference
+✅ GPS_REWIRING_INSTRUCTIONS.txt - Simple visual guide
+
+═══════════════════════════════════════════════════════════════
+
+IMPORTANT NOTES:
+
+⚠️  GPIO 43/44 are UART0 (console) - DO NOT USE for GPS!
+✅  Use GPIO 38/47 - Free pins, no conflicts
+✅  3.3V power - Neo-M9N operates at 3.3V (NOT 5V!)
+✅  Crossover wiring - TX→RX, RX→TX (correct!)
+✅  38400 baud - Neo-M9N default (NOT 9600!)
+✅  Outdoor testing - GPS needs clear sky view for fix
+
+═══════════════════════════════════════════════════════════════
+
+NEXT STEPS:
+
+1. Rewire GPS module to GPIO 38/47 with 3.3V power
+2. Build and flash firmware
+3. Test outdoors for GPS fix
+4. Verify NMEA sentences in console
+5. Check GPS mode display shows real coordinates
+
+═══════════════════════════════════════════════════════════════
+
+REFERENCES:
+
+• ESP32-S3 Pinout: https://randomnerdtutorials.com/esp32-s3-devkitc-pinout-guide/
+• Neo-M9N Datasheet: https://content.u-blox.com/sites/default/files/NEO-M9N-00B_DataSheet_UBX-19014285.pdf
+• SparkFun Guide: https://learn.sparkfun.com/tutorials/sparkfun-gps-neo-m9n-hookup-guide/
+
+═══════════════════════════════════════════════════════════════

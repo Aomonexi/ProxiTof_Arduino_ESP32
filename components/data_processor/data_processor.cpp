@@ -264,43 +264,71 @@ bool DataProcessor::detectNearMiss(const feature_vector_t& features) {
     // Update near-miss detection state
     updateNearMissState(features);
     
-    // Check for critical proximity (highest priority)
-    // Property 32: Critical proximity alert
-    // Requirement 7.6
+    // =========================================================================
+    // TIER 1: Critical Proximity (Highest Priority)
+    // =========================================================================
+    // Immediate danger - very close and fast
+    // <100mm + >500mm/s approach
+    // NO JERK REQUIRED - proximity + speed is enough
     if (isCriticalProximity(features.min_distance_mm, features.approach_rate_mm_s)) {
         return true;
     }
     
-    // Check for combined near-miss conditions
-    // Property 31: Combined near-miss detection
-    // Requirement 7.5
-    if (isCombinedNearMiss()) {
+    // =========================================================================
+    // TIER 2: Proximity Alert (High Priority - NO JERK REQUIRED)
+    // =========================================================================
+    // Fast approach in near-miss zone (15cm)
+    // Scenario: Motorcycle passes at 15cm, cyclist doesn't react (late/no reaction)
+    // This IS a near-miss even without body reaction
+    // Priority: Fast approach + close distance is sufficient
+    // NO JERK REQUIRED - proximity + fast approach is the highest priority
+    if (features.min_distance_mm < 150 && isRapidApproach(features.approach_rate_mm_s)) {
         return true;
     }
+    
+    // =========================================================================
+    // TIER 3: Confirmed Near-Miss (Optional Enhancement)
+    // =========================================================================
+    // Tier 2 + body reaction (jerk)
+    // Jerk confirms the near-miss was perceived by cyclist
+    // Useful for training data quality and severity classification
+    // This is already covered by Tier 2, but we track it for logging
+    // (Combined detection with jerk is a subset of Tier 2)
     
     return false;
 }
 
 bool DataProcessor::isRapidApproach(float approach_rate, float threshold) const {
     // Property 28: Approach rate threshold detection
-    // Requirement 7.2: Detect rapid approach (>500 mm/s)
+    // Requirement 7.2: Detect rapid approach (>1000 mm/s = 1.0 m/s)
+    // Updated threshold: More strict to reduce false positives
     
     // Negative approach rate means approaching (distance decreasing)
-    return approach_rate < -threshold;
+    // Default threshold: 1000 mm/s (was 500)
+    float actual_threshold = (threshold > 0) ? threshold : 1000.0f;
+    return approach_rate < -actual_threshold;
 }
 
 bool DataProcessor::isHighJerk(float jerk_magnitude, float threshold) const {
     // Property 30: Jerk threshold detection
-    // Requirement 7.4: Detect high jerk (>2 m/s³)
+    // Requirement 7.4: Detect high jerk (>7 m/s³)
+    // Updated threshold: High enough to filter out daily vibrations
+    // - Turning: gradual, low jerk
+    // - Bumpy road: high-frequency, filtered
+    // - Walking/pedaling: periodic, < 5 m/s³
+    // - Near-miss reaction: sudden, > 7 m/s³
     
-    return jerk_magnitude > threshold;
+    // Default threshold: 7.0 m/s³ (was 5.0)
+    float actual_threshold = (threshold > 0) ? threshold : 7.0f;
+    return jerk_magnitude > actual_threshold;
 }
 
 bool DataProcessor::isCriticalProximity(uint16_t min_distance, float approach_rate) const {
     // Property 32: Critical proximity alert
-    // Requirement 7.6: Detect critical proximity (<300mm with >200 mm/s approach)
+    // Requirement 7.6: Detect critical proximity (<100mm with >500 mm/s approach)
+    // Updated thresholds: More strict to reduce false positives
     
-    return (min_distance < 300) && (approach_rate < -200.0f);
+    return (min_distance < 100) && (approach_rate < -500.0f);
 }
 
 bool DataProcessor::isCombinedNearMiss() const {

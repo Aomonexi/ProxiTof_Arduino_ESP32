@@ -36,20 +36,24 @@ static const char *TAG = "MAIN";
 #define MODE_BUTTON_DEBOUNCE_MS 200
 
 // GPS Configuration (Neo-M9N)
-#define GPS_UART_NUM UART_NUM_1
-#define GPS_TX_PIN GPIO_NUM_44  // ESP32 TX → GPS RX
-#define GPS_RX_PIN GPIO_NUM_43  // ESP32 RX ← GPS TX
-#define GPS_BAUD_RATE 9600
+// CRITICAL: GPIO 43/44 are UART0 (console) pins - cannot use for GPS!
+// Using free GPIO pins: 38 (TX) and 47 (RX)
+// GPIO 48 is used by WS2812 LED, so we use 38 instead
+#define GPS_UART_NUM UART_NUM_1     // UART1
+#define GPS_TX_PIN GPIO_NUM_38      // ESP32 TX → GPS RX (FREE GPIO)
+#define GPS_RX_PIN GPIO_NUM_47      // ESP32 RX ← GPS TX (FREE GPIO)
+#define GPS_BAUD_RATE 38400         // Neo-M9N default: 38400 baud, 8N1
 
 // Distance thresholds (in mm)
 #define CLOSE_THRESHOLD 100    // < 10cm = RED
 #define MEDIUM_THRESHOLD 500   // 10-50cm = YELLOW, > 50cm = GREEN
 
 // Near-miss detection thresholds
-#define RAPID_APPROACH_THRESHOLD 500.0f    // mm/s (0.5 m/s)
-#define HIGH_JERK_THRESHOLD 2.0f           // m/s³
-#define CRITICAL_PROXIMITY_DISTANCE 300    // mm (30 cm)
-#define CRITICAL_PROXIMITY_APPROACH 200.0f // mm/s (0.2 m/s)
+#define RAPID_APPROACH_THRESHOLD 1000.0f   // mm/s (1.0 m/s) - fast approach
+#define HIGH_JERK_THRESHOLD 7.0f           // m/s³ - sudden reaction (increased from 5.0)
+#define CRITICAL_PROXIMITY_DISTANCE 100    // mm (10 cm) - immediate danger
+#define CRITICAL_PROXIMITY_APPROACH 500.0f // mm/s (0.5 m/s) - fast at close range
+#define COMBINED_DETECTION_MAX_DISTANCE 150 // mm (15 cm) - near-miss zone (reduced from 500)
 
 static led_strip_handle_t led_strip = NULL;
 static data_processor_handle_t *data_processor = NULL;
@@ -104,7 +108,7 @@ static bool check_mode_button(void)
             oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
             oled_display_set_mode(next_mode);
             
-            const char *mode_names[] = {"Dashboard", "ToF Focus", "IMU Focus", "Status", "Near Miss", "WiFi Settings", "GPS", "Shutdown"};
+            const char *mode_names[] = {"Dashboard", "Status", "ToF Focus", "IMU Focus", "GPS", "Near Miss", "WiFi Settings", "Shutdown"};
             ESP_LOGI(TAG, "🔄 Display mode changed: %s → %s", 
                      mode_names[current_mode], mode_names[next_mode]);
             
@@ -249,8 +253,11 @@ void app_main(void)
     // GPS MODULE INITIALIZATION (Neo-M9N)
     // =========================================================================
     ESP_LOGI(TAG, "Initializing GPS module (Neo-M9N)...");
-    ESP_LOGI(TAG, "Wiring: TX=GPIO44 (ESP32→GPS RX), RX=GPIO43 (ESP32←GPS TX)");
+    ESP_LOGI(TAG, "⚠️  IMPORTANT: GPIO 43/44 are UART0 (console) - using GPIO 38/47 instead!");
+    ESP_LOGI(TAG, "Wiring: TX=GPIO38 (ESP32→GPS RX), RX=GPIO47 (ESP32←GPS TX)");
+    ESP_LOGI(TAG, "Power: 3.3V (Neo-M9N operates at 3.3V, NOT 5V!)");
     ESP_LOGI(TAG, "UART crossover wiring is CORRECT (TX→RX, RX→TX)");
+    ESP_LOGI(TAG, "Using UART1 with GPIO 38/47 (NOT the console pins 43/44)");
     
     err = gps_init(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, GPS_BAUD_RATE);
     if (err == ESP_OK) {
@@ -568,22 +575,21 @@ void app_main(void)
         ESP_LOGI(TAG, "  Sensor Sync Window: %lu ms", data_processor_get_sync_window(data_processor));
         ESP_LOGI(TAG, "  Rapid Approach Threshold: %.0f mm/s (%.2f m/s)", 
                  RAPID_APPROACH_THRESHOLD, RAPID_APPROACH_THRESHOLD / 1000.0f);
-        ESP_LOGI(TAG, "  High Jerk Threshold: %.1f m/s³", HIGH_JERK_THRESHOLD);
+        ESP_LOGI(TAG, "  High Jerk Threshold: %.1f m/s³ (filters daily vibrations)", HIGH_JERK_THRESHOLD);
         ESP_LOGI(TAG, "  Critical Proximity: <%d mm with >%.0f mm/s approach", 
                  CRITICAL_PROXIMITY_DISTANCE, CRITICAL_PROXIMITY_APPROACH);
+        ESP_LOGI(TAG, "  Combined Detection: Distance < %d mm (15cm near-miss zone)", COMBINED_DETECTION_MAX_DISTANCE);
         ESP_LOGI(TAG, "  Combined Detection Window: 500 ms");
         ESP_LOGI(TAG, "");
-        ESP_LOGI(TAG, "Detection Features:");
-        ESP_LOGI(TAG, "  ✓ Minimum distance calculation (4x4 ToF grid)");
-        ESP_LOGI(TAG, "  ✓ Approach rate (distance change over time)");
-        ESP_LOGI(TAG, "  ✓ Jerk magnitude (acceleration change rate)");
-        ESP_LOGI(TAG, "  ✓ Angular velocity (rotation speed)");
-        ESP_LOGI(TAG, "  ✓ Multi-tier alert system (Critical > Combined > Individual)");
+        ESP_LOGI(TAG, "Detection Scenario (Motorcycle Pass):");
+        ESP_LOGI(TAG, "  Phase 1: Object approaches at 15cm + >1m/s (early warning)");
+        ESP_LOGI(TAG, "  Phase 2: Body reacts with jerk >7m/s³ (confirmed near-miss)");
         ESP_LOGI(TAG, "");
-        ESP_LOGI(TAG, "Alert Priorities:");
-        ESP_LOGI(TAG, "  1. Critical Proximity (Highest) - Imminent collision");
-        ESP_LOGI(TAG, "  2. Combined Near-Miss - Rapid approach + High jerk within 500ms");
-        ESP_LOGI(TAG, "  3. Individual Conditions - Rapid approach OR High jerk");
+        ESP_LOGI(TAG, "Filtered Out (Not Near-Miss):");
+        ESP_LOGI(TAG, "  ✗ Turning: Gradual angular velocity (low jerk)");
+        ESP_LOGI(TAG, "  ✗ Bumpy road: High-frequency vibration (filtered)");
+        ESP_LOGI(TAG, "  ✗ Walking/pedaling: Periodic pattern (<5m/s³)");
+        ESP_LOGI(TAG, "  ✓ Near-miss reaction: Sudden swerve (>7m/s³)");
     }
     
     ESP_LOGI(TAG, "");
@@ -782,7 +788,7 @@ void app_main(void)
                 oled_display_mode_t current_mode = oled_available ? oled_display_get_mode() : 0;
                 
                 // Context-aware button handling
-                if (current_mode == 0 || current_mode == 4) {  // Dashboard or Near-Miss mode
+                if (current_mode == 0 || current_mode == 5) {  // Dashboard or Near-Miss mode
                     // Button 2 (GPIO 3): Manual event flagging
                     if (sensor_manager_is_button_held()) {
                         uint32_t duration = sensor_manager_get_button_duration();
@@ -810,7 +816,7 @@ void app_main(void)
                             vTaskDelay(pdMS_TO_TICKS(100));  // 100ms flash
                         }
                     }
-                } else if (current_mode == 5 && oled_available) {  // WiFi Settings mode
+                } else if (current_mode == 6 && oled_available) {  // WiFi Settings mode
                     // Button 2 (GPIO 3): Trigger WiFi sync
                     if (sensor_manager_is_button_pressed()) {
                         ESP_LOGI(TAG, "🌐 WiFi sync triggered from button");
@@ -823,7 +829,7 @@ void app_main(void)
                         
                         oled_display_handle_action_button();
                     }
-                } else if (current_mode == 2 && oled_available) {  // IMU Focus mode
+                } else if (current_mode == 3 && oled_available) {  // IMU Focus mode
                     // Button 2 (GPIO 3): Trigger IMU rescan
                     if (sensor_manager_is_button_pressed()) {
                         ESP_LOGI(TAG, "🔄 IMU rescan triggered from button");
@@ -836,7 +842,7 @@ void app_main(void)
                         
                         oled_display_handle_action_button();
                     }
-                } else if (current_mode == 6 && oled_available) {  // GPS mode
+                } else if (current_mode == 4 && oled_available) {  // GPS mode
                     // Button 2 (GPIO 3): Trigger GPS reconnect
                     if (sensor_manager_is_button_pressed()) {
                         ESP_LOGI(TAG, "📡 GPS reconnect triggered from button");

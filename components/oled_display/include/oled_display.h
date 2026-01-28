@@ -19,12 +19,12 @@ extern "C" {
 // Display modes
 typedef enum {
     OLED_MODE_DASHBOARD = 0,    // Full dashboard (ToF + IMU + Stats)
+    OLED_MODE_STATUS,           // System status (moved after Dashboard)
     OLED_MODE_TOF_FOCUS,        // Large ToF grid
     OLED_MODE_IMU_FOCUS,        // Large IMU display
-    OLED_MODE_STATUS,           // System status
+    OLED_MODE_GPS,              // GPS location and status (moved after IMU)
     OLED_MODE_NEAR_MISS,        // Near-miss alert details
     OLED_MODE_WIFI_SETTINGS,    // WiFi control and time sync
-    OLED_MODE_GPS,              // GPS location and status
     OLED_MODE_SHUTDOWN,         // Safe shutdown confirmation
     OLED_MODE_MAX
 } oled_display_mode_t;

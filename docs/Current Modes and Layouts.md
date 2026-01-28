@@ -30,7 +30,7 @@
 
 **Mode Order:**
 ```
-Dashboard → ToF Focus → IMU Focus → Status → Near Miss → WiFi Settings → (back to Dashboard)
+Dashboard → Status → ToF Focus → IMU Focus → GPS → Near Miss → WiFi Settings → Shutdown → (back to Dashboard)
 ```
 
 ---
@@ -1503,12 +1503,12 @@ I (15845) MAIN: Entering deep sleep...
 | Mode | Name | Purpose | Button 2 Action |
 |------|------|---------|----------------|
 | 0 | Dashboard | Full overview | Flag event (shows "FLAG") |
-| 1 | ToF Focus | Large distance grid | No action |
-| 2 | IMU Focus | Detailed IMU data | Rescan IMU |
-| 3 | Status | System health | No action |
-| 4 | Near Miss | Alert details | Flag event |
-| 5 | WiFi Settings | Time sync control | Trigger WiFi sync |
-| 6 | GPS | Location & satellites | Reconnect GPS |
+| 1 | Status | System health | No action |
+| 2 | ToF Focus | Large distance grid | No action |
+| 3 | IMU Focus | Detailed IMU data | Rescan IMU |
+| 4 | GPS | Location & satellites | Reconnect GPS |
+| 5 | Near Miss | Alert details | Flag event |
+| 6 | WiFi Settings | Time sync control | Trigger WiFi sync |
 | 7 | Shutdown | Safe power-off | Confirm shutdown |
 
 ---
@@ -1516,7 +1516,7 @@ I (15845) MAIN: Entering deep sleep...
 ## Button Behavior Summary
 
 ### Button 1 (GPIO 20) - Mode Switch
-- **Always:** Cycles through modes (Dashboard → ToF → IMU → Status → Near Miss → WiFi → GPS → Shutdown → Dashboard)
+- **Always:** Cycles through modes (Dashboard → Status → ToF → IMU → GPS → Near Miss → WiFi → Shutdown → Dashboard)
 - **Shutdown mode:** Cancels shutdown confirmation and returns to Dashboard
 - **Debounce:** 200ms
 - **LED:** No change
