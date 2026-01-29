@@ -14,6 +14,7 @@ idf_component_register(
         display_manager
         oled_display
         gps
+        buzzer
         led_strip
         driver
 )

@@ -93,6 +93,11 @@ static int near_miss_reason_count = 0;
 static float jerk_history[JERK_HISTORY_SIZE] = {0};
 static int jerk_history_index = 0;
 
+// Volume popup state
+static uint32_t volume_popup_last_update = 0;
+static uint8_t volume_popup_value = 0;
+static bool volume_popup_active = false;
+
 /**
  * Calculate moving average for jerk (noise filtering)
  */
@@ -106,6 +111,9 @@ static float calculate_jerk_moving_average(float new_jerk) {
     }
     return sum / JERK_HISTORY_SIZE;
 }
+
+// Forward declarations
+static void draw_volume_popup(void);
 
 /**
  * Clear frame buffer (internal buffer only, doesn't update display)
@@ -975,6 +983,11 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             break;
     }
     
+    // Draw volume popup overlay (if active)
+    if (volume_popup_active) {
+        draw_volume_popup();
+    }
+    
     // Update display with differential rendering (only changed regions)
     update_display_differential();
     
@@ -1286,4 +1299,76 @@ esp_err_t oled_display_show_startup(uint8_t progress, const char *status_text) {
     ssd1306_display_text(&dev, 7, progress_str, strlen(progress_str), false);
     
     return ESP_OK;
+}
+
+
+/**
+ * Show volume popup overlay with circular progress bar
+ */
+esp_err_t oled_display_show_volume_popup(uint8_t volume_percent)
+{
+    if (!display_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    if (volume_percent > 100) {
+        volume_percent = 100;
+    }
+    
+    // Update popup state
+    volume_popup_value = volume_percent;
+    volume_popup_last_update = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    volume_popup_active = true;
+    
+    return ESP_OK;
+}
+
+/**
+ * Draw volume popup overlay (simplified - text-based)
+ */
+static void draw_volume_popup(void)
+{
+    if (!volume_popup_active) {
+        return;
+    }
+    
+    // Check if popup should auto-hide (2 seconds timeout)
+    uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    if ((current_time - volume_popup_last_update) > 2000) {
+        volume_popup_active = false;
+        return;
+    }
+    
+    // Draw popup using frame buffer (centered on screen)
+    // Page 3-4 (middle of screen)
+    
+    // Clear popup area
+    for (int page = 3; page <= 4; page++) {
+        for (int x = 16; x < 112; x++) {
+            frame_buffer[page * 128 + x] = 0x00;
+        }
+    }
+    
+    // Draw border (top and bottom)
+    for (int x = 16; x < 112; x++) {
+        frame_buffer[3 * 128 + x] |= 0x01;  // Top border
+        frame_buffer[4 * 128 + x] |= 0x80;  // Bottom border
+    }
+    
+    // Draw side borders
+    for (int page = 3; page <= 4; page++) {
+        frame_buffer[page * 128 + 16] = 0xFF;  // Left border
+        frame_buffer[page * 128 + 111] = 0xFF;  // Right border
+    }
+    
+    // Draw volume bar (progress bar)
+    int bar_width = (volume_popup_value * 80) / 100;  // 80 pixels max width
+    for (int x = 0; x < bar_width; x++) {
+        frame_buffer[4 * 128 + 20 + x] |= 0x3C;  // Middle bits for bar
+    }
+    
+    // Draw volume text
+    char vol_text[16];
+    snprintf(vol_text, sizeof(vol_text), "VOL:%d%%", volume_popup_value);
+    fb_write_text(3, vol_text, false);
 }

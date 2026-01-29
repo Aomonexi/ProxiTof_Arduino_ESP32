@@ -248,6 +248,12 @@ private:
     float previousAccel[3];         // Previous acceleration for jerk calculation
     uint32_t lastFeatureTime;       // Timestamp of last feature extraction
     
+    // Distance filtering (noise reduction)
+    static const int DISTANCE_FILTER_SIZE = 5;  // 5-sample moving average
+    uint16_t distanceFilterBuffer[DISTANCE_FILTER_SIZE];
+    int distanceFilterIndex;
+    int distanceFilterCount;
+    
     // Near-miss detection state
     uint32_t lastRapidApproachTime; // Timestamp of last rapid approach
     uint32_t lastHighJerkTime;      // Timestamp of last high jerk
@@ -258,6 +264,7 @@ private:
     bool isWithinSyncWindow(uint32_t time1, uint32_t time2) const;
     void detectTimestampDrift(uint32_t tof_time, uint32_t imu_time);
     void updateNearMissState(const feature_vector_t& features);
+    uint16_t applyDistanceFilter(uint16_t raw_distance);  // Moving average filter
 };
 
 #endif // __cplusplus

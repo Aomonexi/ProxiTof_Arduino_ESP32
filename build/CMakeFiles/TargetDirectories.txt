@@ -981,13 +981,6 @@ D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_disp
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/CMakeFiles/install.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/CMakeFiles/install/local.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/CMakeFiles/install/strip.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/__idf_main.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/edit_cache.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/rebuild_cache.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/list_install_components.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/install.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/install/local.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/install/strip.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/CMakeFiles/__idf_buzzer.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/CMakeFiles/edit_cache.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/CMakeFiles/rebuild_cache.dir
@@ -995,3 +988,10 @@ D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/CM
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/CMakeFiles/install.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/CMakeFiles/install/local.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/CMakeFiles/install/strip.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/__idf_main.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/edit_cache.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/rebuild_cache.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/list_install_components.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/install.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/install/local.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/CMakeFiles/install/strip.dir

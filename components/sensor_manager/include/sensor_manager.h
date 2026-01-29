@@ -25,7 +25,7 @@ extern "C" {
 
 #define TOF_SDA_PIN         GPIO_NUM_8
 #define TOF_SCL_PIN         GPIO_NUM_9
-#define TOF_LPN_PIN         GPIO_NUM_4
+#define TOF_LPN_PIN         GPIO_NUM_36  // Changed from GPIO_NUM_4 (now used for potentiometer)
 
 #define IMU_MOSI_PIN        GPIO_NUM_11
 #define IMU_MISO_PIN        GPIO_NUM_13

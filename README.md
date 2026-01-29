@@ -435,6 +435,24 @@ This project includes comprehensive documentation for all aspects of development
 - **[Python Setup Guide](PYTHON_SETUP.md)** - ML environment configuration
 - **[ESP32 TFLite Implementation Guide](docs/esp32-tflite-implementation-guide.md)** - Model deployment
 
+#### Algorithm & Implementation (January 29, 2026)
+- **[ToF Filtering and Near-Miss Detection](docs/TOF_FILTERING_AND_NEAR_MISS_DETECTION_JAN29.md)** - ⭐ **Core Algorithm**: Complete technical documentation
+- **[Implementation Summary Jan 29](docs/IMPLEMENTATION_SUMMARY_JAN29.md)** - Latest session summary and changes
+- **[Priority-Based Near-Miss Detection](docs/PRIORITY_BASED_NEAR_MISS_DETECTION.md)** - Detection rules and thresholds
+- **[Sensor Blockage Filter Fix](docs/SENSOR_BLOCKAGE_FILTER_FIX.md)** - False positive prevention
+
+#### Hardware & Wiring
+- **[Pin Reassignment Summary](docs/PIN_REASSIGNMENT_SUMMARY.md)** - Volume control and ToF pin changes
+- **[Volume Control Troubleshooting](docs/VOLUME_CONTROL_TROUBLESHOOTING.md)** - Potentiometer setup and debugging
+- **[Buzzer Volume Control Implementation](docs/BUZZER_VOLUME_CONTROL_IMPLEMENTATION.md)** - Audio alert system
+- **[GPS Final Configuration](docs/GPS_FINAL_CONFIGURATION.md)** - GPS module setup (optional)
+
+#### Testing & Troubleshooting
+- **[Quick Fix Guide](docs/QUICK_FIX_GUIDE.md)** - Fast solutions for common issues
+- **[Ready for Testing](docs/READY_FOR_TESTING.md)** - Testing checklist and procedures
+- **[Volume and ToF Fixes](docs/VOLUME_AND_TOF_FIXES.md)** - Recent fixes and solutions
+- **[Logarithmic Pot Fix](docs/LOGARITHMIC_POT_FIX.md)** - Potentiometer type issues
+
 #### Reference Documentation
 - **[Documentation Index](docs/README.md)** - Complete guide index with usage scenarios
 - **[System Overview](docs/system-overview.md)** - Architecture and component interaction

@@ -20,6 +20,7 @@
 #include "display_manager.h"
 #include "oled_display.h"
 #include "gps.h"
+#include "buzzer.h"
 #include "led_strip.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
@@ -44,6 +45,12 @@ static const char *TAG = "MAIN";
 #define GPS_RX_PIN GPIO_NUM_47      // ESP32 RX ← GPS TX (FREE GPIO)
 #define GPS_BAUD_RATE 38400         // Neo-M9N default: 38400 baud, 8N1
 
+// Buzzer Configuration (PWM Audio Alert)
+#define BUZZER_PIN GPIO_NUM_45      // PWM output for buzzer
+#define BUZZER_POT_PIN GPIO_NUM_4   // ADC input for volume potentiometer (ADC1_CH3) - CHANGED from GPIO 46
+#define BUZZER_DEFAULT_FREQ 2000    // 2 kHz default frequency
+#define BUZZER_DEFAULT_VOLUME 50    // 50% default volume
+
 // Distance thresholds (in mm)
 #define CLOSE_THRESHOLD 100    // < 10cm = RED
 #define MEDIUM_THRESHOLD 500   // 10-50cm = YELLOW, > 50cm = GREEN
@@ -54,6 +61,7 @@ static const char *TAG = "MAIN";
 #define CRITICAL_PROXIMITY_DISTANCE 100    // mm (10 cm) - immediate danger
 #define CRITICAL_PROXIMITY_APPROACH 500.0f // mm/s (0.5 m/s) - fast at close range
 #define COMBINED_DETECTION_MAX_DISTANCE 150 // mm (15 cm) - near-miss zone (reduced from 500)
+#define MIN_VALID_DISTANCE 20              // mm (2 cm) - minimum valid ToF reading (filters sensor blockage)
 
 static led_strip_handle_t led_strip = NULL;
 static data_processor_handle_t *data_processor = NULL;
@@ -268,6 +276,39 @@ void app_main(void)
         ESP_LOGW(TAG, "❌ GPS initialization failed: %s", esp_err_to_name(err));
         ESP_LOGW(TAG, "💡 Check wiring: TX=44, RX=43, VCC=5V, GND=GND");
         ESP_LOGW(TAG, "💡 System will continue without GPS");
+    }
+    ESP_LOGI(TAG, "");
+    
+    // =========================================================================
+    // BUZZER INITIALIZATION (PWM AUDIO ALERT)
+    // =========================================================================
+    ESP_LOGI(TAG, "Initializing buzzer (PWM audio alert)...");
+    ESP_LOGI(TAG, "Wiring: Buzzer=GPIO45, Potentiometer=GPIO4 (ADC1_CH3)");
+    ESP_LOGI(TAG, "⚠️  IMPORTANT: Potentiometer moved to GPIO4 (was GPIO46)");
+    ESP_LOGI(TAG, "💡 GPIO4 is ADC1 - works with WiFi enabled!");
+    
+    buzzer_config_t buzzer_config = {
+        .gpio_pin = BUZZER_PIN,
+        .adc_pin = BUZZER_POT_PIN,
+        .default_frequency_hz = BUZZER_DEFAULT_FREQ,
+        .default_volume_percent = BUZZER_DEFAULT_VOLUME,
+        .use_potentiometer = true  // Enable volume control via potentiometer
+    };
+    
+    err = buzzer_init(&buzzer_config);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "✓ Buzzer initialized (freq=%d Hz, volume=%d%%)", 
+                 BUZZER_DEFAULT_FREQ, BUZZER_DEFAULT_VOLUME);
+        ESP_LOGI(TAG, "🔊 Volume control: Potentiometer on GPIO4 (ADC1)");
+        ESP_LOGI(TAG, "🎵 Alert patterns: Near-miss (3 beeps), Critical (continuous)");
+        
+        // Play startup melody
+        buzzer_play_pattern(BUZZER_PATTERN_STARTUP);
+        vTaskDelay(pdMS_TO_TICKS(500));  // Wait for melody to finish
+    } else {
+        ESP_LOGW(TAG, "❌ Buzzer initialization failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "💡 Check wiring: Buzzer=GPIO45, Pot=GPIO4");
+        ESP_LOGW(TAG, "💡 System will continue without audio alerts");
     }
     ESP_LOGI(TAG, "");
     
@@ -573,19 +614,22 @@ void app_main(void)
         ESP_LOGI(TAG, "");
         ESP_LOGI(TAG, "Near-Miss Detection Configuration:");
         ESP_LOGI(TAG, "  Sensor Sync Window: %lu ms", data_processor_get_sync_window(data_processor));
+        ESP_LOGI(TAG, "  Minimum Valid Distance: %d mm (filters sensor blockage)", MIN_VALID_DISTANCE);
         ESP_LOGI(TAG, "  Rapid Approach Threshold: %.0f mm/s (%.2f m/s)", 
                  RAPID_APPROACH_THRESHOLD, RAPID_APPROACH_THRESHOLD / 1000.0f);
         ESP_LOGI(TAG, "  High Jerk Threshold: %.1f m/s³ (filters daily vibrations)", HIGH_JERK_THRESHOLD);
-        ESP_LOGI(TAG, "  Critical Proximity: <%d mm with >%.0f mm/s approach", 
-                 CRITICAL_PROXIMITY_DISTANCE, CRITICAL_PROXIMITY_APPROACH);
-        ESP_LOGI(TAG, "  Combined Detection: Distance < %d mm (15cm near-miss zone)", COMBINED_DETECTION_MAX_DISTANCE);
+        ESP_LOGI(TAG, "  Critical Proximity: %d-%d mm with >%.0f mm/s approach", 
+                 MIN_VALID_DISTANCE, CRITICAL_PROXIMITY_DISTANCE, CRITICAL_PROXIMITY_APPROACH);
+        ESP_LOGI(TAG, "  Combined Detection: Distance %d-%d mm (near-miss zone)", 
+                 MIN_VALID_DISTANCE, COMBINED_DETECTION_MAX_DISTANCE);
         ESP_LOGI(TAG, "  Combined Detection Window: 500 ms");
         ESP_LOGI(TAG, "");
         ESP_LOGI(TAG, "Detection Scenario (Motorcycle Pass):");
-        ESP_LOGI(TAG, "  Phase 1: Object approaches at 15cm + >1m/s (early warning)");
-        ESP_LOGI(TAG, "  Phase 2: Body reacts with jerk >7m/s³ (confirmed near-miss)");
+        ESP_LOGI(TAG, "  Priority 1: Object at 2-15cm + >1m/s approach (NO jerk required)");
+        ESP_LOGI(TAG, "  Priority 2: Body reacts with jerk >7m/s³ (confirms severity)");
         ESP_LOGI(TAG, "");
         ESP_LOGI(TAG, "Filtered Out (Not Near-Miss):");
+        ESP_LOGI(TAG, "  ✗ Sensor blockage: Distance < 20mm (device on table, sensor covered)");
         ESP_LOGI(TAG, "  ✗ Turning: Gradual angular velocity (low jerk)");
         ESP_LOGI(TAG, "  ✗ Bumpy road: High-frequency vibration (filtered)");
         ESP_LOGI(TAG, "  ✗ Walking/pedaling: Periodic pattern (<5m/s³)");
@@ -677,6 +721,9 @@ void app_main(void)
                                      features.angular_velocity_deg_s);
                             ESP_LOGW(TAG, "╚════════════════════════════════════════════════╝");
                             ESP_LOGW(TAG, "");
+                            
+                            // Trigger buzzer alert (3 short beeps)
+                            buzzer_play_pattern(BUZZER_PATTERN_NEAR_MISS);
                             
                             // Set automatic flag for this event
                             features.flag_auto = true;
@@ -779,6 +826,42 @@ void app_main(void)
                 }
             }
             
+            // =====================================================================
+            // VOLUME CONTROL MONITORING (POTENTIOMETER)
+            // =====================================================================
+            static uint32_t last_volume_check = 0;
+            static uint8_t last_volume = 255;  // Invalid initial value
+            static bool volume_error_logged = false;
+            
+            if ((current_time - last_volume_check) >= 100) { // Check every 100ms (10Hz)
+                last_volume_check = current_time;
+                
+                // Read potentiometer and update volume
+                esp_err_t vol_err = buzzer_update_volume_from_pot();
+                if (vol_err == ESP_OK) {
+                    uint8_t current_volume = buzzer_get_volume();
+                    
+                    // Check if volume changed significantly (>5%)
+                    if (last_volume == 255 || abs(current_volume - last_volume) > 5) {
+                        last_volume = current_volume;
+                        
+                        // Show volume popup on OLED
+                        if (oled_available) {
+                            oled_display_show_volume_popup(current_volume);
+                        }
+                        
+                        // Log volume change
+                        ESP_LOGI(TAG, "🔊 Volume: %d%%", current_volume);
+                        volume_error_logged = false;  // Reset error flag on success
+                    }
+                } else if (!volume_error_logged) {
+                    // Log error only once to avoid spam
+                    ESP_LOGW(TAG, "⚠️  Volume control error: %s", esp_err_to_name(vol_err));
+                    ESP_LOGW(TAG, "💡 Check potentiometer wiring: GPIO4 (wiper), 3.3V, GND");
+                    volume_error_logged = true;
+                }
+            }
+            
             // Check button status (check frequently for responsiveness)
             static uint32_t last_button_check = 0;
             if ((current_time - last_button_check) >= 50) { // Check every 50ms (20Hz)
@@ -875,6 +958,10 @@ void app_main(void)
                             ESP_LOGW(TAG, "║  🔴 SHUTDOWN CONFIRMED - POWERING DOWN         ║");
                             ESP_LOGW(TAG, "╚════════════════════════════════════════════════╝");
                             ESP_LOGW(TAG, "");
+                            
+                            // Play shutdown melody
+                            buzzer_play_pattern(BUZZER_PATTERN_SHUTDOWN);
+                            vTaskDelay(pdMS_TO_TICKS(600));  // Wait for melody to finish
                             
                             // Stop data logging
                             ESP_LOGI(TAG, "Stopping data logging...");

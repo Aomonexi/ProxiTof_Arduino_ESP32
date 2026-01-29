@@ -114,6 +114,16 @@ esp_err_t oled_display_show_startup(uint8_t progress, const char *status_text);
  */
 bool oled_display_is_shutdown_confirmed(void);
 
+/**
+ * Show volume popup overlay (circular progress bar)
+ * Displays volume level 0-100% with circular progress indicator
+ * Auto-hides after 2 seconds of no volume changes
+ * 
+ * @param volume_percent Volume level (0-100)
+ * @return ESP_OK on success
+ */
+esp_err_t oled_display_show_volume_popup(uint8_t volume_percent);
+
 #ifdef __cplusplus
 }
 #endif

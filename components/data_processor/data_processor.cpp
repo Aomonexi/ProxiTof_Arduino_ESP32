@@ -24,6 +24,8 @@ DataProcessor::DataProcessor()
       driftMagnitude(0),
       previousMinDistance(0),
       lastFeatureTime(0),
+      distanceFilterIndex(0),
+      distanceFilterCount(0),
       lastRapidApproachTime(0),
       lastHighJerkTime(0),
       rapidApproachActive(false),
@@ -33,6 +35,11 @@ DataProcessor::DataProcessor()
     previousAccel[0] = 0.0f;
     previousAccel[1] = 0.0f;
     previousAccel[2] = 0.0f;
+    
+    // Initialize distance filter buffer
+    for (int i = 0; i < DISTANCE_FILTER_SIZE; i++) {
+        distanceFilterBuffer[i] = 0;
+    }
 }
 
 DataProcessor::~DataProcessor() {
@@ -151,7 +158,10 @@ void DataProcessor::extractFeatures(const synced_data_t& data, feature_vector_t&
     
     // 1. Minimum distance (Requirement 14.1)
     // Property 55: Minimum distance calculation
-    features.min_distance_mm = calculateMinDistance(data.tof.distances);
+    uint16_t raw_min_distance = calculateMinDistance(data.tof.distances);
+    
+    // Apply moving average filter to reduce noise (especially when device is tilted)
+    features.min_distance_mm = applyDistanceFilter(raw_min_distance);
     
     // 2. Approach rate (Requirement 14.2)
     // Property 56: Approach rate derivation
@@ -265,10 +275,20 @@ bool DataProcessor::detectNearMiss(const feature_vector_t& features) {
     updateNearMissState(features);
     
     // =========================================================================
+    // VALIDITY CHECK: Filter out invalid ToF readings
+    // =========================================================================
+    // Distance = 0mm indicates sensor is blocked or facing surface directly
+    // Distance < 20mm is too close to be a valid near-miss (sensor blocked)
+    // This prevents false positives when device is on table or sensor is covered
+    if (features.min_distance_mm < 20) {
+        return false;  // Invalid reading - sensor blocked or too close
+    }
+    
+    // =========================================================================
     // TIER 1: Critical Proximity (Highest Priority)
     // =========================================================================
     // Immediate danger - very close and fast
-    // <100mm + >500mm/s approach
+    // 20-100mm + >500mm/s approach
     // NO JERK REQUIRED - proximity + speed is enough
     if (isCriticalProximity(features.min_distance_mm, features.approach_rate_mm_s)) {
         return true;
@@ -325,10 +345,11 @@ bool DataProcessor::isHighJerk(float jerk_magnitude, float threshold) const {
 
 bool DataProcessor::isCriticalProximity(uint16_t min_distance, float approach_rate) const {
     // Property 32: Critical proximity alert
-    // Requirement 7.6: Detect critical proximity (<100mm with >500 mm/s approach)
+    // Requirement 7.6: Detect critical proximity (20-100mm with >500 mm/s approach)
     // Updated thresholds: More strict to reduce false positives
+    // Minimum 20mm to filter out sensor blockage (0mm readings)
     
-    return (min_distance < 100) && (approach_rate < -500.0f);
+    return (min_distance >= 20 && min_distance < 100) && (approach_rate < -500.0f);
 }
 
 bool DataProcessor::isCombinedNearMiss() const {
@@ -382,5 +403,64 @@ void DataProcessor::updateNearMissState(const feature_vector_t& features) {
         if (highJerkActive && (current_time - lastHighJerkTime > 1000)) {
             highJerkActive = false;
         }
+    }
+}
+
+// =============================================================================
+// Distance Filtering (Noise Reduction)
+// =============================================================================
+
+uint16_t DataProcessor::applyDistanceFilter(uint16_t raw_distance) {
+    // Smart adaptive filter:
+    // - Filters out small noise (tilt, vibration) with moving average
+    // - Preserves large rapid changes (fast-approaching objects like bikes)
+    
+    // Add new reading to circular buffer
+    distanceFilterBuffer[distanceFilterIndex] = raw_distance;
+    distanceFilterIndex = (distanceFilterIndex + 1) % DISTANCE_FILTER_SIZE;
+    
+    // Track how many samples we have (up to DISTANCE_FILTER_SIZE)
+    if (distanceFilterCount < DISTANCE_FILTER_SIZE) {
+        distanceFilterCount++;
+    }
+    
+    // Calculate moving average
+    uint32_t sum = 0;
+    for (int i = 0; i < distanceFilterCount; i++) {
+        sum += distanceFilterBuffer[i];
+    }
+    uint16_t filtered_distance = sum / distanceFilterCount;
+    
+    // Calculate change magnitude
+    int change = abs((int)raw_distance - (int)filtered_distance);
+    
+    // ADAPTIVE FILTERING:
+    // If change is small (<100mm), use filtered value (reduces tilt noise)
+    // If change is large (>100mm), use raw value (preserves fast objects)
+    // This ensures we catch bikes passing at 20-30 km/h (5-8 m/s)
+    
+    if (change > 100) {
+        // Large rapid change detected - likely a fast-moving object!
+        // Use raw value to preserve the detection
+        ESP_LOGD(TAG, "⚡ Fast change detected: %d mm - using RAW value (bike/vehicle?)", change);
+        
+        // Reset filter buffer to new value to avoid lag
+        for (int i = 0; i < DISTANCE_FILTER_SIZE; i++) {
+            distanceFilterBuffer[i] = raw_distance;
+        }
+        
+        return raw_distance;
+    } else if (change > 20) {
+        // Medium change - use weighted average (70% raw, 30% filtered)
+        // This balances noise reduction with responsiveness
+        uint16_t weighted = (raw_distance * 7 + filtered_distance * 3) / 10;
+        ESP_LOGD(TAG, "📊 Medium change: %d mm - weighted average", change);
+        return weighted;
+    } else {
+        // Small change - use filtered value (reduces tilt/vibration noise)
+        if (change > 5) {
+            ESP_LOGD(TAG, "🔇 Small noise: %d mm - filtered out", change);
+        }
+        return filtered_distance;
     }
 }

@@ -19,10 +19,26 @@ Near-miss alerts were triggering on:
 
 ## Solution Implemented
 
-### 1. Increased Thresholds (Stricter)
+### 1. Minimum Valid Distance Filter (NEW)
+
+**Problem**: Device on table triggers false positives (distance = 0mm)
+
+**Solution**: Filter out readings < 20mm (2cm)
+
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Minimum Valid Distance** | **20 mm (2 cm)** | Filters sensor blockage, device on table, covered sensor |
+
+**Why 20mm?**
+- Distance = 0mm → Sensor blocked or facing surface directly
+- Distance < 20mm → Too close to be valid near-miss (sensor covered)
+- Distance ≥ 20mm → Valid near-miss zone starts
+
+### 2. Increased Thresholds (Stricter)
 
 | Parameter | Old Value | New Value | Change |
 |-----------|-----------|-----------|--------|
+| **Minimum Valid Distance** | N/A | **20 mm (2 cm)** | New - filters blockage |
 | **Rapid Approach** | 500 mm/s (0.5 m/s) | **1000 mm/s (1.0 m/s)** | 2x stricter |
 | **High Jerk** | 2.0 m/s³ | **7.0 m/s³** | 3.5x stricter |
 | **Critical Proximity Distance** | 300 mm (30 cm) | **100 mm (10 cm)** | 3x stricter |
@@ -54,18 +70,23 @@ Jerk is already filtered in the data processor to reduce IMU noise.
 ### Critical Proximity (Immediate Danger)
 ```
 Trigger when:
-  Distance < 100mm (10cm) AND
+  Distance 20-100mm (2-10cm) AND
   Approaching > 500mm/s (0.5m/s)
 
-Example: Object suddenly appears <10cm away while moving
+Example: Object suddenly appears at 5cm away while moving
+Note: Distance < 20mm filtered out (sensor blockage)
 ```
 
 ### Combined Near-Miss (Cycling Scenario - Priority-Based)
 ```
 PRIORITY SYSTEM (Highest to Lowest):
 
+Validity Check (FIRST):
+  Distance >= 20mm (filters sensor blockage)
+  → If < 20mm, NO ALERT (device on table, sensor covered)
+
 Priority 1 - Fast Approach + Close Distance:
-  Distance < 150mm (15cm) AND
+  Distance 20-150mm (2-15cm) AND
   Rapid approach > 1000mm/s (1.0m/s)
   → TRIGGERS NEAR-MISS (NO JERK REQUIRED)
   
@@ -75,12 +96,13 @@ Priority 2 - Body Reaction (Optional Enhancement):
   → Confirms near-miss severity for training data
 
 Example Scenarios:
-1. Motorcycle passes at 15cm, fast approach, NO reaction → NEAR-MISS ✅
-2. Motorcycle passes at 15cm, fast approach, WITH swerve → NEAR-MISS ✅ (higher severity)
-3. Motorcycle passes at 15cm, slow approach, WITH swerve → NO ALERT ❌ (not fast enough)
+1. Device on table (0mm) → NO ALERT ❌ (filtered)
+2. Motorcycle passes at 15cm, fast approach, NO reaction → NEAR-MISS ✅
+3. Motorcycle passes at 15cm, fast approach, WITH swerve → NEAR-MISS ✅ (higher severity)
+4. Motorcycle passes at 15cm, slow approach, WITH swerve → NO ALERT ❌ (not fast enough)
 ```
 
-**Key Insight**: Fast approach + close distance is the **highest priority**. Jerk is optional and only used to confirm severity. This handles late/no reaction scenarios where the near-miss is real but the cyclist doesn't react in time.
+**Key Insight**: Fast approach + close distance is the **highest priority**. Jerk is optional and only used to confirm severity. Readings < 20mm are filtered to prevent false positives from sensor blockage.
 
 ---
 
@@ -151,30 +173,41 @@ Example Scenarios:
 
 ### Will NOT Trigger ❌
 
-1. **Static object nearby**:
+1. **Device on table** (FIXED):
+   - Distance: 0mm (sensor blocked)
+   - Approach: -1647mm/s (noise)
+   - Jerk: 18m/s³ (movement)
+   - Result: No alert ❌ (correct! - filtered by minimum distance)
+
+2. **Sensor covered**:
+   - Distance: 5mm (hand covering sensor)
+   - Approach: -500mm/s
+   - Result: No alert ❌ (correct! - below 20mm threshold)
+
+3. **Static object nearby**:
    - Distance: 150mm
    - Approach: 0mm/s (static)
    - Result: No alert ❌ (correct! - no movement)
 
-2. **Slow approach to wall**:
+4. **Slow approach to wall**:
    - Distance: 120mm (12cm)
    - Approach: 300mm/s (slow)
    - Jerk: 8m/s³ (reaction)
    - Result: No alert ❌ (correct! - not fast enough, even with jerk)
 
-3. **Far object with fast movement**:
+5. **Far object with fast movement**:
    - Distance: 800mm
    - Approach: 1500mm/s
    - Jerk: 7m/s³
    - Result: No alert ❌ (correct! - too far, outside 15cm zone)
 
-4. **Normal cycling vibration**:
+6. **Normal cycling vibration**:
    - Distance: 400mm
    - Approach: 500mm/s
    - Jerk: 3m/s³ (below threshold)
    - Result: No alert ❌ (correct! - filtered vibration)
 
-5. **Close but slow approach with reaction**:
+7. **Close but slow approach with reaction**:
    - Distance: 140mm (14cm)
    - Approach: 800mm/s (below 1000mm/s threshold)
    - Jerk: 9m/s³ (strong reaction)

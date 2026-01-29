@@ -195,8 +195,9 @@ $<TARGET_FILE:idf::ssd1306>
 $<TARGET_FILE:idf::oled_display>
 $<TARGET_FILE:__idf_gps>
 $<TARGET_FILE:__idf_ssd1306>
+$<TARGET_FILE:idf::buzzer>
 $<TARGET_FILE:idf::main>
 $<TARGET_FILE:__idf_data_processor>
 $<TARGET_FILE:__idf_usb_interface>
 $<TARGET_FILE:__idf_oled_display>
-$<TARGET_FILE:idf::buzzer>
+$<TARGET_FILE:__idf_buzzer>

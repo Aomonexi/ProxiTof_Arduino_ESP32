@@ -10,14 +10,14 @@
 
 | Component | Interface | GPIO Pins | Status | Notes |
 |-----------|-----------|-----------|--------|-------|
-| **VL53L8CX ToF** | I2C | SDA=8, SCL=9, LPN=4 | ✅ Working | 4x4 distance grid @ 60Hz |
+| **VL53L8CX ToF** | I2C | SDA=8, SCL=9, LPN=36 | ✅ Working | 4x4 distance grid @ 60Hz |
 | **BNO08x IMU** | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | ✅ Working | 9-DOF @ 100Hz |
 | **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Working | **Conflict-free pins** |
 | **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Working | Battery-backed time |
 | **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21, CS=0 | ✅ Working | 128x64 @ 60Hz (4-wire SPI) |
 | **Neo-M9N GPS** | UART | **TX=38, RX=47** | ✅ Implemented | **CORRECTED** pins (NOT 43/44!) |
 | **Buzzer** | PWM | GPIO 45 | ✅ Ready | Near-miss audio alert |
-| **Potentiometer** | ADC | GPIO 46 (ADC2_CH5) | ⏳ Optional | Volume control (0-3.3V) |
+| **Potentiometer** | ADC | **GPIO 4 (ADC1_CH3)** | ✅ Ready | Volume control (0-3.3V) **MOVED from GPIO 46** |
 | **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Working | Manual event flagging |
 | **Mode Button** | GPIO | GPIO 20 (with pull-up) | ✅ Working | OLED display mode cycling |
 | **WS2812 LED** | GPIO | GPIO 48 | ✅ Working | Status indicator |
@@ -35,7 +35,7 @@
                     ║                                  ║
 VL53L8CX ToF ──────╫── GPIO 8  (SDA)                  ║
              ──────╫── GPIO 9  (SCL)                  ║
-             ──────╫── GPIO 4  (LPN)                  ║
+             ──────╫── GPIO 36 (LPN)                  ║
                     ║                                  ║
 DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
             ───────╫── GPIO 9  (SCL) ← Shared I2C     ║
@@ -71,7 +71,7 @@ DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
                     ║  GPIO 47 (RX)   ──────────────── ║
                     ║                                  ║
                     ║  GPIO 45 ──────────────── Buzzer ║ (PWM)
-                    ║  GPIO 46 ──────────────── Pot    ║ (ADC - Optional)
+                    ║  GPIO 4  ──────────────── Pot    ║ (ADC1 - Volume Control)
                     ║  GPIO 3  ──────────────── Button ║ (Flag Event)
                     ║  GPIO 20 ──────────────── Button ║ (Mode Switch)
                     ║  GPIO 48 ──────────────── LED    ║ (Built-in)
@@ -92,14 +92,20 @@ VCC (3.3V)          →    3.3V
 GND                 →    GND
 SDA                 ↔    GPIO 8  (I2C Data)
 SCL                 ↔    GPIO 9  (I2C Clock)
-LPN                 ←    GPIO 4  (Low Power Enable)
+LPN                 ←    GPIO 36 (Low Power Enable)
 ```
+
+**⚠️ IMPORTANT - LPN Pin:**
+- **LPN connected to GPIO 36** (free pin, perfect for simple output control)
+- **GPIO 4 now used for potentiometer** (ADC1_CH3 - WiFi compatible)
+- **GPIO 36**: Free pin, no conflicts with other peripherals
 
 **Configuration:**
 - I2C Address: 0x29 (7-bit)
 - Operating Mode: 4x4 zone array
 - Sample Rate: 60Hz
 - Range: 0-4000mm
+- Power Mode: Software controlled via LPN pin
 
 ### 1.5. DS3231 RTC Module (I2C) - Battery-Backed Time
 
@@ -329,7 +335,7 @@ idf.py build flash monitor
 
 | Problem | Check | Solution |
 |---------|-------|----------|
-| ToF not detected | I2C wiring, LPN pin | Verify GPIO 8,9,4 connections |
+| ToF not detected | I2C wiring, LPN pin | Verify GPIO 8,9,36 connections |
 | IMU not detected | SPI wiring, P0/P1 pins | Ensure P0=P1=3.3V, BT=float |
 | SD card not mounting | SDMMC wiring, format | Check GPIO 38-43, use FAT32 |
 | Button not working | GPIO 3 connection | Verify button to GPIO 3 + GND |
@@ -346,7 +352,7 @@ idf.py build flash monitor
 | 1 | SPI MOSI | OLED Display |
 | 2 | SDMMC D0 | SD Card |
 | 3 | Button Input | Flag Button |
-| 4 | ToF LPN | VL53L8CX |
+| 4 | **ADC (ADC1_CH3)** | **Potentiometer (Volume Control)** |
 | 5 | IMU INT | BNO08x |
 | 6 | IMU RST | BNO08x |
 | 7 | SPI SCK | OLED Display |
@@ -364,14 +370,14 @@ idf.py build flash monitor
 | 20 | Button Input | Mode Switch Button |
 | 21 | RST | OLED Display |
 | 35 | DC | OLED Display |
+| **36** | **ToF LPN** | **VL53L8CX (moved from GPIO 4)** |
 | 38 | UART TX | Neo-M9N GPS |
 | 45 | PWM | Buzzer |
-| 46 | ADC | Potentiometer (Optional) |
 | 47 | UART RX | Neo-M9N GPS |
 | 48 | LED Data | WS2812 |
 
-### Available for Future Expansion (8+ pins)
-- GPIO 19, 36-37, 39-42
+### Available for Future Expansion (7+ pins)
+- GPIO 37, 39-42, 46
 - Perfect for: Additional sensors, external buttons, displays
 
 ---
@@ -398,7 +404,7 @@ ESP32-S3          VL53L8CX
 --------          --------
 GPIO 8  (SDA) --> SDA
 GPIO 9  (SCL) --> SCL
-GPIO 4  (LPN) --> LPN (Low Power/Reset)
+GPIO 36 (LPN) --> LPN (Low Power/Reset)
 3.3V          --> VDD
 GND           --> GND
 ```
@@ -818,25 +824,27 @@ Instead of potentiometer, use buttons:
 - Display volume on OLED
 ```
 
-**⚠️ IMPORTANT - GPIO 4 Conflict Resolved:**
-- GPIO 4 is ALREADY USED for ToF LPN (Low Power/Reset)
-- **DO NOT use GPIO 4 for potentiometer!**
-- **Correct pin: GPIO 46 (ADC2_CH5)** - No conflicts
+**⚠️ IMPORTANT - Potentiometer Moved to GPIO 4:**
+- **OLD**: GPIO 46 (ADC2_CH5) - conflicts with WiFi
+- **NEW**: GPIO 4 (ADC1_CH3) - works with WiFi enabled!
+- **ToF LPN**: No longer connected (sensor works without it)
+- **ADC1 vs ADC2**: ADC1 can be used while WiFi is active
 
 **Correct Potentiometer Wiring:**
 ```
 ESP32-S3          Potentiometer (10kΩ)
 --------          --------------------
-GPIO 46 (ADC)  --> Wiper (middle pin)  ✅ CORRECT
+GPIO 4 (ADC)   --> Wiper (middle pin)  ✅ CORRECT (ADC1_CH3)
 3.3V           --> One end
 GND            --> Other end
 ```
 
-**Why GPIO 46?**
-- GPIO 4 = ToF LPN (OCCUPIED)
-- GPIO 46 = ADC2_CH5 (FREE)
-- GPIO 46 supports 12-bit ADC (0-4095 range)
+**Why GPIO 4 (ADC1)?**
+- GPIO 4 = ADC1_CH3 (WiFi compatible!)
+- GPIO 46 = ADC2_CH5 (conflicts with WiFi)
+- GPIO 4 supports 12-bit ADC (0-4095 range)
 - Perfect for 0-3.3V potentiometer reading
+- **ToF sensor works without LPN pin** (always-on mode)
 
 ## Complete System Diagram
 

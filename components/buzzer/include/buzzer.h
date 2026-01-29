@@ -25,6 +25,7 @@ typedef enum {
     BUZZER_PATTERN_CRITICAL,           // Continuous tone (critical proximity)
     BUZZER_PATTERN_BUTTON,             // Single short beep (button press)
     BUZZER_PATTERN_STARTUP,            // Startup melody
+    BUZZER_PATTERN_SHUTDOWN,           // Shutdown melody (descending tones)
     BUZZER_PATTERN_ERROR               // Error tone
 } buzzer_pattern_t;
 

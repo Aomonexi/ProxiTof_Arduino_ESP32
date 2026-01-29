@@ -126,6 +126,27 @@ static void pattern_timer_callback(TimerHandle_t xTimer)
             buzzer_state.pattern_step++;
             break;
             
+        case BUZZER_PATTERN_SHUTDOWN:
+            // Shutdown melody: 3 descending tones (opposite of startup)
+            if (step == 0) {
+                ledc_set_freq(LEDC_MODE, LEDC_TIMER, 2000);
+                buzzer_set_duty(buzzer_state.volume_percent);
+                xTimerChangePeriod(xTimer, pdMS_TO_TICKS(150), 0);
+            } else if (step == 1) {
+                ledc_set_freq(LEDC_MODE, LEDC_TIMER, 1500);
+                buzzer_set_duty(buzzer_state.volume_percent);
+                xTimerChangePeriod(xTimer, pdMS_TO_TICKS(150), 0);
+            } else if (step == 2) {
+                ledc_set_freq(LEDC_MODE, LEDC_TIMER, 1000);
+                buzzer_set_duty(buzzer_state.volume_percent);
+                xTimerChangePeriod(xTimer, pdMS_TO_TICKS(200), 0);  // Longer final note
+            } else {
+                buzzer_stop();
+                return;
+            }
+            buzzer_state.pattern_step++;
+            break;
+            
         case BUZZER_PATTERN_ERROR:
             // Error: 2 low beeps
             if (step == 0 || step == 2) {
@@ -199,9 +220,9 @@ esp_err_t buzzer_init(const buzzer_config_t *config)
     if (config->use_potentiometer && config->adc_pin >= 0) {
         ESP_LOGI(TAG, "Configuring volume control via potentiometer on GPIO%d", config->adc_pin);
         
-        // Configure ADC
+        // Configure ADC (GPIO 4 = ADC1_CH3)
         adc_oneshot_unit_init_cfg_t adc_config = {
-            .unit_id = ADC_UNIT_2,  // GPIO 46 is on ADC2
+            .unit_id = ADC_UNIT_1,  // GPIO 4 is on ADC1 (works with WiFi!)
         };
         
         err = adc_oneshot_new_unit(&adc_config, &buzzer_state.adc_handle);
@@ -210,13 +231,13 @@ esp_err_t buzzer_init(const buzzer_config_t *config)
             ESP_LOGW(TAG, "Continuing without potentiometer support");
             buzzer_state.use_potentiometer = false;
         } else {
-            // Configure ADC channel (GPIO 46 = ADC2_CH5)
+            // Configure ADC channel (GPIO 4 = ADC1_CH3)
             adc_oneshot_chan_cfg_t chan_config = {
                 .atten = ADC_ATTEN_DB_12,  // 0-3.3V range
                 .bitwidth = ADC_BITWIDTH_12,  // 12-bit resolution (0-4095)
             };
             
-            buzzer_state.adc_channel = ADC_CHANNEL_5;  // GPIO 46
+            buzzer_state.adc_channel = ADC_CHANNEL_3;  // GPIO 4 = ADC1_CH3
             err = adc_oneshot_config_channel(buzzer_state.adc_handle, 
                                              buzzer_state.adc_channel, &chan_config);
             if (err != ESP_OK) {
@@ -226,9 +247,26 @@ esp_err_t buzzer_init(const buzzer_config_t *config)
             } else {
                 buzzer_state.use_potentiometer = true;
                 buzzer_state.adc_pin = config->adc_pin;
-                ESP_LOGI(TAG, "✓ Potentiometer volume control enabled");
+                
+                // Test read to verify ADC is working
+                int test_value = 0;
+                esp_err_t test_err = adc_oneshot_read(buzzer_state.adc_handle, 
+                                                      buzzer_state.adc_channel, &test_value);
+                if (test_err == ESP_OK) {
+                    ESP_LOGI(TAG, "✓ Potentiometer volume control enabled (ADC1 - WiFi compatible)");
+                    ESP_LOGI(TAG, "📊 Initial ADC reading: %d (volume: %d%%)", 
+                             test_value, (test_value * 100) / 4095);
+                } else {
+                    ESP_LOGW(TAG, "⚠️  ADC test read failed: %s", esp_err_to_name(test_err));
+                    ESP_LOGW(TAG, "💡 Check potentiometer wiring: GPIO4 (wiper), 3.3V, GND");
+                    adc_oneshot_del_unit(buzzer_state.adc_handle);
+                    buzzer_state.use_potentiometer = false;
+                }
             }
         }
+    } else {
+        ESP_LOGI(TAG, "Potentiometer volume control disabled in config");
+        buzzer_state.use_potentiometer = false;
     }
     
     // Create pattern timer
@@ -384,6 +422,7 @@ esp_err_t buzzer_update_volume_from_pot(void)
     }
     
     // Convert to volume percentage (0-4095 → 0-100%)
+    // Simple linear mapping - user will adjust pot position to desired volume
     uint8_t new_volume = (adc_value * 100) / 4095;
     
     // Update volume if changed significantly (>5% difference)
