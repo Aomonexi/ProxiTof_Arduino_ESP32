@@ -39,6 +39,8 @@ void config_load_defaults(system_config_t *config) {
     config->oled_brightness = 128;  // Medium brightness (0-255)
     config->oled_mode = 0;  // Dashboard mode
     config->oled_flip = false;
+    // Near-Miss Detection defaults
+    config->detection_mode = 0;  // 0=Hybrid (default)
 }
 
 bool config_file_exists(void) {
@@ -150,6 +152,13 @@ esp_err_t config_load_from_sd(system_config_t *config) {
             }
         } else if (strcmp(key, "OLED_FLIP") == 0) {
             config->oled_flip = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+        } else if (strcmp(key, "DETECTION_MODE") == 0) {
+            int mode = atoi(value);
+            if (mode >= 0 && mode <= 2) {
+                config->detection_mode = mode;
+            } else {
+                ESP_LOGW(TAG, "Invalid detection mode: %d (using default)", mode);
+            }
         } else {
             ESP_LOGW(TAG, "Unknown config key: %s", key);
         }
@@ -215,6 +224,10 @@ esp_err_t config_save_to_sd(const system_config_t *config) {
     fprintf(file, "OLED_BRIGHTNESS=%d  # 0-255 (128 = medium)\n", config->oled_brightness);
     fprintf(file, "OLED_MODE=%d  # 0=Dashboard, 1=ToF Focus, 2=IMU Focus, 3=Status\n", config->oled_mode);
     fprintf(file, "OLED_FLIP=%s  # Rotate display 180 degrees\n", config->oled_flip ? "true" : "false");
+    fprintf(file, "\n");
+    
+    fprintf(file, "# Near-Miss Detection Configuration\n");
+    fprintf(file, "DETECTION_MODE=%d  # 0=Hybrid, 1=Algorithm, 2=Neural Network\n", config->detection_mode);
     fprintf(file, "\n");
     
     fprintf(file, "# Common Timezone Examples:\n");

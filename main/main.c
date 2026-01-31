@@ -26,6 +26,8 @@
 #include "driver/uart.h"
 #include "tusb.h"
 #include "data_processor_c_wrapper.h"
+#include "ml_inference.h"
+#include "model_data.h"  // Scaler parameters for ML feature normalization
 
 static const char *TAG = "MAIN";
 
@@ -233,6 +235,7 @@ void app_main(void)
     uint32_t frame_count = 0;
     uint32_t tof_count = 0;
     uint32_t imu_count = 0;
+    bool ml_ready = false;  // ML inference availability flag
     
     // Initialize LED
     err = init_led();
@@ -558,6 +561,25 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
+    // ML INFERENCE INITIALIZATION (NEURAL NETWORK DETECTION)
+    // =========================================================================
+    ESP_LOGI(TAG, "Initializing ML Inference Engine...");
+    ESP_LOGI(TAG, "Framework: TensorFlow Lite Micro with ESP-NN acceleration");
+    ESP_LOGI(TAG, "");
+    
+    ml_ready = ml_inference_init();
+    if (ml_ready) {
+        ESP_LOGI(TAG, "✓ ML inference engine initialized successfully");
+        ESP_LOGI(TAG, "💡 Neural network detection available");
+        ESP_LOGI(TAG, "⚡ ESP-NN acceleration active (5-10× faster)");
+    } else {
+        ESP_LOGW(TAG, "⚠️  ML inference disabled (no trained model)");
+        ESP_LOGW(TAG, "💡 System will use algorithm-only detection");
+        ESP_LOGW(TAG, "💡 To train model: python tools/quick_start_ml.py");
+    }
+    ESP_LOGI(TAG, "");
+    
+    // =========================================================================
     // DATA PROCESSOR INITIALIZATION (NEAR-MISS DETECTION)
     // =========================================================================
     ESP_LOGI(TAG, "Initializing Data Processor (Near-Miss Detection)...");
@@ -596,6 +618,14 @@ void app_main(void)
         ESP_LOGI(TAG, "  ✗ Bumpy road: High-frequency vibration (filtered)");
         ESP_LOGI(TAG, "  ✗ Walking/pedaling: Periodic pattern (<5m/s³)");
         ESP_LOGI(TAG, "  ✓ Near-miss reaction: Sudden swerve (>7m/s³)");
+        ESP_LOGI(TAG, "");
+        ESP_LOGI(TAG, "Detection Mode Configuration:");
+        ESP_LOGI(TAG, "  Current Mode: %d (%s)", config.detection_mode,
+                 config.detection_mode == 0 ? "Hybrid (Algorithm + ML)" :
+                 config.detection_mode == 1 ? "Algorithm Only" :
+                 config.detection_mode == 2 ? "Neural Network Only" : "Unknown");
+        ESP_LOGI(TAG, "  ML Status: %s", ml_ready ? "✓ Ready" : "✗ Not available");
+        ESP_LOGI(TAG, "  💡 Press ACTION in Near-Miss mode to cycle detection modes");
     }
     
     ESP_LOGI(TAG, "");
@@ -762,7 +792,7 @@ void app_main(void)
             }
             
             // =====================================================================
-            // NEAR-MISS DETECTION PIPELINE (NEW)
+            // NEAR-MISS DETECTION PIPELINE (HYBRID: ALGORITHM + ML)
             // =====================================================================
             bool near_miss_detected = false;
             feature_vector_t features = {0};
@@ -776,8 +806,77 @@ void app_main(void)
                     // Step 2: Extract features (raw + derived)
                     data_processor_extract_features(data_processor, &synced_data, &features);
                     
-                    // Step 3: Detect near-miss conditions
-                    near_miss_detected = data_processor_detect_near_miss(data_processor, &features);
+                    // Step 3a: Algorithm-based detection
+                    bool algo_detect = data_processor_detect_near_miss(data_processor, &features);
+                    
+                    // Step 3b: ML-based detection (if available and mode allows)
+                    bool ml_detect = false;
+                    float ml_probability = 0.0f;
+                    
+                    // Get current detection mode from config
+                    int detection_mode = config.detection_mode;
+                    
+                    // Run ML inference if:
+                    // - ML is ready (model loaded)
+                    // - Mode is Hybrid (0) or Neural Network (2)
+                    if (ml_ready && (detection_mode == 0 || detection_mode == 2)) {
+                        // Prepare normalized features for ML inference
+                        // Scaler parameters (scaler_mean, scaler_std) are from model_data.h
+                        // These are updated automatically when you run quick_start_ml.py
+                        
+                        // Normalize features using scaler parameters
+                        float normalized_features[25];
+                        int idx = 0;
+                        
+                        // ToF features (16) - normalize using scaler from training
+                        for (int i = 0; i < 16; i++) {
+                            float raw = (float)tof_data.distances[i];
+                            normalized_features[idx] = (raw - scaler_mean[idx]) / scaler_std[idx];
+                            idx++;
+                        }
+                        
+                        // IMU features (9) - normalize using scaler from training
+                        normalized_features[idx++] = (imu_data.roll - scaler_mean[16]) / scaler_std[16];
+                        normalized_features[idx++] = (imu_data.pitch - scaler_mean[17]) / scaler_std[17];
+                        normalized_features[idx++] = (imu_data.yaw - scaler_mean[18]) / scaler_std[18];
+                        normalized_features[idx++] = (imu_data.accel_x - scaler_mean[19]) / scaler_std[19];
+                        normalized_features[idx++] = (imu_data.accel_y - scaler_mean[20]) / scaler_std[20];
+                        normalized_features[idx++] = (imu_data.accel_z - scaler_mean[21]) / scaler_std[21];
+                        normalized_features[idx++] = (imu_data.gyro_x - scaler_mean[22]) / scaler_std[22];
+                        normalized_features[idx++] = (imu_data.gyro_y - scaler_mean[23]) / scaler_std[23];
+                        normalized_features[idx++] = (imu_data.gyro_z - scaler_mean[24]) / scaler_std[24];
+                        
+                        // Run ML inference
+                        ml_probability = ml_inference_predict(normalized_features);
+                        
+                        // Threshold: 70% confidence for near-miss
+                        ml_detect = (ml_probability > 0.70f);
+                        
+                        // Debug ML inference every 300 frames (5 seconds at 60Hz)
+                        static uint32_t debug_ml_count = 0;
+                        debug_ml_count++;
+                        if (debug_ml_count % 300 == 0) {
+                            uint32_t latency = ml_inference_get_latency_ms();
+                            ESP_LOGI(TAG, "🧠 ML: prob=%.2f%%, detect=%s, latency=%lu ms",
+                                     ml_probability * 100.0f, ml_detect ? "YES" : "NO", latency);
+                        }
+                    }
+                    
+                    // Step 3c: Combine detections based on mode
+                    switch (detection_mode) {
+                        case 0:  // Hybrid: OR logic (either algorithm or ML)
+                            near_miss_detected = algo_detect || ml_detect;
+                            break;
+                        case 1:  // Algorithm only
+                            near_miss_detected = algo_detect;
+                            break;
+                        case 2:  // Neural Network only
+                            near_miss_detected = ml_detect;
+                            break;
+                        default:
+                            near_miss_detected = algo_detect;  // Fallback to algorithm
+                            break;
+                    }
                     
                     // Step 4: Handle near-miss event
                     if (near_miss_detected) {
@@ -800,6 +899,15 @@ void app_main(void)
                                      features.jerk_magnitude_m_s3);
                             ESP_LOGW(TAG, "║  Angular Velocity: %.1f deg/s                 ║", 
                                      features.angular_velocity_deg_s);
+                            ESP_LOGW(TAG, "║  Detection: %s (Mode: %d)                     ║",
+                                     algo_detect && ml_detect ? "Algorithm+ML" :
+                                     algo_detect ? "Algorithm" :
+                                     ml_detect ? "ML" : "Unknown",
+                                     config.detection_mode);
+                            if (ml_ready && (config.detection_mode == 0 || config.detection_mode == 2)) {
+                                ESP_LOGW(TAG, "║  ML Probability: %.1f%% (Latency: %lu ms)     ║",
+                                         ml_probability * 100.0f, ml_inference_get_latency_ms());
+                            }
                             ESP_LOGW(TAG, "╚════════════════════════════════════════════════╝");
                             ESP_LOGW(TAG, "");
                             

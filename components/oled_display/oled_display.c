@@ -697,33 +697,31 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                 // This creates a "flashing" effect when flagging
                 fb_write_text(0, "!NEAR MISS ALERT!", !button_active);  // Inverted normally, normal when button pressed
                 
-                // Line 2: Timestamp (also inverted when button pressed)
-                struct tm timeinfo;
-                char time_str[32] = "??:??:??";
-                if (smart_time_get(&timeinfo) == ESP_OK) {
-                    strftime(time_str, sizeof(time_str), "%H:%M:%S", &timeinfo);
-                }
-                fb_write_text(1, time_str, button_active);  // Invert when button pressed
+                // Line 2: Detection Mode (press ACTION to cycle)
+                const system_config_t *config = config_manager_get_config();
+                char mode_line[32];
+                snprintf(mode_line, sizeof(mode_line), "Mode:%s", 
+                        oled_display_get_detection_mode_name(config->detection_mode));
+                fb_write_text(1, mode_line, button_active);  // Invert when button pressed
             }
             
-            // Blue zone - Reasons
+            // Blue zone - Reasons and Instructions
             if (near_miss_active && near_miss_reason_count > 0) {
                 fb_write_text(2, "Reasons:", false);
-                for (int i = 0; i < near_miss_reason_count && i < 4; i++) {
+                for (int i = 0; i < near_miss_reason_count && i < 3; i++) {
                     fb_write_text(3 + i, near_miss_reasons[i], false);
                 }
                 
-                // Fill remaining lines
-                for (int i = 3 + near_miss_reason_count; i < 8; i++) {
-                    fb_write_text(i, "", false);
-                }
+                // Instructions at bottom
+                fb_write_text(6, "ACTION: Cycle", false);
+                fb_write_text(7, "MODE: Exit", false);
             } else {
                 fb_write_text(2, "No active alert", false);
                 fb_write_text(3, "", false);
-                fb_write_text(4, "Press button to", false);
-                fb_write_text(5, "return to", false);
-                fb_write_text(6, "Dashboard", false);
-                fb_write_text(7, "", false);
+                fb_write_text(4, "Detection Modes:", false);
+                fb_write_text(5, "0:Hybrid 1:Algo", false);
+                fb_write_text(6, "2:Neural Net", false);
+                fb_write_text(7, "ACTION:Cycle", false);
             }
             break;
             
@@ -1128,9 +1126,12 @@ esp_err_t oled_display_handle_action_button(void) {
     
     switch (mode) {
         case OLED_MODE_DASHBOARD:
-        case OLED_MODE_NEAR_MISS:
-            // These modes handle button in main.c for event flagging
+            // Dashboard mode handles button in main.c for event flagging
             return ESP_ERR_NOT_SUPPORTED;
+            
+        case OLED_MODE_NEAR_MISS:
+            // Near-Miss mode: Cycle detection mode
+            return oled_display_cycle_detection_mode();
             
         case OLED_MODE_WIFI_SETTINGS:
             // Trigger WiFi sync with progress display
@@ -1497,4 +1498,42 @@ static void draw_volume_popup(void)
     char vol_text[16];
     snprintf(vol_text, sizeof(vol_text), "VOL:%d%%", volume_popup_value);
     fb_write_text(3, vol_text, false);
+}
+
+/**
+ * Cycle detection mode (Hybrid → Algorithm → Neural Network → Hybrid)
+ */
+esp_err_t oled_display_cycle_detection_mode(void)
+{
+    // Get current config
+    system_config_t config;
+    memcpy(&config, config_manager_get_config(), sizeof(system_config_t));
+    
+    // Cycle through modes: 0 → 1 → 2 → 0
+    config.detection_mode = (config.detection_mode + 1) % 3;
+    
+    // Save to SD card
+    esp_err_t err = config_save_to_sd(&config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save detection mode to config");
+        return err;
+    }
+    
+    ESP_LOGI(TAG, "Detection mode changed to: %s", 
+             oled_display_get_detection_mode_name(config.detection_mode));
+    
+    return ESP_OK;
+}
+
+/**
+ * Get detection mode name
+ */
+const char* oled_display_get_detection_mode_name(int mode)
+{
+    switch (mode) {
+        case 0: return "Hybrid";
+        case 1: return "Algorithm";
+        case 2: return "Neural Net";
+        default: return "Unknown";
+    }
 }

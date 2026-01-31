@@ -64,6 +64,21 @@ def run_pipeline():
     if not check_data():
         return False
     
+    # Step 0: Data quality check
+    print("\n" + "="*60)
+    print("STEP 0: DATA QUALITY CHECK")
+    print("="*60)
+    
+    try:
+        from check_data_quality import check_directory
+        if not check_directory('../data/raw'):
+            print("\n⚠️  Data quality issues detected")
+            response = input("Continue anyway? (y/n): ")
+            if response.lower() != 'y':
+                return False
+    except ImportError:
+        print("⚠️  Data quality checker not available, skipping...")
+    
     # Step 1: Load data
     print("\n" + "="*60)
     print("STEP 1: LOADING DATA")
@@ -155,9 +170,10 @@ def run_pipeline():
         # Test
         test_tflite_model('../models/near_miss_model.tflite')
         
-        # Generate C header
+        # Generate C header with scaler parameters
         generate_c_header('../models/near_miss_model.tflite',
-                         '../components/ml_inference/model_data.h')
+                         '../components/ml_inference/include/model_data.h',
+                         '../data/processed/scaler_params.npz')
         
         print("\n✅ Step 4 complete")
     except Exception as e:
@@ -175,13 +191,14 @@ def run_pipeline():
     print("  ✅ ../models/near_miss_model.h5 - Trained Keras model")
     print("  ✅ ../models/near_miss_model.tflite - TFLite model")
     print("  ✅ ../models/training_history.png - Training plot")
-    print("  ✅ ../components/ml_inference/model_data.h - C header for ESP32")
+    print("  ✅ ../components/ml_inference/include/model_data.h - C header with model + scaler")
     
     print("\nNext steps:")
-    print("  1. Copy model_data.h to your ESP32 project")
-    print("  2. Implement ML inference component (see docs/ML_TRAINING_COMPLETE_GUIDE.md)")
-    print("  3. Flash firmware: idf.py flash monitor")
-    print("  4. Test in field and tune threshold")
+    print("  1. Rebuild firmware: idf.py build")
+    print("  2. Flash device: idf.py flash monitor")
+    print("  3. Test in field and tune threshold if needed")
+    print("\n💡 Scaler parameters are now embedded in model_data.h!")
+    print("   No need to manually update main.c anymore.")
     
     return True
 

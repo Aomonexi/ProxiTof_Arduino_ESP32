@@ -7,6 +7,30 @@ dependencies:
       path: .
       type: git
     version: d78f6e5c47f54fe45833b6735ad91e0c08b402dd
+  espressif/esp-nn:
+    component_hash: f4633a02f05fef53b80de65ade1f733ebdef637e4c8b8be4eb11f5e27f6d9f3e
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.2'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.1.2
+  espressif/esp-tflite-micro:
+    component_hash: 57aa3889d3c7b7a513f716c2cb8707476a5bf42971d63a6f6d38a5616d862e57
+    dependencies:
+    - name: espressif/esp-nn
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.1.1'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.3.5
   espressif/esp_tinyusb:
     component_hash: 6f1f0c140990bf27a86611e3c1f47f9fa8468bffc3bf1eb6d551cb09f31f8908
     dependencies:
@@ -75,11 +99,12 @@ dependencies:
     version: 3043b5d7ea97e98598924248c333c61bd5776e66
 direct_dependencies:
 - esp32_BNO08x
+- espressif/esp-tflite-micro
 - espressif/esp_tinyusb
 - espressif/led_strip
 - idf
 - rjrp44/vl53l8cx
 - ssd1306
-manifest_hash: 539c2c034c8a75b8fe6dcd03de2c0c8dd8b64be99a71197e268fde917706dfaa
+manifest_hash: 20e2fdae8788d70c52d00d39631154e14e0d6fe91a7f2fb9e3ff76c37d205764
 target: esp32s3
 version: 2.0.0

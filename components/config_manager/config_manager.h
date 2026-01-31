@@ -34,6 +34,8 @@ typedef struct {
     int oled_brightness;
     int oled_mode;
     bool oled_flip;
+    // Near-Miss Detection Mode
+    int detection_mode;  // 0=Hybrid, 1=Algorithm, 2=Neural Network
 } system_config_t;
 
 /**

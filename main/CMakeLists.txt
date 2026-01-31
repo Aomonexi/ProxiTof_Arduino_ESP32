@@ -2,7 +2,7 @@
 
 idf_component_register(
     SRCS "main.c"
-    INCLUDE_DIRS "."
+    INCLUDE_DIRS "." "../components/ml_inference/include"
     REQUIRES 
         sensor_manager
         storage_manager
@@ -17,4 +17,5 @@ idf_component_register(
         buzzer
         led_strip
         driver
+        ml_inference
 )

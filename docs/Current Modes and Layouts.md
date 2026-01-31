@@ -1,6 +1,6 @@
 # OLED Display - Current Modes & Layouts (Complete Reference)
 
-**Date**: January 29, 2026 (Updated)  
+**Date**: January 31, 2026 (Updated)  
 **Display**: SSD1306 128x64 OLED (4-wire SPI)  
 **Refresh Rate**: 60 Hz with frame buffer (no flicker)  
 **Total Modes**: 9 (Dashboard, Status, ToF Focus, IMU Focus, GPS, Near Miss, WiFi Settings, USB Transfer, Shutdown)  
@@ -30,8 +30,46 @@
 
 **Mode Order:**
 ```
-Dashboard → Status → ToF Focus → IMU Focus → GPS → Near Miss → WiFi Settings → USB Transfer → Shutdown → (back to Dashboard)
+0: Dashboard → 1: Status → 2: ToF Focus → 3: IMU Focus → 4: GPS → 5: Near Miss → 6: WiFi Settings → 7: USB Transfer → 8: Shutdown → (back to Dashboard)
 ```
+
+---
+
+## Complete Mode Summary
+
+| Mode | Name | Purpose | Button 2 Action |
+|------|------|---------|----------------|
+| 0 | Dashboard | Full overview | **Flag event** (manual logging) |
+| 1 | Status | System health | No action |
+| 2 | ToF Focus | Large distance grid | No action |
+| 3 | IMU Focus | Detailed IMU data | Rescan IMU |
+| 4 | GPS | Location & satellites | Reconnect GPS |
+| 5 | Near Miss | Alert details + Mode cycling | **Cycle detection mode** |
+| 6 | WiFi Settings | Time sync control | Trigger WiFi sync |
+| 7 | USB Transfer | File access mode | Toggle USB MSC |
+| 8 | Shutdown | Safe power-off | Confirm shutdown |
+
+---
+
+## Button Behavior Summary
+
+### Button 1 (GPIO 20) - Mode Switch
+- **Always:** Cycles through modes in order (0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 0)
+- **Shutdown mode:** Cancels shutdown confirmation and returns to Dashboard
+- **Debounce:** 200ms
+- **LED:** No change
+
+### Button 2 (GPIO 3) - Action (Context-Aware)
+- **Dashboard mode (0):** **Flag event** → LED blue flash → Manual logging with `flag_manual=1`
+- **Status mode (1):** No action
+- **ToF Focus mode (2):** No action
+- **IMU Focus mode (3):** Rescan IMU → LED yellow
+- **GPS mode (4):** Reconnect GPS → LED green
+- **Near Miss mode (5):** **Cycle detection mode** → Hybrid/Algorithm/Neural Net
+- **WiFi Settings mode (6):** WiFi sync → LED blue during sync
+- **USB Transfer mode (7):** Toggle USB MSC → LED blue during USB mode
+- **Shutdown mode (8):** Confirm shutdown → LED RED → Two-step confirmation
+- **Debounce:** Handled by sensor_manager
 
 ---
 
@@ -170,7 +208,7 @@ Page 7: "J0.5 A0.1g"   ← Low jerk, low acceleration
 
 ---
 
-## Mode 1: ToF Focus
+## Mode 2: ToF Focus
 
 **Purpose**: Large numeric display of all 16 ToF zones with statistics
 
@@ -282,7 +320,7 @@ Page 7: "Avg:567 Max:756"
 
 ---
 
-## Mode 2: IMU Focus
+## Mode 3: IMU Focus
 
 **Purpose**: Detailed IMU orientation and acceleration data with jerk
 
@@ -440,7 +478,7 @@ Page 7: "0.98 0.02 9.81"
 
 ---
 
-## Mode 3: Status
+## Mode 1: Status
 
 **Purpose**: System health and component status overview
 
@@ -574,149 +612,288 @@ Page 7: "Min:450mm"
 
 ---
 
-## Mode 4: Near Miss (NEW!)
+## Mode 5: Near Miss (UPDATED!)
 
-**Purpose**: Alert display when near-miss conditions are detected
+**Purpose**: Alert display when near-miss conditions are detected + Detection mode cycling
 
 ### Layout Diagram
 
+**With Active Alert:**
 ```
 ┌────────────────────────────────────────────────────────┐
 │ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
 ├────────────────────────────────────────────────────────┤
 │ Page 0: !NEAR MISS ALERT!                              │ ← INVERTED (attention!)
-│ Page 1: HH:MM:SS                                       │ ← Alert timestamp
+│ Page 1: Mode:Hybrid                                    │ ← Detection mode
 ├────────────────────────────────────────────────────────┤
 │ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
 ├────────────────────────────────────────────────────────┤
 │ Page 2: Reasons:                                       │ ← Header
-│ Page 3: CRITICAL: 250mm                                │ ← Reason 1
-│ Page 4: RAPID: 523mm/s                                 │ ← Reason 2
-│ Page 5: JERK: 25.3m/s3                                 │ ← Reason 3
-│ Page 6: SPIN: 210deg/s                                 │ ← Reason 4
-│ Page 7: (empty if < 4 reasons)                         │
+│ Page 3: - Close distance                               │ ← Reason 1
+│ Page 4: - High jerk                                    │ ← Reason 2
+│ Page 5:                                                │ ← Empty if < 3 reasons
+│ Page 6: ACTION: Cycle                                  │ ← Instructions
+│ Page 7: MODE: Exit                                     │ ← Instructions
 └────────────────────────────────────────────────────────┘
 ```
 
+**Without Active Alert:**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
+├────────────────────────────────────────────────────────┤
+│ Page 0: !NEAR MISS ALERT!                              │ ← INVERTED
+│ Page 1: Mode:Algorithm                                 │ ← Current detection mode
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: No active alert                                │ ← Status
+│ Page 3:                                                │ ← Empty
+│ Page 4: Detection Modes:                               │ ← Info
+│ Page 5: 0:Hybrid 1:Algo                                │ ← Mode list
+│ Page 6: 2:Neural Net                                   │ ← Mode list
+│ Page 7: ACTION:Cycle                                   │ ← Instructions
+└────────────────────────────────────────────────────────┘
+```
+
+### Detection Modes (NEW!)
+
+**Mode 0: Hybrid (Algorithm + ML)**
+- Uses both rule-based algorithm AND neural network
+- Triggers if EITHER detects near-miss (OR logic)
+- Most sensitive - catches more events
+- Best for training ML model (diverse examples)
+- Higher false positive rate
+- Power: +5mA (ML inference active)
+
+**Mode 1: Algorithm Only**
+- Uses rule-based detection only
+- No ML inference (saves power)
+- Predictable, explainable results
+- Works without trained ML model
+- Power: +0mA (no ML overhead)
+
+**Mode 2: Neural Network Only**
+- Uses ML model only
+- Ignores algorithm thresholds
+- Learns from your button presses
+- Requires trained model
+- Power: +5mA (ML inference active)
+
+**Default Mode**: 0 (Hybrid)
+
+### Button Actions (UPDATED!)
+
+**Button 1 (GPIO 20):**
+- Action: Cycle to next mode
+- Next mode: WiFi Settings
+
+**Button 2 (GPIO 3) - NEW BEHAVIOR:**
+- **Action**: Cycle detection mode
+- **Sequence**: Hybrid → Algorithm → Neural Net → Hybrid
+- **LED**: No change (normal distance-based color)
+- **Display**: Updates mode name immediately
+- **Config**: Saves to SD card (persists after power cycle)
+- **Serial**: Logs mode change
+
+**Example Serial Output:**
+```
+I (12345) OLED: Detection mode changed: 0 (Hybrid) → 1 (Algorithm)
+I (12346) CONFIG: Saving detection mode: 1
+I (12347) CONFIG: ✓ Config saved to /sdcard/config.txt
+```
+
+### Detection Mode Cycling
+
+**How to Use:**
+1. Navigate to Near-Miss mode (Mode 5)
+2. Press ACTION button (GPIO 3)
+3. Observe mode change on display
+4. Mode cycles: Hybrid → Algorithm → Neural Net → Hybrid
+5. Setting persists after power cycle
+
+**Visual Feedback:**
+- Page 1 shows current mode name
+- Updates immediately when button pressed
+- Mode name: "Hybrid", "Algorithm", or "Neural Net"
+
+**Persistence:**
+- Mode saved to `/sdcard/config.txt`
+- Setting: `DETECTION_MODE=0` (or 1, 2)
+- Loads automatically on boot
+
 ### Implementation Details
 
-**Near-Miss Detection Logic:**
-
+**Page 1: Detection Mode (NEW!)**
 ```c
-// Near-miss detection (runs every frame)
-near_miss_reason_count = 0;
-near_miss_active = false;
+const char *mode_name = oled_display_get_detection_mode_name(detection_mode);
+snprintf(mode_line, sizeof(mode_line), "Mode:%s", mode_name);
+fb_write_text(1, mode_line, false);
+```
 
-// 1. Critical proximity: < 300mm
-if (min_distance < 300) {
-    snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
-            "CRITICAL: %dmm", min_distance);
-    near_miss_active = true;
-}
+**Mode Names:**
+- Mode 0: "Hybrid"
+- Mode 1: "Algorithm"
+- Mode 2: "Neural Net"
 
-// 2. Rapid approach: > 500mm/s approaching
-if (approach_rate < -500.0f) {
-    snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
-            "RAPID: %.0fmm/s", -approach_rate);
-    near_miss_active = true;
-}
-
-// 3. High jerk: > 20 m/s³
-if (jerk_magnitude > 20.0f) {
-    snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
-            "JERK: %.1fm/s3", jerk_magnitude);
-    near_miss_active = true;
-}
-
-// 4. High rotation: > 180 deg/s
-if (angular_velocity > 180.0f) {
-    snprintf(near_miss_reasons[near_miss_reason_count++], 32, 
-            "SPIN: %.0fdeg/s", angular_velocity);
-    near_miss_active = true;
+**Mode Cycling Function:**
+```c
+esp_err_t oled_display_cycle_detection_mode(void) {
+    system_config_t *config = config_manager_get_config();
+    config->detection_mode = (config->detection_mode + 1) % 3;
+    return config_save_to_sd(config);
 }
 ```
 
-**Yellow Zone:**
-
-**Page 0: Alert Header (INVERTED!)**
+**Button Handler:**
 ```c
-fb_write_text(0, "!NEAR MISS ALERT!", true);  // Inverted = white on black
-```
-
-**Page 1: Timestamp**
-```c
-struct tm timeinfo;
-char time_str[32] = "??:??:??";
-if (smart_time_get(&timeinfo) == ESP_OK) {
-    strftime(time_str, sizeof(time_str), "%H:%M:%S", &timeinfo);
-}
-fb_write_text(1, time_str, false);
-```
-
-**Blue Zone:**
-
-**Active Alert:**
-```c
-if (near_miss_active && near_miss_reason_count > 0) {
-    fb_write_text(2, "Reasons:", false);
-    for (int i = 0; i < near_miss_reason_count && i < 4; i++) {
-        fb_write_text(3 + i, near_miss_reasons[i], false);
+if (current_mode == OLED_MODE_NEAR_MISS) {
+    if (sensor_manager_is_button_pressed()) {
+        oled_display_cycle_detection_mode();
+        ESP_LOGI(TAG, "Detection mode cycled");
     }
 }
 ```
 
-**No Alert:**
+### Near-Miss Detection Logic (UPDATED!)
+
 ```c
-else {
-    fb_write_text(2, "No active alert", false);
-    fb_write_text(4, "Press button to", false);
-    fb_write_text(5, "return to", false);
-    fb_write_text(6, "Dashboard", false);
+// Get current detection mode from config
+int detection_mode = config.detection_mode;
+
+// Run algorithm detection
+bool algo_detect = check_algorithm_conditions();
+
+// Run ML detection (if available and mode allows)
+bool ml_detect = false;
+if (ml_ready && (detection_mode == 0 || detection_mode == 2)) {
+    float features[25];
+    prepare_normalized_features(features);
+    float prob = ml_inference_predict(features);
+    ml_detect = (prob > 0.70f);  // 70% threshold
+}
+
+// Combine based on mode
+switch (detection_mode) {
+    case 0:  // Hybrid: OR logic
+        near_miss_detected = algo_detect || ml_detect;
+        break;
+    case 1:  // Algorithm only
+        near_miss_detected = algo_detect;
+        break;
+    case 2:  // Neural Network only
+        near_miss_detected = ml_detect;
+        break;
 }
 ```
 
-**Example Outputs:**
+### ML Model Integration (NEW!)
 
-**Active Alert:**
-```
-Page 0: !NEAR MISS ALERT! (inverted)
-Page 1: 14:23:45
-Page 2: Reasons:
-Page 3: CRITICAL: 250mm
-Page 4: RAPID: 523mm/s
-Page 5: JERK: 25.3m/s3
-Page 6: (empty - only 3 reasons)
-```
+**Model Location**: Built into firmware (NOT on SD card)
+- File: `components/ml_inference/include/model_data.h`
+- Format: C array (embedded in firmware)
+- Size: ~2.4KB flash memory
 
-**No Alert:**
-```
-Page 0: !NEAR MISS ALERT! (inverted)
-Page 1: 14:23:45
-Page 2: No active alert
-Page 3: (empty)
-Page 4: Press button to
-Page 5: return to
-Page 6: Dashboard
-Page 7: (empty)
-```
+**Training Workflow**:
+1. **Collect Data** (Mode 1: Algorithm)
+   - Ride bike normally
+   - Press ACTION in Dashboard to flag near-misses
+   - System logs with flag_manual=1
+   - Collect 100+ near-miss, 1000+ safe examples
 
-### Near-Miss Thresholds
+2. **Train Model** (On PC)
+   ```bash
+   # Copy CSV files from SD card to data/raw/
+   python tools/quick_start_ml.py
+   ```
+   - Generates `components/ml_inference/include/model_data.h`
+   - Includes model weights and scaler parameters
 
-| Condition | Threshold | Reason |
-|-----------|-----------|--------|
-| **Critical Proximity** | < 300mm | Object very close |
-| **Rapid Approach** | > 500mm/s | Fast approaching motion |
-| **High Jerk** | > 20 m/s³ | Sudden acceleration change |
-| **High Rotation** | > 180 deg/s | Fast spinning motion |
+3. **Deploy Model** (Rebuild firmware)
+   ```bash
+   idf.py build flash monitor
+   ```
+   - Model embedded in firmware
+   - ML inference active on boot
+   - Check serial: "ML Status: ✓ Ready"
 
-### ✅ Features
+4. **Use Hybrid Mode** (Mode 0)
+   - Benefits from both algorithm and ML
+   - Best overall performance
+   - Catches more near-miss events
+
+**Before Training:**
+- ML inference disabled (no model)
+- Hybrid mode = Algorithm only
+- Serial shows: "ML Status: ✗ Not available"
+
+**After Training:**
+- ML inference active
+- Hybrid mode uses both algorithm and ML
+- Serial shows: "ML Status: ✓ Ready"
+- Inference latency: ~10-15ms
+
+### Features
 
 1. ✅ **Real-time detection** - Checks conditions every frame (60 Hz)
-2. ✅ **Multiple reasons** - Shows up to 4 simultaneous conditions
-3. ✅ **Inverted header** - High visibility alert
-4. ✅ **Timestamp** - Records when alert triggered
-5. ✅ **Clear reasons** - Specific values for each condition
-6. ✅ **User guidance** - Instructions when no alert active
+2. ✅ **Multiple detection modes** - Hybrid, Algorithm, Neural Network
+3. ✅ **Mode cycling** - Easy switching without recompiling
+4. ✅ **Persistent settings** - Mode saved to config file
+5. ✅ **ML integration** - TensorFlow Lite with ESP-NN acceleration
+6. ✅ **Graceful degradation** - Works without ML model
+7. ✅ **Visual feedback** - Shows current mode on display
+8. ✅ **Power efficient** - ML only runs when needed
+
+### Use Cases
+
+**Use Case 1: Training ML Model**
+1. Set mode to Algorithm (Mode 1)
+2. Collect training data (flag near-misses manually)
+3. Train model on PC
+4. Rebuild firmware with model
+5. Set mode to Hybrid (Mode 0)
+
+**Use Case 2: Testing ML Model**
+1. Set mode to Neural Network (Mode 2)
+2. Ride and observe ML-only detection
+3. Compare with Algorithm mode
+4. Verify ML catches same events
+
+**Use Case 3: Production Use**
+1. Set mode to Hybrid (Mode 0)
+2. Benefits from both algorithm and ML
+3. Maximum sensitivity
+4. Best overall performance
+
+**Use Case 4: Debugging**
+1. Set mode to Algorithm (Mode 1)
+2. Test rule-based thresholds
+3. Adjust parameters if needed
+4. Verify detection logic
+
+### Testing Checklist
+
+- [ ] Near-Miss mode appears in cycle
+- [ ] Display shows current detection mode
+- [ ] ACTION button cycles modes
+- [ ] Mode name updates immediately
+- [ ] Mode persists after power cycle
+- [ ] Config file shows DETECTION_MODE=X
+- [ ] Algorithm detection works (Mode 1)
+- [ ] ML detection works after training (Mode 2)
+- [ ] Hybrid mode uses both (Mode 0)
+- [ ] Serial logs mode changes
+- [ ] No crashes or errors
+
+### ✅ Updates Applied
+
+1. ✅ **Detection mode cycling** - Press ACTION to cycle modes
+2. ✅ **Mode display** - Shows current mode on Page 1
+3. ✅ **Persistent storage** - Mode saved to config file
+4. ✅ **ML integration** - TensorFlow Lite with ESP-NN
+5. ✅ **Graceful degradation** - Works without ML model
+6. ✅ **Button behavior changed** - ACTION cycles modes (not flag events)
+7. ✅ **Documentation updated** - Complete workflow explained
 
 ---
 
@@ -834,7 +1011,7 @@ Page 7: (empty)
 
 ---
 
-## Mode 5: WiFi Settings (NEW!)
+## Mode 6: WiFi Settings (NEW!)
 
 **Purpose**: WiFi control and time synchronization management
 
@@ -1005,7 +1182,7 @@ Page 7: (empty)
 
 ---
 
-## Mode 6: GPS (NEW!)
+## Mode 4: GPS (NEW!)
 
 **Purpose**: GPS location tracking and satellite status
 
@@ -1223,7 +1400,7 @@ GPS GND → GND
 
 ---
 
-## Mode 7: Shutdown (UPDATED - was Mode 6)
+## Mode 8: Shutdown
 
 **Purpose**: Safe system shutdown with data protection
 
@@ -1638,39 +1815,24 @@ I (15845) MAIN: Entering deep sleep...
 
 ---
 
-## Complete Mode Summary (Updated)
-
-| Mode | Name | Purpose | Button 2 Action |
-|------|------|---------|----------------|
-| 0 | Dashboard | Full overview | Flag event (shows "FLAG") |
-| 1 | Status | System health | No action |
-| 2 | ToF Focus | Large distance grid | No action |
-| 3 | IMU Focus | Detailed IMU data | Rescan IMU |
-| 4 | GPS | Location & satellites | Reconnect GPS |
-| 5 | Near Miss | Alert details | Flag event |
-| 6 | WiFi Settings | Time sync control | Trigger WiFi sync |
-| 7 | USB Transfer | File access mode | Toggle USB MSC |
-| 8 | Shutdown | Safe power-off | Confirm shutdown |
-
----
-
 ## Button Behavior Summary
 
 ### Button 1 (GPIO 20) - Mode Switch
-- **Always:** Cycles through modes (Dashboard → Status → ToF → IMU → GPS → Near Miss → WiFi → USB Transfer → Shutdown → Dashboard)
+- **Always:** Cycles through modes in order (0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 0)
 - **Shutdown mode:** Cancels shutdown confirmation and returns to Dashboard
 - **Debounce:** 200ms
 - **LED:** No change
 
 ### Button 2 (GPIO 3) - Action (Context-Aware)
-- **Dashboard mode:** Flag event → LED blue flash → Shows "FLAG"
-- **IMU Focus mode:** Rescan IMU → LED yellow
-- **Near Miss mode:** Flag event → LED blue flash
-- **WiFi Settings mode:** WiFi sync → LED blue during sync
-- **USB Transfer mode:** Toggle USB MSC → LED blue during USB mode
-- **GPS mode:** Reconnect GPS → LED green during reconnect
-- **Shutdown mode:** Confirm shutdown → LED RED → Two-step confirmation
-- **Other modes:** No action
+- **Dashboard mode (0):** **Flag event** → LED blue flash → Manual logging with `flag_manual=1`
+- **Status mode (1):** No action
+- **ToF Focus mode (2):** No action
+- **IMU Focus mode (3):** Rescan IMU → LED yellow
+- **GPS mode (4):** Reconnect GPS → LED green
+- **Near Miss mode (5):** **Cycle detection mode** → Hybrid/Algorithm/Neural Net
+- **WiFi Settings mode (6):** WiFi sync → LED blue during sync
+- **USB Transfer mode (7):** Toggle USB MSC → LED blue during USB mode
+- **Shutdown mode (8):** Confirm shutdown → LED RED → Two-step confirmation
 - **Debounce:** Handled by sensor_manager
 
 ---

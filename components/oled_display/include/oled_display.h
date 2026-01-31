@@ -125,6 +125,23 @@ bool oled_display_is_shutdown_confirmed(void);
  */
 esp_err_t oled_display_show_volume_popup(uint8_t volume_percent);
 
+/**
+ * Cycle detection mode (Hybrid → Algorithm → Neural Network → Hybrid)
+ * Used in Near-Miss mode to switch between detection methods
+ * Saves the new mode to config file
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t oled_display_cycle_detection_mode(void);
+
+/**
+ * Get current detection mode name
+ * 
+ * @param mode Detection mode (0=Hybrid, 1=Algorithm, 2=Neural Network)
+ * @return Mode name string
+ */
+const char* oled_display_get_detection_mode_name(int mode);
+
 #ifdef __cplusplus
 }
 #endif

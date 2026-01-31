@@ -4,3 +4,37 @@ CONFIG_IDF_TARGET_ESP32S3=y
 
 # SSD1306 OLED - Use SPI3 to avoid conflict with IMU on SPI2
 CONFIG_SPI3_HOST=y
+
+# =============================================================================
+# PERFORMANCE OPTIMIZATIONS FOR ESP-NN AND REAL-TIME OPERATION
+# =============================================================================
+
+# CPU Frequency - Maximum for fastest inference
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240
+
+# Flash Configuration - Faster flash access
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+
+# Compiler Optimizations - Performance over size
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# FreeRTOS Optimizations
+CONFIG_FREERTOS_HZ=1000
+CONFIG_FREERTOS_OPTIMIZED_SCHEDULER=y
+
+# ESP-NN Optimizations (TFLite Micro uses these automatically)
+# ESP-NN provides SIMD acceleration for neural network operations
+# on ESP32-S3's vector extensions
+
+# Memory Configuration
+# Disable PSRAM if not using (saves initialization time)
+# CONFIG_SPIRAM=n
+
+# Watchdog - Increase timeout for ML inference
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+
+# Logging - Reduce overhead in production
+# CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+# CONFIG_LOG_MAXIMUM_LEVEL_INFO=y

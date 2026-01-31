@@ -659,6 +659,21 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
+  include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-nn/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-tflite-micro/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ml_inference/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
   include("D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/cmake_install.cmake")
 endif()
 

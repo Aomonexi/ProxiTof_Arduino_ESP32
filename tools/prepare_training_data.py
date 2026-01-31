@@ -179,6 +179,11 @@ def prepare_dataset(csv_file, output_dir='../data/processed',
     with open(os.path.join(output_dir, 'scaler.pkl'), 'wb') as f:
         pickle.dump(scaler, f)
     
+    # Save scaler parameters as numpy arrays (for C header generation)
+    np.savez(os.path.join(output_dir, 'scaler_params.npz'),
+             mean=scaler.mean_,
+             std=scaler.scale_)
+    
     # Save feature names
     with open(os.path.join(output_dir, 'feature_names.txt'), 'w') as f:
         for col in feature_cols:
@@ -192,6 +197,7 @@ def prepare_dataset(csv_file, output_dir='../data/processed',
     print(f"✅ y_train.npy       - Training labels ({y_train.shape})")
     print(f"✅ y_test.npy        - Test labels ({y_test.shape})")
     print(f"✅ scaler.pkl        - Feature scaler (for deployment)")
+    print(f"✅ scaler_params.npz - Scaler mean/std (for C header)")
     print(f"✅ feature_names.txt - Feature column names")
     
     print(f"\n🎉 Data preparation complete!")
