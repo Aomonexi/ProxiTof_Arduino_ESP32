@@ -27,6 +27,7 @@ typedef struct {
     bool wifi_enabled;
     bool ds3231_enabled;
     bool display_compact_mode;
+    bool gps_logging_enabled;  // Enable/disable GPS data in logs (for ML training vs production)
     // OLED Display Configuration
     bool oled_enabled;
     int oled_refresh_hz;

@@ -18,6 +18,7 @@
 #include "gps.h"
 #include "sensor_manager.h"
 #include "config_manager.h"
+#include "usb_flash_partition.h"  // For USB MSC functions
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -933,6 +934,81 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             }
             break;
             
+        case OLED_MODE_USB_TRANSFER:
+            // Yellow zone - USB Transfer Header (INVERTED for attention!)
+            {
+                bool usb_msc_active = usb_msc_sdcard_is_active();
+                
+                if (!usb_msc_active) {
+                    // Not in USB mode - show activation screen
+                    fb_write_text(0, "USB Transfer Mode", true);  // Inverted
+                    fb_write_text(1, "Press ACTION", true);       // Inverted
+                } else {
+                    // In USB mode - show active status with connection indicator
+                    bool usb_connected = usb_msc_sdcard_is_host_connected();
+                    bool usb_ready = usb_msc_sdcard_is_ready();
+                    
+                    if (usb_connected && usb_ready) {
+                        fb_write_text(0, "!USB CONNECTED!", true);  // Inverted
+                        fb_write_text(1, "PC accessing SD", true);  // Inverted
+                    } else if (usb_connected && !usb_ready) {
+                        fb_write_text(0, "!USB SUSPENDED!", true);  // Inverted
+                        fb_write_text(1, "PC idle/sleep", true);    // Inverted
+                    } else {
+                        fb_write_text(0, "!USB MODE ACTIVE!", true);  // Inverted
+                        fb_write_text(1, "Waiting for PC", true);     // Inverted
+                    }
+                }
+            }
+            
+            // Blue zone - Instructions and status
+            {
+                bool usb_msc_active = usb_msc_sdcard_is_active();
+                
+                if (!usb_msc_active) {
+                    // Activation screen - explain what will happen
+                    fb_write_text(2, "This will:", false);
+                    fb_write_text(3, "1. Pause logging", false);
+                    fb_write_text(4, "2. Enable USB MSC", false);
+                    fb_write_text(5, "3. Expose SD card", false);
+                    fb_write_text(6, "", false);
+                    fb_write_text(7, "ACTION: Activate", false);
+                } else {
+                    // Active screen - show live status
+                    bool usb_connected = usb_msc_sdcard_is_host_connected();
+                    bool usb_ready = usb_msc_sdcard_is_ready();
+                    
+                    fb_write_text(2, "", false);
+                    
+                    if (usb_connected && usb_ready) {
+                        // PC connected and ready - safe to transfer files
+                        fb_write_text(3, "Status: READY", false);
+                        fb_write_text(4, "", false);
+                        fb_write_text(5, "PC can read/write", false);
+                        fb_write_text(6, "", false);
+                        fb_write_text(7, "1.Eject on PC", false);
+                        fb_write_text(8, "2.ACTION to exit", false);
+                    } else if (usb_connected && !usb_ready) {
+                        // PC connected but suspended (idle/sleep)
+                        fb_write_text(3, "Status: SUSPENDED", false);
+                        fb_write_text(4, "", false);
+                        fb_write_text(5, "PC idle or sleep", false);
+                        fb_write_text(6, "Wake PC to access", false);
+                        fb_write_text(7, "", false);
+                        fb_write_text(8, "ACTION: Exit", false);
+                    } else {
+                        // Not connected - waiting for PC
+                        fb_write_text(3, "Status: WAITING", false);
+                        fb_write_text(4, "", false);
+                        fb_write_text(5, "Connect LEFT port", false);
+                        fb_write_text(6, "to PC", false);
+                        fb_write_text(7, "", false);
+                        fb_write_text(8, "ACTION: Exit (safe)", false);
+                    }
+                }
+            }
+            break;
+            
         case OLED_MODE_SHUTDOWN:
             // Yellow zone - Shutdown Warning (INVERTED for attention!)
             if (!shutdown_confirmation_pending) {
@@ -1012,7 +1088,7 @@ esp_err_t oled_display_set_mode(oled_display_mode_t mode) {
     
     current_config.mode = mode;
     
-    const char *mode_names[] = {"Dashboard", "Status", "ToF Focus", "IMU Focus", "GPS", "Near Miss", "WiFi Settings", "Shutdown"};
+    const char *mode_names[] = {"Dashboard", "Status", "ToF Focus", "IMU Focus", "GPS", "Near Miss", "WiFi Settings", "USB Transfer", "Shutdown"};
     ESP_LOGI(TAG, "Display mode changed to: %s", mode_names[mode]);
     
     // Show mode change notification
@@ -1195,6 +1271,56 @@ esp_err_t oled_display_handle_action_button(void) {
             vTaskDelay(pdMS_TO_TICKS(2000));
             
             return imu_ret;
+            
+        case OLED_MODE_USB_TRANSFER:
+            // Toggle USB MSC mode
+            ESP_LOGI(TAG, "USB Transfer mode toggle requested from display");
+            
+            bool usb_msc_active = usb_msc_sdcard_is_active();
+            
+            if (!usb_msc_active) {
+                // Activate USB MSC mode
+                
+                // Initialize USB MSC if not already initialized (lazy initialization)
+                if (!usb_msc_sdcard_is_initialized()) {
+                    ESP_LOGI(TAG, "USB MSC not initialized, initializing now...");
+                    esp_err_t init_ret = usb_msc_sdcard_init();
+                    if (init_ret != ESP_OK) {
+                        ESP_LOGE(TAG, "USB MSC initialization failed: %s", esp_err_to_name(init_ret));
+                        return init_ret;
+                    }
+                    ESP_LOGI(TAG, "✓ USB MSC initialized successfully");
+                }
+                
+                // Pause logging and enable USB MSC (no blocking UI updates)
+                esp_err_t ret = usb_msc_sdcard_pause_logging();
+                
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to activate USB mode: %s", esp_err_to_name(ret));
+                }
+                
+                // Force display update to show new status immediately
+                // This ensures the display shows the USB active state right away
+                vTaskDelay(pdMS_TO_TICKS(50));  // Small delay to let USB settle
+                
+                return ret;
+            } else {
+                // Deactivate USB MSC mode
+                ESP_LOGI(TAG, "Deactivating USB Transfer mode");
+                ESP_LOGI(TAG, "💡 Ensure you ejected on PC and disconnected cable first!");
+                
+                // Resume logging and disable USB MSC (no blocking UI updates)
+                esp_err_t ret = usb_msc_sdcard_resume_logging();
+                
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to deactivate USB mode: %s", esp_err_to_name(ret));
+                }
+                
+                // Force display update to show new status immediately
+                vTaskDelay(pdMS_TO_TICKS(50));  // Small delay to let SD card settle
+                
+                return ret;
+            }
             
         case OLED_MODE_SHUTDOWN:
             // Handle shutdown confirmation

@@ -1,9 +1,9 @@
 # OLED Display - Current Modes & Layouts (Complete Reference)
 
-**Date**: January 26, 2026  
+**Date**: January 29, 2026 (Updated)  
 **Display**: SSD1306 128x64 OLED (4-wire SPI)  
 **Refresh Rate**: 60 Hz with frame buffer (no flicker)  
-**Total Modes**: 6 (Dashboard, ToF Focus, IMU Focus, Status, Near Miss, WiFi Settings)  
+**Total Modes**: 9 (Dashboard, Status, ToF Focus, IMU Focus, GPS, Near Miss, WiFi Settings, USB Transfer, Shutdown)  
 **Status**: ✅ All modes implemented and working!
 
 ---
@@ -30,7 +30,7 @@
 
 **Mode Order:**
 ```
-Dashboard → Status → ToF Focus → IMU Focus → GPS → Near Miss → WiFi Settings → Shutdown → (back to Dashboard)
+Dashboard → Status → ToF Focus → IMU Focus → GPS → Near Miss → WiFi Settings → USB Transfer → Shutdown → (back to Dashboard)
 ```
 
 ---
@@ -1498,6 +1498,146 @@ I (15845) MAIN: Entering deep sleep...
 
 ---
 
+## Mode 7: USB Transfer (NEW!)
+
+**Purpose**: Enable USB Mass Storage mode for direct SD card file access
+
+### Layout Diagram
+
+**Activation Screen (USB MSC Off):**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall) - INVERTED    │
+├────────────────────────────────────────────────────────┤
+│ Page 0: USB Transfer Mode                              │ ← Header (inverted)
+│ Page 1: Press ACTION                                   │ ← Instruction (inverted)
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: This will:                                     │ ← Header
+│ Page 3: 1. Pause logging                               │ ← Action 1
+│ Page 4: 2. Enable USB MSC                              │ ← Action 2
+│ Page 5: 3. Show USB icon                               │ ← Action 3
+│ Page 6:                                                │ ← Empty
+│ Page 7: Press ACTION start                             │ ← Instruction
+└────────────────────────────────────────────────────────┘
+```
+
+**Active Screen (USB MSC On):**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall) - INVERTED    │
+├────────────────────────────────────────────────────────┤
+│ Page 0: !USB MODE ACTIVE!                              │ ← Status (inverted)
+│ Page 1: Logging PAUSED                                 │ ← Warning (inverted)
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2:                                                │ ← Empty
+│ Page 3:   [USB]                                        │ ← USB icon (centered)
+│ Page 4:                                                │ ← Empty
+│ Page 5: Connect LEFT port                              │ ← Instruction
+│ Page 6: to PC for files                                │ ← Instruction
+│ Page 7: ACTION to exit                                 │ ← Exit instruction
+└────────────────────────────────────────────────────────┘
+```
+
+### Button Actions
+
+**Button 1 (GPIO 20):**
+- Action: Cycle to next mode
+- Next mode: Shutdown
+
+**Button 2 (GPIO 3):**
+- **When USB MSC Off:** Activate USB MSC mode
+  - LED: Blue during activation
+  - Display: Shows "Pausing logging..." → "USB MODE ACTIVE"
+  - Result: Logging paused, SD card accessible via USB
+  
+- **When USB MSC On:** Deactivate USB MSC mode
+  - LED: Blue during deactivation
+  - Display: Shows "Resuming logging..." → "USB MODE OFF"
+  - Result: Logging resumed, SD card back to normal
+
+### Features
+
+1. ✅ **One-button toggle** - Simple activation/deactivation
+2. ✅ **Automatic logging pause** - Prevents file corruption
+3. ✅ **Clear visual feedback** - Inverted headers, USB icon, LED
+4. ✅ **Safe switching** - Proper unmount/mount sequence
+5. ✅ **Direct PC access** - SD card appears as removable drive
+6. ✅ **No SD card removal** - Access files via USB cable
+
+### Use Cases
+
+**Use Case 1: Access Files on PC**
+1. Navigate to USB Transfer mode (Mode 7)
+2. Press ACTION button (GPIO 3)
+3. Wait for "USB MODE ACTIVE" message
+4. Connect LEFT USB port to PC
+5. PC shows removable drive
+6. Browse/copy files as needed
+7. Safely eject drive from PC
+8. Press ACTION button to exit
+9. System resumes logging
+
+**Use Case 2: Quick File Check**
+1. Navigate to USB Transfer mode
+2. Press ACTION to activate
+3. Connect to PC
+4. Check latest log files
+5. Disconnect from PC
+6. Press ACTION to deactivate
+7. Continue normal operation
+
+### Testing Checklist
+
+- [ ] USB Transfer mode appears in mode cycle (after WiFi Settings)
+- [ ] Activation screen shows correct instructions
+- [ ] ACTION button activates USB MSC
+- [ ] Display shows "USB MODE ACTIVE"
+- [ ] LED turns BLUE
+- [ ] Logging pauses (verified in logs)
+- [ ] LEFT USB port works as flash drive
+- [ ] PC can read SD card files
+- [ ] PC can write to SD card
+- [ ] ACTION button deactivates USB MSC
+- [ ] Display shows "USB MODE OFF"
+- [ ] Logging resumes (verified in logs)
+- [ ] LED returns to normal
+- [ ] No file corruption after transition
+
+---
+
+## Mode 8: Shutdown (UPDATED - was Mode 7)
+
+**Purpose**: Safe system shutdown with data protection
+
+### Layout Diagram
+
+**Initial Screen (First Press):**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall) - INVERTED    │
+├────────────────────────────────────────────────────────┤
+│ Page 0: !SHUTDOWN MODE!                                │ ← Warning (inverted)
+│ Page 1: Press ACTION                                   │ ← Instruction (inverted)
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: This will:                                     │ ← Header
+│ Page 3: 1. Stop logging                                │ ← Action 1
+│ Page 4: 2. Save all data                               │ ← Action 2
+│ Page 5: 3. Power off                                   │ ← Action 3
+│ Page 6:                                                │ ← Empty
+│ Page 7: Press MODE cancel                              │ ← Cancel instruction
+└────────────────────────────────────────────────────────┘
+```
+
+(Rest of Shutdown mode documentation remains the same...)
+
+---
+
 ## Complete Mode Summary (Updated)
 
 | Mode | Name | Purpose | Button 2 Action |
@@ -1509,23 +1649,25 @@ I (15845) MAIN: Entering deep sleep...
 | 4 | GPS | Location & satellites | Reconnect GPS |
 | 5 | Near Miss | Alert details | Flag event |
 | 6 | WiFi Settings | Time sync control | Trigger WiFi sync |
-| 7 | Shutdown | Safe power-off | Confirm shutdown |
+| 7 | USB Transfer | File access mode | Toggle USB MSC |
+| 8 | Shutdown | Safe power-off | Confirm shutdown |
 
 ---
 
 ## Button Behavior Summary
 
 ### Button 1 (GPIO 20) - Mode Switch
-- **Always:** Cycles through modes (Dashboard → Status → ToF → IMU → GPS → Near Miss → WiFi → Shutdown → Dashboard)
+- **Always:** Cycles through modes (Dashboard → Status → ToF → IMU → GPS → Near Miss → WiFi → USB Transfer → Shutdown → Dashboard)
 - **Shutdown mode:** Cancels shutdown confirmation and returns to Dashboard
 - **Debounce:** 200ms
 - **LED:** No change
 
 ### Button 2 (GPIO 3) - Action (Context-Aware)
 - **Dashboard mode:** Flag event → LED blue flash → Shows "FLAG"
-- **IMU Focus mode:** Rescan IMU (coming soon) → LED yellow
+- **IMU Focus mode:** Rescan IMU → LED yellow
 - **Near Miss mode:** Flag event → LED blue flash
 - **WiFi Settings mode:** WiFi sync → LED blue during sync
+- **USB Transfer mode:** Toggle USB MSC → LED blue during USB mode
 - **GPS mode:** Reconnect GPS → LED green during reconnect
 - **Shutdown mode:** Confirm shutdown → LED RED → Two-step confirmation
 - **Other modes:** No action
@@ -1551,6 +1693,11 @@ I (15845) MAIN: Entering deep sleep...
 - Color: Blue (solid)
 - Duration: During sync (5-10 seconds)
 - Meaning: Syncing time
+
+**USB Transfer (USB Transfer Mode):**
+- Color: Blue (solid)
+- Duration: While USB MSC active
+- Meaning: Flash drive mode active, logging paused
 
 **Shutdown (Shutdown Mode):**
 - Color: RED (solid)

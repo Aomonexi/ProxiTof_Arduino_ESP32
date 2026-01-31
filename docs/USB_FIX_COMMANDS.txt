@@ -1,0 +1,53 @@
+# USB Host Mode Fix - Quick Commands
+
+## CRITICAL FIX: Disable USB Host Mode
+
+### Method 1: Using menuconfig (RECOMMENDED)
+idf.py menuconfig
+# Navigate: Component config → USB-OTG → USB OTG
+# Press Space to UNCHECK
+# Press S to save, Enter to confirm, Q to quit
+
+### Method 2: Verify current settings
+Select-String -Pattern "CONFIG_USB_OTG_SUPPORTED" -Path sdkconfig
+# Should show: # CONFIG_USB_OTG_SUPPORTED is not set (after fix)
+
+### Method 3: Clean build (REQUIRED after menuconfig change)
+idf.py fullclean
+idf.py build flash monitor
+
+## Test USB Detection
+# 1. Navigate to Mode 7 (USB Transfer)
+# 2. Press ACTION button
+# 3. Connect LEFT port to PC
+# 4. PC should detect USB device!
+
+## Verify Fix Applied
+Select-String -Pattern "CONFIG_USB_HOST" -Path sdkconfig | Where-Object { $_.Line -notmatch "^#" }
+# Output should be EMPTY (no USB Host settings)
+
+Select-String -Pattern "CONFIG_TINYUSB_MSC_ENABLED=y" -Path sdkconfig
+# Output should show: CONFIG_TINYUSB_MSC_ENABLED=y
+
+## Expected Serial Output After Fix
+# I (xxxxx) USB_MSC_SD: ✓ USB Transfer mode activated
+# I (xxxxx) USB_MSC_SD: 🔌 Connect LEFT port (USB-OTG) to computer
+# I (xxxxx) USB_MSC_SD: 🔌 USB host connected  ← THIS IS NEW!
+
+## If Still Not Working
+# 1. Verify USB Host is disabled:
+grep "CONFIG_USB_OTG_SUPPORTED" sdkconfig
+# Should show: # CONFIG_USB_OTG_SUPPORTED is not set
+
+# 2. Try ESP-IDF example:
+cd $IDF_PATH/examples/peripherals/usb/device/tusb_msc
+idf.py build flash monitor
+
+# 3. Try different USB cable (might still be power-only)
+
+## DO NOT DESOLDER THE USB-OTG BRIDGE CHIP!
+# - It's for the RIGHT port (programming), not LEFT port (USB-OTG)
+# - You need it for programming and monitoring
+# - It doesn't interfere with USB-OTG functionality
+# - This is a SOFTWARE issue, not hardware!
+

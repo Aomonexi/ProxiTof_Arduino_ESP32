@@ -904,6 +904,13 @@ D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_tim
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/CMakeFiles/install.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/CMakeFiles/install/local.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/CMakeFiles/install/strip.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/__idf_config_manager.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/edit_cache.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/rebuild_cache.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/list_install_components.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/install.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/install/local.dir
+D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/install/strip.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/CMakeFiles/__idf_storage_manager.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/CMakeFiles/edit_cache.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/CMakeFiles/rebuild_cache.dir
@@ -918,13 +925,6 @@ D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_proc
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/CMakeFiles/install.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/CMakeFiles/install/local.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/CMakeFiles/install/strip.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/__idf_config_manager.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/edit_cache.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/rebuild_cache.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/list_install_components.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/install.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/install/local.dir
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/CMakeFiles/install/strip.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/CMakeFiles/edit_cache.dir
 D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/CMakeFiles/rebuild_cache.dir

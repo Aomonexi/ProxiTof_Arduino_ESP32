@@ -20,6 +20,7 @@ static tinyusb_msc_storage_handle_t msc_storage_handle = NULL;
 static bool msc_initialized = false;
 static bool msc_active = false;
 static uint32_t switch_count = 0;
+static bool suppress_callback_messages = false;  // Suppress messages during init
 
 // Status tracking
 static usb_sd_status_t current_status = {
@@ -38,18 +39,22 @@ static void msc_event_callback(tinyusb_msc_storage_handle_t handle, tinyusb_msc_
     (void)handle;
     (void)arg;
     
+    // Suppress messages during initialization
+    if (suppress_callback_messages) {
+        return;
+    }
+    
     switch (event->id) {
         case TINYUSB_MSC_EVENT_MOUNT_START:
-            ESP_LOGI(TAG, "🔄 MSC mount operation starting...");
             if (event->mount_point == TINYUSB_MSC_STORAGE_MOUNT_USB) {
-                ESP_LOGI(TAG, "📤 Switching to USB mode - pausing data logging");
+                ESP_LOGI(TAG, "💾 USB mode activated - SD card accessible via USB");
                 msc_active = true;
                 current_status.usb_msc_active = true;
                 current_status.logging_active = false;
                 switch_count++;
                 current_status.switch_count = switch_count;
             } else {
-                ESP_LOGI(TAG, "📥 Switching to APP mode - resuming data logging");
+                ESP_LOGI(TAG, "📊 APP mode activated - data logging resumed");
                 msc_active = false;
                 current_status.usb_msc_active = false;
                 current_status.logging_active = true;
@@ -57,17 +62,16 @@ static void msc_event_callback(tinyusb_msc_storage_handle_t handle, tinyusb_msc_
             break;
             
         case TINYUSB_MSC_EVENT_MOUNT_COMPLETE:
-            ESP_LOGI(TAG, "✓ MSC mount operation completed");
             if (event->mount_point == TINYUSB_MSC_STORAGE_MOUNT_USB) {
-                ESP_LOGI(TAG, "💾 SD card now accessible via USB");
-                ESP_LOGI(TAG, "🔌 Connect LEFT port to computer to access files");
+                ESP_LOGI(TAG, "✓ USB Transfer mode ready");
+                ESP_LOGI(TAG, "🔌 Connect LEFT port (USB-OTG) to computer");
             } else {
-                ESP_LOGI(TAG, "📊 Data logging resumed");
+                ESP_LOGI(TAG, "✓ Logging mode ready");
             }
             break;
             
         case TINYUSB_MSC_EVENT_MOUNT_FAILED:
-            ESP_LOGW(TAG, "❌ MSC mount operation failed");
+            ESP_LOGW(TAG, "❌ Mode switch failed");
             // Reset state on failure
             msc_active = false;
             current_status.usb_msc_active = false;
@@ -76,7 +80,6 @@ static void msc_event_callback(tinyusb_msc_storage_handle_t handle, tinyusb_msc_
             
         case TINYUSB_MSC_EVENT_FORMAT_REQUIRED:
             ESP_LOGW(TAG, "⚠️  SD card requires formatting");
-            ESP_LOGW(TAG, "💡 Use tinyusb_msc_format_storage() to format");
             break;
             
         case TINYUSB_MSC_EVENT_FORMAT_FAILED:
@@ -84,7 +87,6 @@ static void msc_event_callback(tinyusb_msc_storage_handle_t handle, tinyusb_msc_
             break;
             
         default:
-            ESP_LOGW(TAG, "Unknown MSC event: %d", event->id);
             break;
     }
 }
@@ -130,7 +132,7 @@ esp_err_t usb_msc_sdcard_init(void)
             .task = {
                 .size = 4096,
                 .priority = 5,
-                .xCoreID = tskNO_AFFINITY,
+                .xCoreID = 1,  // Run on core 1 to avoid interfering with main loop on core 0
             },
             .descriptor = {0}, // Use default descriptors
             .event_cb = NULL,
@@ -181,23 +183,33 @@ esp_err_t usb_msc_sdcard_init(void)
             .do_not_format = true,  // Don't format automatically
             .format_flags = FM_ANY,
         },
-        .mount_point = TINYUSB_MSC_STORAGE_MOUNT_USB,  // Start in USB mode
+        .mount_point = TINYUSB_MSC_STORAGE_MOUNT_APP,  // Start in APP mode (logging active, USB inactive)
     };
+    
+    // Suppress callback messages during initialization
+    suppress_callback_messages = true;
     
     ret = tinyusb_msc_new_storage_sdmmc(&storage_config, &msc_storage_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create MSC storage: %s", esp_err_to_name(ret));
+        suppress_callback_messages = false;
         return ret;
     }
     
+    // Wait for initialization to complete
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
+    // Re-enable callback messages for user-triggered switches
+    suppress_callback_messages = false;
+    
     msc_initialized = true;
-    msc_active = true;  // Start in USB mode
-    current_status.usb_msc_active = true;
-    current_status.logging_active = false;  // Logging paused in USB mode
+    msc_active = false;  // Start in APP mode (USB inactive)
+    current_status.usb_msc_active = false;
+    current_status.logging_active = true;  // Logging active at startup
     
     ESP_LOGI(TAG, "✓ USB MSC initialized successfully");
-    ESP_LOGI(TAG, "💾 SD card accessible via USB (LEFT port)");
-    ESP_LOGI(TAG, "⚠️  Data logging paused while in USB mode");
+    ESP_LOGI(TAG, "📊 Starting in APP mode - data logging active");
+    ESP_LOGI(TAG, "💡 Navigate to USB Transfer mode (Mode 7) to activate USB access");
     
     return ESP_OK;
 }
@@ -209,17 +221,65 @@ esp_err_t usb_msc_sdcard_pause_logging(void)
         return ESP_ERR_INVALID_STATE;
     }
     
-    ESP_LOGI(TAG, "📤 Switching to USB mode...");
+    // Check if already in USB mode
+    if (msc_active) {
+        ESP_LOGW(TAG, "USB Transfer mode already active");
+        return ESP_OK;
+    }
+    
+    ESP_LOGI(TAG, "📤 Activating USB Transfer mode...");
+    ESP_LOGI(TAG, "");
+    ESP_LOGI(TAG, "╔════════════════════════════════════════════════╗");
+    ESP_LOGI(TAG, "║  DEDICATED USB MODE - Performance Optimized   ║");
+    ESP_LOGI(TAG, "╠════════════════════════════════════════════════╣");
+    ESP_LOGI(TAG, "║  Suspending non-essential tasks:               ║");
+    ESP_LOGI(TAG, "║  ⏸️  Sensor reading (ToF, IMU)                 ║");
+    ESP_LOGI(TAG, "║  ⏸️  GPS processing                            ║");
+    ESP_LOGI(TAG, "║  ⏸️  Data processing                           ║");
+    ESP_LOGI(TAG, "║  ⏸️  High-rate display updates                 ║");
+    ESP_LOGI(TAG, "║                                                ║");
+    ESP_LOGI(TAG, "║  Active tasks:                                 ║");
+    ESP_LOGI(TAG, "║  ✓ USB transfer (maximum bandwidth)            ║");
+    ESP_LOGI(TAG, "║  ✓ Display status (1Hz)                        ║");
+    ESP_LOGI(TAG, "║  ✓ Button monitoring                           ║");
+    ESP_LOGI(TAG, "╚════════════════════════════════════════════════╝");
+    ESP_LOGI(TAG, "");
+    
+    // CRITICAL: Stop logging BEFORE switching to USB mode
+    // This prevents SD card access conflicts during the switch
+    if (storage_manager_is_logging()) {
+        ESP_LOGI(TAG, "⏸️  Pausing data logging...");
+        storage_manager_stop_logging();
+        vTaskDelay(pdMS_TO_TICKS(100));  // Give time for final flush
+    }
+    
+    // Pause GPS processing to free CPU resources
+    extern void gps_pause(void);
+    gps_pause();
     
     // Switch to USB mode (unmount from app, mount to USB)
+    ESP_LOGI(TAG, "🔄 Switching SD card to USB mode...");
     esp_err_t ret = tinyusb_msc_set_storage_mount_point(msc_storage_handle, 
                                                         TINYUSB_MSC_STORAGE_MOUNT_USB);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to switch to USB mode: %s", esp_err_to_name(ret));
+        // Try to restart logging and GPS if switch failed
+        storage_manager_start_logging();
+        extern void gps_resume(void);
+        gps_resume();
         return ret;
     }
     
-    // The callback will handle state updates
+    // Manually update state (callback might not fire immediately)
+    msc_active = true;
+    current_status.usb_msc_active = true;
+    current_status.logging_active = false;
+    
+    ESP_LOGI(TAG, "✓ USB Transfer mode activated");
+    ESP_LOGI(TAG, "🔌 Connect LEFT port (USB-OTG) to computer");
+    ESP_LOGI(TAG, "💡 Press ACTION again to return to logging mode");
+    ESP_LOGI(TAG, "");
+    
     return ESP_OK;
 }
 
@@ -230,9 +290,19 @@ esp_err_t usb_msc_sdcard_resume_logging(void)
         return ESP_ERR_INVALID_STATE;
     }
     
-    ESP_LOGI(TAG, "📥 Switching to APP mode...");
+    // Check if already in APP mode
+    if (!msc_active) {
+        ESP_LOGW(TAG, "Already in logging mode");
+        return ESP_OK;
+    }
+    
+    ESP_LOGI(TAG, "📥 Deactivating USB Transfer mode...");
+    ESP_LOGI(TAG, "💡 User workflow: Eject on PC → Disconnect cable → Press ACTION");
+    ESP_LOGI(TAG, "");
     
     // Switch to APP mode (unmount from USB, mount to app)
+    // No need to check USB connection - user is responsible for ejecting first
+    ESP_LOGI(TAG, "🔄 Switching SD card to APP mode...");
     esp_err_t ret = tinyusb_msc_set_storage_mount_point(msc_storage_handle, 
                                                         TINYUSB_MSC_STORAGE_MOUNT_APP);
     if (ret != ESP_OK) {
@@ -240,8 +310,55 @@ esp_err_t usb_msc_sdcard_resume_logging(void)
         return ret;
     }
     
-    // The callback will handle state updates
+    // Manually update state (callback might not fire immediately)
+    msc_active = false;
+    current_status.usb_msc_active = false;
+    current_status.logging_active = true;
+    
+    // Wait for mount to complete and SD card to settle
+    vTaskDelay(pdMS_TO_TICKS(500));
+    
+    ESP_LOGI(TAG, "");
+    ESP_LOGI(TAG, "╔════════════════════════════════════════════════╗");
+    ESP_LOGI(TAG, "║  RESUMING NORMAL OPERATION                     ║");
+    ESP_LOGI(TAG, "╠════════════════════════════════════════════════╣");
+    ESP_LOGI(TAG, "║  Resuming all tasks:                           ║");
+    ESP_LOGI(TAG, "║  ▶️  Sensor reading (ToF 60Hz, IMU 100Hz)      ║");
+    ESP_LOGI(TAG, "║  ▶️  GPS processing                            ║");
+    ESP_LOGI(TAG, "║  ▶️  Data processing & near-miss detection     ║");
+    ESP_LOGI(TAG, "║  ▶️  Display updates (high refresh rate)       ║");
+    ESP_LOGI(TAG, "║  ▶️  Data logging to SD card                   ║");
+    ESP_LOGI(TAG, "╚════════════════════════════════════════════════╝");
+    ESP_LOGI(TAG, "");
+    
+    // Resume GPS processing
+    extern void gps_resume(void);
+    gps_resume();
+    
+    // Restart logging
+    ESP_LOGI(TAG, "▶️  Resuming data logging...");
+    ret = storage_manager_start_logging();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to restart logging: %s", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "✓ Logging mode activated");
+    }
+    
+    ESP_LOGI(TAG, "✓ All systems resumed - back to normal operation");
+    ESP_LOGI(TAG, "");
+    
     return ESP_OK;
+}
+
+bool usb_msc_sdcard_is_host_connected(void)
+{
+    return tud_mounted();
+}
+
+bool usb_msc_sdcard_is_ready(void)
+{
+    // Device is ready when mounted and not suspended
+    return tud_mounted() && !tud_suspended();
 }
 
 bool usb_msc_sdcard_is_active(void)

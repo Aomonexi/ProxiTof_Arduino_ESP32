@@ -1,0 +1,63 @@
+# Test USB Button Toggle - Quick Guide
+
+## 🚀 Build and Flash
+idf.py build flash monitor
+
+## 🧪 Test Sequence
+
+### 1. Navigate to Mode 7
+Press Mode Change button → "USB Transfer Mode"
+
+### 2. First Press (Activate USB)
+Press ACTION button
+
+Expected serial output:
+I (xxxxx) MAIN: 💾 USB Transfer mode toggle triggered from button
+I (xxxxx) MAIN: Current USB state: INACTIVE
+I (xxxxx) OLED_SPI: USB Transfer mode toggle requested from display
+I (xxxxx) USB_MSC_SD: 📤 Activating USB Transfer mode...
+I (xxxxx) USB_MSC_SD: ✓ USB Transfer mode activated
+I (xxxxx) MAIN: After toggle: USB state: ACTIVE (ret=ESP_OK)
+
+Expected OLED:
+USB Transfer
+  [USB]
+Connect LEFT port
+ACTION: Cancel
+
+### 3. Second Press (Deactivate USB)
+Press ACTION button again
+
+Expected serial output:
+I (xxxxx) MAIN: 💾 USB Transfer mode toggle triggered from button
+I (xxxxx) MAIN: Current USB state: ACTIVE
+I (xxxxx) OLED_SPI: USB Transfer mode toggle requested from display
+I (xxxxx) USB_MSC_SD: 📥 Deactivating USB Transfer mode...
+I (xxxxx) USB_MSC_SD: ✓ Logging mode activated
+I (xxxxx) MAIN: After toggle: USB state: INACTIVE (ret=ESP_OK)
+
+Expected OLED:
+USB Transfer
+Logging resumed
+  [OK]
+
+## ✅ Success Criteria
+- [  ] First press activates USB mode
+- [  ] Second press deactivates USB mode
+- [  ] No "state didn't change" warnings
+- [  ] OLED updates correctly
+- [  ] Logging pauses/resumes
+
+## ❌ If It Fails
+Look for:
+W (xxxxx) MAIN: ⚠️  USB state didn't change! Check OLED handler.
+
+Copy serial output and report findings.
+
+## 📊 What to Report
+1. Does first press work? (YES/NO)
+2. Does second press work? (YES/NO)
+3. Any warnings in serial output?
+4. What does OLED show after second press?
+5. Copy serial output from both presses
+

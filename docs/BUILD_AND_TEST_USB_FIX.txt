@@ -1,0 +1,47 @@
+# Build and Test USB Fix - Quick Commands
+
+## ✅ USB Host Mode Has Been Disabled in sdkconfig
+
+## STEP 1: Clean Build (REQUIRED!)
+idf.py fullclean
+idf.py build flash monitor
+
+## STEP 2: Test USB Transfer Mode
+# 1. Navigate to Mode 7 (press Mode Change button)
+# 2. Press ACTION button
+# 3. Connect LEFT port to PC
+# 4. PC should detect USB flash drive!
+
+## STEP 3: Verify Fix Applied
+Select-String -Pattern "CONFIG_USB_OTG_SUPPORTED" -Path sdkconfig
+# Expected: # CONFIG_USB_OTG_SUPPORTED is not set
+
+Select-String -Pattern "CONFIG_TINYUSB_MSC_ENABLED" -Path sdkconfig
+# Expected: CONFIG_TINYUSB_MSC_ENABLED=y
+
+## Expected Serial Output
+# I (xxxxx) USB_MSC_SD: ✓ USB Transfer mode activated
+# I (xxxxx) USB_MSC_SD: 🔌 Connect LEFT port (USB-OTG) to computer
+# I (xxxxx) USB_MSC_SD: 🔌 USB host connected  ← NEW!
+
+## Expected PC Behavior
+# Windows: New drive appears (D:, E:, F:)
+# Linux: lsusb shows "Espressif" device
+# macOS: New drive appears on desktop
+
+## If Still Not Working
+# 1. Try 3 different USB cables (might be power-only)
+# 2. Verify using LEFT port (not RIGHT port)
+# 3. Test with ESP-IDF example:
+#    cd $IDF_PATH/examples/peripherals/usb/device/tusb_msc
+#    idf.py build flash monitor
+
+## What Changed
+# ❌ USB Host mode: DISABLED (was preventing USB Device mode)
+# ✅ USB Device mode: ENABLED (TinyUSB for flash drive)
+# ✅ Everything else: UNCHANGED (sensors, logging, console)
+
+## Confidence Level: 95%
+# USB Host mode was the problem!
+# Now ESP32 acts as USB device → PC can detect it!
+

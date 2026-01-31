@@ -1,0 +1,68 @@
+# USB Host Mode Configuration - BACKUP - January 29, 2026
+#
+# This file contains the ORIGINAL USB Host settings that were DISABLED
+# to enable USB Device mode (TinyUSB MSC for USB Transfer mode).
+#
+# If you ever need to RESTORE USB Host mode (to connect USB devices TO ESP32),
+# copy these settings back into sdkconfig and rebuild.
+#
+# WARNING: Restoring USB Host mode will DISABLE USB Transfer mode (Mode 7)!
+#
+
+#
+# USB-OTG - ORIGINAL CONFIGURATION (USB Host Enabled)
+#
+CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=256
+CONFIG_USB_HOST_HW_BUFFER_BIAS_BALANCED=y
+# CONFIG_USB_HOST_HW_BUFFER_BIAS_IN is not set
+# CONFIG_USB_HOST_HW_BUFFER_BIAS_PERIODIC_OUT is not set
+
+#
+# Hub Driver Configuration
+#
+
+#
+# Root Port configuration
+#
+CONFIG_USB_HOST_DEBOUNCE_DELAY_MS=250
+CONFIG_USB_HOST_RESET_HOLD_MS=30
+CONFIG_USB_HOST_RESET_RECOVERY_MS=30
+CONFIG_USB_HOST_SET_ADDR_RECOVERY_MS=10
+# end of Root Port configuration
+
+# CONFIG_USB_HOST_HUBS_SUPPORTED is not set
+# end of Hub Driver Configuration
+
+# CONFIG_USB_HOST_ENABLE_ENUM_FILTER_CALLBACK is not set
+CONFIG_USB_OTG_SUPPORTED=y
+# end of USB-OTG
+
+#
+# NOTES:
+#
+# 1. These settings enable USB Host mode on ESP32-S3
+# 2. USB Host mode allows connecting USB devices TO the ESP32:
+#    - USB keyboards
+#    - USB mice
+#    - USB flash drives
+#    - USB cameras
+#    - etc.
+#
+# 3. USB Host mode CONFLICTS with USB Device mode (TinyUSB)
+#    - Cannot use both at the same time
+#    - Must choose: Host OR Device
+#
+# 4. For USB Transfer mode (Mode 7), we need USB Device mode
+#    - ESP32 acts as flash drive
+#    - PC can access SD card files
+#    - This is why USB Host was disabled
+#
+# 5. To restore USB Host mode:
+#    a. Copy the USB-OTG section above
+#    b. Replace the USB-OTG section in sdkconfig
+#    c. Run: idf.py fullclean
+#    d. Run: idf.py build flash monitor
+#    e. USB Transfer mode (Mode 7) will stop working
+#    f. USB Host functionality will be available
+#
+

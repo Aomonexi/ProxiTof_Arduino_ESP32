@@ -476,3 +476,31 @@ void gps_deinit(void)
     gps_state.initialized = false;
     ESP_LOGI(TAG, "GPS deinitialized");
 }
+
+/**
+ * Pause GPS processing (suspend task)
+ * Use during USB transfer mode to free CPU resources
+ */
+void gps_pause(void)
+{
+    if (!gps_state.initialized || !gps_state.task_handle) {
+        return;
+    }
+    
+    vTaskSuspend(gps_state.task_handle);
+    ESP_LOGI(TAG, "⏸️  GPS task suspended");
+}
+
+/**
+ * Resume GPS processing (resume task)
+ * Use after exiting USB transfer mode
+ */
+void gps_resume(void)
+{
+    if (!gps_state.initialized || !gps_state.task_handle) {
+        return;
+    }
+    
+    vTaskResume(gps_state.task_handle);
+    ESP_LOGI(TAG, "▶️  GPS task resumed");
+}

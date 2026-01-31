@@ -25,6 +25,7 @@ typedef enum {
     OLED_MODE_GPS,              // GPS location and status (moved after IMU)
     OLED_MODE_NEAR_MISS,        // Near-miss alert details
     OLED_MODE_WIFI_SETTINGS,    // WiFi control and time sync
+    OLED_MODE_USB_TRANSFER,     // USB MSC file transfer mode
     OLED_MODE_SHUTDOWN,         // Safe shutdown confirmation
     OLED_MODE_MAX
 } oled_display_mode_t;

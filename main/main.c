@@ -116,7 +116,7 @@ static bool check_mode_button(void)
             oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
             oled_display_set_mode(next_mode);
             
-            const char *mode_names[] = {"Dashboard", "Status", "ToF Focus", "IMU Focus", "GPS", "Near Miss", "WiFi Settings", "Shutdown"};
+            const char *mode_names[] = {"Dashboard", "Status", "ToF Focus", "IMU Focus", "GPS", "Near Miss", "WiFi Settings", "USB Transfer", "Shutdown"};
             ESP_LOGI(TAG, "🔄 Display mode changed: %s → %s", 
                      mode_names[current_mode], mode_names[next_mode]);
             
@@ -401,43 +401,10 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     // =========================================================================
-    // USB SYSTEM INITIALIZATION - DIRECT SD CARD ACCESS
+    // USB SYSTEM INITIALIZATION - LAZY INIT FOR USB TRANSFER MODE
     // =========================================================================
-    ESP_LOGI(TAG, "Initializing USB system with SD card MSC...");
-    
-    // Initialize USB MSC for direct SD card access
-    err = usb_msc_sdcard_init();
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ USB MSC SD card initialized");
-        ESP_LOGI(TAG, "💾 SD card ready for direct USB access");
-        ESP_LOGI(TAG, "🔄 Automatic logging pause/resume during USB access");
-        ESP_LOGI(TAG, "🔌 Connect LEFT port to computer for flash drive access");
-    } else {
-        ESP_LOGW(TAG, "❌ USB MSC SD card initialization failed: %s", esp_err_to_name(err));
-        ESP_LOGW(TAG, "💡 System will continue with SD card logging only");
-        ESP_LOGW(TAG, "💡 USB MSC functionality disabled");
-    }
-    
-    // Initialize USB Serial JTAG for RIGHT port (programming, monitoring, time sync)
-    err = usb_interface_init();
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "✓ USB Serial JTAG initialized (RIGHT port)");
-        ESP_LOGI(TAG, "🔧 Connect RIGHT port → Programming, monitoring, time sync");
-        ESP_LOGI(TAG, "📝 Send TIME:YYYY-MM-DD HH:MM:SS for time sync");
-        ESP_LOGI(TAG, "📝 Send USB_MSC_START for flash drive mode");
-    } else {
-        ESP_LOGW(TAG, "USB Serial JTAG initialization failed: %s", esp_err_to_name(err));
-    }
-    
-    ESP_LOGI(TAG, "");
-    ESP_LOGI(TAG, "🔌 USB System Overview:");
-    ESP_LOGI(TAG, "   RIGHT port: Programming, monitoring, time sync, USB MSC control");
-    ESP_LOGI(TAG, "   LEFT port:  Direct SD card access as USB flash drive");
-    ESP_LOGI(TAG, "   SD card: Primary data logging + direct USB access");
-    ESP_LOGI(TAG, "   Operation: Safe switching between logging and USB modes");
-    ESP_LOGI(TAG, "💡 Connect LEFT port → Complete SD card appears as removable drive");
-    ESP_LOGI(TAG, "💡 LED turns BLUE when USB flash drive is active");
-    ESP_LOGI(TAG, "⚠️  Data logging pauses during USB access (safe switching)");
+    ESP_LOGI(TAG, "USB Transfer mode available (Mode 7)");
+    ESP_LOGI(TAG, "💡 Navigate to Mode 7 and press ACTION to activate");
     ESP_LOGI(TAG, "");
     
     // Set manual time if not synchronized for proper logging
@@ -467,22 +434,17 @@ void app_main(void)
     // DATA LOGGING STARTUP (ALWAYS ACTIVE)
     // =========================================================================
     if (storage_manager_is_initialized()) {
-        ESP_LOGI(TAG, "🚀 Starting continuous data logging...");
-        ESP_LOGI(TAG, "💾 SD card logging is always active (no USB conflicts)");
-        ESP_LOGI(TAG, "📁 Flash partition available for USB access");
+        ESP_LOGI(TAG, "🚀 Starting data logging...");
         
-        // Start logging immediately - no conflicts with flash partition USB MSC
+        // Start logging immediately
         err = storage_manager_start_logging();
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "✓ Data logging started");
-            ESP_LOGI(TAG, "💡 Use USB_SYNC_DATA to copy recent files to USB drive");
         } else {
             ESP_LOGW(TAG, "Failed to start logging: %s", esp_err_to_name(err));
-            ESP_LOGW(TAG, "💡 This is likely due to SD card write protection");
         }
     } else {
         ESP_LOGW(TAG, "SD card not available - no data logging");
-        ESP_LOGW(TAG, "💡 Flash partition USB MSC still available for testing");
     }
     
     ESP_LOGI(TAG, "");
@@ -648,6 +610,16 @@ void app_main(void)
     uint32_t near_miss_start_time = 0;
     uint32_t near_miss_event_count = 0;
     
+    // =========================================================================
+    // DEDICATED USB MODE - Suspend non-essential tasks for performance
+    // =========================================================================
+    // When USB mode is active, we suspend:
+    // - Sensor reading (ToF, IMU)
+    // - GPS processing
+    // - Data processing
+    // - Most display updates (only USB status at 1Hz)
+    // This gives USB transfer maximum CPU resources for faster speeds
+    
     while (1) {
         uint32_t current_time = sensor_manager_get_timestamp();
         
@@ -663,6 +635,115 @@ void app_main(void)
                      usb_msc_sdcard_is_initialized() ? (tud_mounted() ? "YES" : "NO") : "DISABLED");
         }
         
+        // =====================================================================
+        // DEDICATED USB MODE - Minimal processing for maximum USB performance
+        // =====================================================================
+        if (usb_msc_active) {
+            // USB mode active - suspend all non-essential tasks
+            
+            // Show blue LED (USB mode indicator)
+            if (led_strip != NULL) {
+                led_strip_set_pixel(led_strip, 0, 0, 0, 100);  // Blue
+                led_strip_refresh(led_strip);
+            }
+            
+            // Update OLED display at 1Hz (just USB status)
+            if (oled_available) {
+                static uint32_t last_usb_oled_update = 0;
+                if ((current_time - last_usb_oled_update) >= 1000) {  // 1Hz (1 second)
+                    // Create minimal sensor data for display (not reading sensors)
+                    tof_data_t dummy_tof = {0};
+                    imu_data_t dummy_imu = {0};
+                    oled_display_update(&dummy_tof, &dummy_imu, 0);
+                    last_usb_oled_update = current_time;
+                }
+            }
+            
+            // Check button to exit USB mode
+            static uint32_t last_usb_button_check = 0;
+            if ((current_time - last_usb_button_check) >= 50) { // Check every 50ms
+                last_usb_button_check = current_time;
+                
+                // Get current display mode
+                oled_display_mode_t current_mode = oled_available ? oled_display_get_mode() : 0;
+                
+                // Only check button if in USB Transfer mode (Mode 7)
+                if (current_mode == 7 && oled_available) {
+                    static bool last_usb_exit_button_state = false;
+                    bool current_usb_exit_button_state = sensor_manager_is_button_held();
+                    
+                    // Detect button release (falling edge)
+                    if (!current_usb_exit_button_state && last_usb_exit_button_state) {
+                        ESP_LOGI(TAG, "💾 USB Transfer mode EXIT triggered from button");
+                        ESP_LOGI(TAG, "Current USB state: ACTIVE");
+                        
+                        // Yellow LED during exit
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 255, 255, 0);  // Yellow
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        // Yield to let TinyUSB task finish any pending operations
+                        vTaskDelay(pdMS_TO_TICKS(50));
+                        
+                        // Call OLED handler to deactivate USB mode
+                        esp_err_t toggle_ret = oled_display_handle_action_button();
+                        
+                        // Yield again to let SD card settle
+                        vTaskDelay(pdMS_TO_TICKS(50));
+                        
+                        // Verify state changed
+                        bool usb_active_after = usb_msc_sdcard_is_active();
+                        ESP_LOGI(TAG, "After toggle: USB state: %s (ret=%s)", 
+                                 usb_active_after ? "ACTIVE" : "INACTIVE",
+                                 esp_err_to_name(toggle_ret));
+                        
+                        if (!usb_active_after) {
+                            ESP_LOGI(TAG, "✓ USB mode deactivated - resuming normal operation");
+                            ESP_LOGI(TAG, "✓ Sensors will resume reading");
+                            ESP_LOGI(TAG, "✓ GPS will resume processing");
+                            ESP_LOGI(TAG, "✓ Display will resume high refresh rate");
+                            ESP_LOGI(TAG, "✓ Data logging will resume");
+                            
+                            // CRITICAL: Give sensors time to stabilize after resume
+                            // This prevents display glitching with stale/invalid data
+                            ESP_LOGI(TAG, "⏳ Waiting for sensors to stabilize...");
+                            vTaskDelay(pdMS_TO_TICKS(200));  // 200ms stabilization period
+                            
+                            // Reset frame counters to force fresh sensor reads
+                            tof_count = 0;
+                            imu_count = 0;
+                            
+                            ESP_LOGI(TAG, "✓ Sensors stabilized - normal operation resumed");
+                        } else {
+                            ESP_LOGW(TAG, "⚠️  USB state didn't change! Still ACTIVE.");
+                        }
+                    }
+                    
+                    last_usb_exit_button_state = current_usb_exit_button_state;
+                }
+            }
+            
+            // USB interface processing (handle commands from RIGHT port)
+            usb_interface_process();
+            
+            // Handle USB MSC events
+            usb_msc_sdcard_process();
+            
+            // Smart time maintenance
+            smart_time_maintenance();
+            
+            // Longer delay in USB mode to reduce CPU usage and give USB maximum bandwidth
+            vTaskDelay(pdMS_TO_TICKS(100));  // 10Hz loop rate in USB mode
+            
+            // Skip all sensor reading, data processing, and logging
+            frame_count++;
+            continue;  // Skip to next iteration
+        }
+        
+        // =====================================================================
+        // NORMAL MODE - Full sensor reading and data processing
+        // =====================================================================
         // Only read sensors and log data if NOT in USB MSC mode
         if (!usb_msc_active) {
             // Read ToF sensor at full speed (60Hz)
@@ -727,6 +808,13 @@ void app_main(void)
                             
                             // Set automatic flag for this event
                             features.flag_auto = true;
+                            
+                            // CRITICAL: Immediately flush buffer to SD card to prevent data loss
+                            // Near-miss events are too important to risk losing in a power failure
+                            if (storage_manager_is_logging()) {
+                                ESP_LOGI(TAG, "💾 Emergency flush triggered by near-miss event");
+                                storage_manager_flush();
+                            }
                         }
                     } else {
                         // Clear near-miss state after 2 seconds of no detection
@@ -755,12 +843,47 @@ void app_main(void)
             }
             
             // =====================================================================
+            // MANUAL FLAG DETECTION (Mode-specific behavior)
+            // =====================================================================
+            // Manual flag behavior depends on current OLED mode:
+            // - Dashboard/Near Miss modes: Continuous flagging while button held
+            // - Other modes: No manual flagging (prevents false flags during shutdown, etc.)
+            static bool manual_flag_active = false;
+            
+            // Only check button for manual flag if NOT in USB mode
+            if (!usb_msc_active && oled_available) {
+                oled_display_mode_t current_mode = oled_display_get_mode();
+                
+                // Manual flagging ONLY allowed in Dashboard (0) and Near Miss (5) modes
+                if (current_mode == OLED_MODE_DASHBOARD || current_mode == OLED_MODE_NEAR_MISS) {
+                    // Continuous check: flag is active while button is held
+                    manual_flag_active = sensor_manager_is_button_held();
+                    
+                    // Log when flag state changes
+                    static bool last_flag_state = false;
+                    if (manual_flag_active && !last_flag_state) {
+                        ESP_LOGI(TAG, "🚩 Manual flag ACTIVATED (button pressed)");
+                    } else if (!manual_flag_active && last_flag_state) {
+                        ESP_LOGI(TAG, "🚩 Manual flag DEACTIVATED (button released)");
+                    }
+                    last_flag_state = manual_flag_active;
+                } else {
+                    // In other modes (WiFi, GPS, IMU, USB, Shutdown), no manual flagging
+                    manual_flag_active = false;
+                }
+            } else {
+                // USB mode or OLED not available: no manual flagging
+                manual_flag_active = false;
+            }
+            
+            // =====================================================================
             // DATA LOGGING WITH ENHANCED FEATURES
             // =====================================================================
             if (storage_manager_is_logging() && tof_count > 0 && imu_count > 0) {
                 log_entry_t log_entry = {
                     .timestamp_ms = current_time,
-                    .flag_manual = sensor_manager_is_button_held() ? 1 : 0
+                    .flag_manual = manual_flag_active ? 1 : 0,  // Continuous while held in Dashboard/Near Miss modes
+                    .flag_auto = near_miss_active ? 1 : 0  // Use near_miss_active (persists) not near_miss_detected (one frame only)
                 };
                 
                 // Copy ToF data
@@ -816,7 +939,8 @@ void app_main(void)
             display_manager_update(&tof_data, &imu_data, min_dist);
             
             // Update OLED display at configured refresh rate (60 FPS by default)
-            if (oled_available) {
+            // Only update if we have valid sensor data (prevents glitching after USB mode exit)
+            if (oled_available && tof_count > 0 && imu_count > 0) {
                 static uint32_t last_oled_update = 0;
                 uint32_t oled_interval_ms = 1000 / config.oled_refresh_hz;
                 
@@ -938,7 +1062,44 @@ void app_main(void)
                         
                         oled_display_handle_action_button();
                     }
-                } else if (current_mode == 7 && oled_available) {  // Shutdown mode
+                } else if (current_mode == 7 && oled_available) {  // USB Transfer mode
+                    // Button 2 (GPIO 3): Toggle USB MSC mode
+                    // Use button hold detection for reliable edge detection (fixes toggle issue)
+                    static bool last_usb_button_state = false;
+                    bool current_usb_button_state = sensor_manager_is_button_held();
+                    
+                    // Detect button release (falling edge) - more reliable than is_button_pressed()
+                    // This fixes the issue where button state is cleared before handler returns
+                    if (!current_usb_button_state && last_usb_button_state) {
+                        // Check current USB state before toggling
+                        bool usb_active_before = usb_msc_sdcard_is_active();
+                        
+                        ESP_LOGI(TAG, "💾 USB Transfer mode toggle triggered from button");
+                        ESP_LOGI(TAG, "Current USB state: %s", usb_active_before ? "ACTIVE" : "INACTIVE");
+                        
+                        // Blue LED during USB mode
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 0, 0, 255);  // Blue
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        // Call OLED handler to toggle USB mode
+                        esp_err_t toggle_ret = oled_display_handle_action_button();
+                        
+                        // Verify state changed
+                        bool usb_active_after = usb_msc_sdcard_is_active();
+                        ESP_LOGI(TAG, "After toggle: USB state: %s (ret=%s)", 
+                                 usb_active_after ? "ACTIVE" : "INACTIVE",
+                                 esp_err_to_name(toggle_ret));
+                        
+                        // If state didn't change, log warning
+                        if (usb_active_before == usb_active_after) {
+                            ESP_LOGW(TAG, "⚠️  USB state didn't change! Check OLED handler.");
+                        }
+                    }
+                    
+                    last_usb_button_state = current_usb_button_state;
+                } else if (current_mode == 8 && oled_available) {  // Shutdown mode
                     // Button 2 (GPIO 3): Confirm shutdown
                     if (sensor_manager_is_button_pressed()) {
                         ESP_LOGW(TAG, "🔴 Shutdown button pressed");
@@ -1005,20 +1166,10 @@ void app_main(void)
             if (oled_available) {
                 check_mode_button();
             }
-        } else {
-            // USB MSC mode - show blue LED and minimal processing
-            if (led_strip != NULL) {
-                update_led(0, true, false);  // Force blue LED (no near-miss in USB mode)
-            }
-            
-            // Longer delay in USB mode to reduce CPU usage
-            vTaskDelay(pdMS_TO_TICKS(100));  // 10Hz loop rate in USB mode
-        }
+        } // End of normal mode (!usb_msc_active)
         
         // Small delay to prevent CPU spinning (check sensors frequently in normal mode)
-        if (!usb_msc_active) {
-            vTaskDelay(pdMS_TO_TICKS(5));  // 200Hz loop rate for responsive LED
-        }
+        vTaskDelay(pdMS_TO_TICKS(5));  // 200Hz loop rate for responsive LED
         
         // Smart time maintenance (every ~60 seconds)
         smart_time_maintenance();

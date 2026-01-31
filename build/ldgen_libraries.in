@@ -173,11 +173,12 @@ $<TARGET_FILE:idf::smart_time>
 $<TARGET_FILE:__idf_rtc_ds3231>
 $<TARGET_FILE:__idf_time_sync>
 $<TARGET_FILE:__idf_sensor_manager>
-$<TARGET_FILE:idf::storage_manager>
-$<TARGET_FILE:__idf_fatfs>
-$<TARGET_FILE:__idf_smart_time>
-$<TARGET_FILE:idf::data_processor>
 $<TARGET_FILE:idf::config_manager>
+$<TARGET_FILE:__idf_fatfs>
+$<TARGET_FILE:idf::storage_manager>
+$<TARGET_FILE:__idf_smart_time>
+$<TARGET_FILE:__idf_config_manager>
+$<TARGET_FILE:idf::data_processor>
 $<TARGET_FILE:idf::espressif__tinyusb>
 $<TARGET_FILE:idf::espressif__esp_tinyusb>
 $<TARGET_FILE:__idf_espressif__tinyusb>
@@ -187,7 +188,6 @@ $<TARGET_FILE:__idf_storage_manager>
 $<TARGET_FILE:__idf_espressif__esp_tinyusb>
 $<TARGET_FILE:idf::display_manager>
 $<TARGET_FILE:idf::usb_interface>
-$<TARGET_FILE:__idf_config_manager>
 $<TARGET_FILE:__idf_usb_flash_partition>
 $<TARGET_FILE:__idf_display_manager>
 $<TARGET_FILE:idf::gps>

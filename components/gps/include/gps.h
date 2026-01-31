@@ -125,6 +125,18 @@ uint32_t gps_get_time_since_update(void);
  */
 void gps_deinit(void);
 
+/**
+ * Pause GPS processing (suspend task)
+ * Use during USB transfer mode to free CPU resources
+ */
+void gps_pause(void);
+
+/**
+ * Resume GPS processing (resume task)
+ * Use after exiting USB transfer mode
+ */
+void gps_resume(void);
+
 #ifdef __cplusplus
 }
 #endif

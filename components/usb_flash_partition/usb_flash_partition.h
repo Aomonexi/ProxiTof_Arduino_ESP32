@@ -42,6 +42,16 @@ bool usb_msc_sdcard_is_active(void);
 bool usb_msc_sdcard_is_initialized(void);
 
 /**
+ * Check if USB host (PC) is currently connected
+ */
+bool usb_msc_sdcard_is_host_connected(void);
+
+/**
+ * Check if USB device is ready for data transfer (mounted and not suspended)
+ */
+bool usb_msc_sdcard_is_ready(void);
+
+/**
  * Get current status
  */
 typedef struct {

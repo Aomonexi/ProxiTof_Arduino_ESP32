@@ -32,6 +32,7 @@ void config_load_defaults(system_config_t *config) {
     config->wifi_enabled = true;
     config->ds3231_enabled = true;
     config->display_compact_mode = false;
+    config->gps_logging_enabled = false;  // Default: disabled for ML training
     // OLED Display defaults
     config->oled_enabled = true;
     config->oled_refresh_hz = 60;  // 60 Hz with frame buffer - smooth and flicker-free!
@@ -113,6 +114,8 @@ esp_err_t config_load_from_sd(system_config_t *config) {
             config->wifi_enabled = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
         } else if (strcmp(key, "DS3231_ENABLED") == 0) {
             config->ds3231_enabled = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+        } else if (strcmp(key, "GPS_LOGGING_ENABLED") == 0) {
+            config->gps_logging_enabled = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
         } else if (strcmp(key, "DISPLAY_REFRESH_HZ") == 0) {
             int hz = atoi(value);
             if (hz >= 1 && hz <= 60) {
@@ -197,6 +200,10 @@ esp_err_t config_save_to_sd(const system_config_t *config) {
     fprintf(file, "DS3231_SCL_PIN=%d\n", config->ds3231_scl_pin);
     fprintf(file, "\n");
     
+    fprintf(file, "# GPS Logging Configuration\n");
+    fprintf(file, "GPS_LOGGING_ENABLED=%s\n", config->gps_logging_enabled ? "true" : "false");
+    fprintf(file, "\n");
+    
     fprintf(file, "# Console Display Configuration\n");
     fprintf(file, "DISPLAY_REFRESH_HZ=%d\n", config->display_refresh_hz);
     fprintf(file, "DISPLAY_COMPACT_MODE=%s\n", config->display_compact_mode ? "true" : "false");
@@ -237,6 +244,7 @@ void config_print(const system_config_t *config) {
         ESP_LOGI(TAG, "    SDA Pin: %d", config->ds3231_sda_pin);
         ESP_LOGI(TAG, "    SCL Pin: %d", config->ds3231_scl_pin);
     }
+    ESP_LOGI(TAG, "  GPS Logging: %s", config->gps_logging_enabled ? "Enabled (production)" : "Disabled (ML training)");
     ESP_LOGI(TAG, "  Timezone: %s", config->timezone);
     ESP_LOGI(TAG, "  Sync Interval: %d hours", config->sync_interval_hours);
     ESP_LOGI(TAG, "  Console Display: %d Hz, %s mode", 
