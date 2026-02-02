@@ -279,3 +279,21 @@ const system_config_t* config_manager_get_config(void) {
     }
     return &g_config;
 }
+
+esp_err_t config_manager_reload(void) {
+    ESP_LOGI(TAG, "Reloading configuration from SD card...");
+    
+    system_config_t temp_config;
+    esp_err_t err = config_load_from_sd(&temp_config);
+    
+    if (err == ESP_OK) {
+        // Update global config
+        memcpy(&g_config, &temp_config, sizeof(system_config_t));
+        g_config_loaded = true;
+        ESP_LOGI(TAG, "✓ Configuration reloaded successfully");
+    } else {
+        ESP_LOGW(TAG, "Failed to reload config: %s", esp_err_to_name(err));
+    }
+    
+    return err;
+}

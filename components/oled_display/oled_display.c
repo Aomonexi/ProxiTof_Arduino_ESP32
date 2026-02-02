@@ -1519,6 +1519,14 @@ esp_err_t oled_display_cycle_detection_mode(void)
         return err;
     }
     
+    // CRITICAL: Reload config to update in-memory global config
+    // This ensures main.c uses the new detection_mode value
+    err = config_manager_reload();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Config saved to SD but failed to reload in-memory config");
+        // Continue anyway - at least it's saved to SD for next boot
+    }
+    
     ESP_LOGI(TAG, "Detection mode changed to: %s", 
              oled_display_get_detection_mode_name(config.detection_mode));
     

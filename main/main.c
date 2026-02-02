@@ -227,7 +227,7 @@ void app_main(void)
     
     // Declare all variables at the top of the function
     esp_err_t err;
-    system_config_t config;
+    const system_config_t *config;  // Pointer to global config (not a local copy!)
     sensor_health_t health;
     display_config_t display_config;
     tof_data_t tof_data;
@@ -339,15 +339,17 @@ void app_main(void)
     // =========================================================================
     ESP_LOGI(TAG, "Loading system configuration...");
     
-    esp_err_t config_err = config_load_from_sd(&config);
+    // Load config into global memory (this updates g_config in config_manager.c)
+    system_config_t temp_config;
+    esp_err_t config_err = config_load_from_sd(&temp_config);
     
     if (config_err != ESP_OK) {
         ESP_LOGW(TAG, "Using default configuration");
-        config_load_defaults(&config);
+        config_load_defaults(&temp_config);
         
         // Save default config to SD card for user to edit (if SD card available)
         if (storage_manager_is_initialized()) {
-            if (config_save_to_sd(&config) == ESP_OK) {
+            if (config_save_to_sd(&temp_config) == ESP_OK) {
                 ESP_LOGI(TAG, "✓ Default config saved to /sdcard/config.txt");
                 ESP_LOGI(TAG, "💡 Edit config.txt on SD card to change WiFi settings");
             }
@@ -359,7 +361,10 @@ void app_main(void)
         ESP_LOGI(TAG, "✓ Configuration loaded from SD card");
     }
     
-    config_print(&config);
+    // Get pointer to global config (will always reflect latest values after reload)
+    config = config_manager_get_config();
+    
+    config_print(config);
     ESP_LOGI(TAG, "");
     
     // =========================================================================
@@ -370,12 +375,12 @@ void app_main(void)
     ESP_LOGI(TAG, "");
     
     err = smart_time_init(
-        config.ds3231_enabled ? config.ds3231_sda_pin : -1,
-        config.ds3231_enabled ? config.ds3231_scl_pin : -1,
-        config.wifi_enabled ? config.wifi_ssid : NULL,
-        config.wifi_enabled ? config.wifi_password : NULL,
-        config.timezone,
-        config.sync_interval_hours
+        config->ds3231_enabled ? config->ds3231_sda_pin : -1,
+        config->ds3231_enabled ? config->ds3231_scl_pin : -1,
+        config->wifi_enabled ? config->wifi_ssid : NULL,
+        config->wifi_enabled ? config->wifi_password : NULL,
+        config->timezone,
+        config->sync_interval_hours
     );
     
     if (err == ESP_OK) {
@@ -475,7 +480,7 @@ void app_main(void)
     // Initialize display manager with config from SD card
     // Using COMPACT mode to avoid serial output freezes (50-100ms with full boxes)
     // Compact mode prints 2-3 lines instead of big ASCII boxes (~5ms vs 100ms)
-    display_config.refresh_rate_hz = config.display_refresh_hz;  // Use config value
+    display_config.refresh_rate_hz = config->display_refresh_hz;  // Use config value
     display_config.show_tof_grid = true;        // Show ToF 4x4 grid (compact)
     display_config.show_imu_data = true;        // Show IMU data (compact)
     display_config.show_system_stats = true;    // Show logging statistics
@@ -494,7 +499,7 @@ void app_main(void)
     // OLED DISPLAY INITIALIZATION (REAL-TIME 60 FPS VISUALIZATION - SPI MODE)
     // =========================================================================
     bool oled_available = false;
-    if (config.oled_enabled) {
+    if (config->oled_enabled) {
         ESP_LOGI(TAG, "Initializing OLED display (SSD1306 128x64 SPI)...");
         ESP_LOGI(TAG, "Wiring: SCK=GPIO7, MOSI=GPIO1, DC=GPIO35, RST=GPIO21");
         ESP_LOGI(TAG, "4-wire SPI mode (no CS pin required)");
@@ -503,12 +508,12 @@ void app_main(void)
         if (err == ESP_OK) {
             oled_available = true;
             ESP_LOGI(TAG, "✓ OLED display initialized successfully");
-            ESP_LOGI(TAG, "📺 Real-time sensor visualization at %d FPS", config.oled_refresh_hz);
-            ESP_LOGI(TAG, "🎨 Display mode: %d (0=Dashboard, 1=ToF, 2=IMU, 3=Status)", config.oled_mode);
-            ESP_LOGI(TAG, "💡 Brightness: %d/255", config.oled_brightness);
+            ESP_LOGI(TAG, "📺 Real-time sensor visualization at %d FPS", config->oled_refresh_hz);
+            ESP_LOGI(TAG, "🎨 Display mode: %d (0=Dashboard, 1=ToF, 2=IMU, 3=Status)", config->oled_mode);
+            ESP_LOGI(TAG, "💡 Brightness: %d/255", config->oled_brightness);
             
             // Set initial configuration
-            oled_display_set_brightness(config.oled_brightness);
+            oled_display_set_brightness(config->oled_brightness);
             
             // =========================================================================
             // STARTUP ANIMATION - Show Proxitof logo with loading progress
@@ -547,7 +552,7 @@ void app_main(void)
             ESP_LOGI(TAG, "");
             
             // Now set the actual display mode
-            oled_display_set_mode((oled_display_mode_t)config.oled_mode);
+            oled_display_set_mode((oled_display_mode_t)config->oled_mode);
         } else {
             ESP_LOGW(TAG, "❌ OLED display initialization failed: %s", esp_err_to_name(err));
             ESP_LOGW(TAG, "💡 Check wiring: SCK=GPIO7, MOSI=GPIO1, DC=GPIO35, RST=GPIO21, VCC=3.3V");
@@ -620,10 +625,10 @@ void app_main(void)
         ESP_LOGI(TAG, "  ✓ Near-miss reaction: Sudden swerve (>7m/s³)");
         ESP_LOGI(TAG, "");
         ESP_LOGI(TAG, "Detection Mode Configuration:");
-        ESP_LOGI(TAG, "  Current Mode: %d (%s)", config.detection_mode,
-                 config.detection_mode == 0 ? "Hybrid (Algorithm + ML)" :
-                 config.detection_mode == 1 ? "Algorithm Only" :
-                 config.detection_mode == 2 ? "Neural Network Only" : "Unknown");
+        ESP_LOGI(TAG, "  Current Mode: %d (%s)", config->detection_mode,
+                 config->detection_mode == 0 ? "Hybrid (Algorithm + ML)" :
+                 config->detection_mode == 1 ? "Algorithm Only" :
+                 config->detection_mode == 2 ? "Neural Network Only" : "Unknown");
         ESP_LOGI(TAG, "  ML Status: %s", ml_ready ? "✓ Ready" : "✗ Not available");
         ESP_LOGI(TAG, "  💡 Press ACTION in Near-Miss mode to cycle detection modes");
     }
@@ -690,6 +695,8 @@ void app_main(void)
             }
             
             // Check button to exit USB mode
+            // NOTE: This handler runs when USB is ACTIVE (to deactivate after safe eject)
+            // When USB is INACTIVE, the handler outside the USB mode block handles ENTER
             static uint32_t last_usb_button_check = 0;
             if ((current_time - last_usb_button_check) >= 50) { // Check every 50ms
                 last_usb_button_check = current_time;
@@ -814,7 +821,7 @@ void app_main(void)
                     float ml_probability = 0.0f;
                     
                     // Get current detection mode from config
-                    int detection_mode = config.detection_mode;
+                    int detection_mode = config->detection_mode;
                     
                     // Run ML inference if:
                     // - ML is ready (model loaded)
@@ -903,8 +910,8 @@ void app_main(void)
                                      algo_detect && ml_detect ? "Algorithm+ML" :
                                      algo_detect ? "Algorithm" :
                                      ml_detect ? "ML" : "Unknown",
-                                     config.detection_mode);
-                            if (ml_ready && (config.detection_mode == 0 || config.detection_mode == 2)) {
+                                     config->detection_mode);
+                            if (ml_ready && (config->detection_mode == 0 || config->detection_mode == 2)) {
                                 ESP_LOGW(TAG, "║  ML Probability: %.1f%% (Latency: %lu ms)     ║",
                                          ml_probability * 100.0f, ml_inference_get_latency_ms());
                             }
@@ -951,10 +958,11 @@ void app_main(void)
             }
             
             // =====================================================================
-            // MANUAL FLAG DETECTION (Mode-specific behavior)
+            // MANUAL FLAG DETECTION (Dashboard mode only)
             // =====================================================================
             // Manual flag behavior depends on current OLED mode:
-            // - Dashboard/Near Miss modes: Continuous flagging while button held
+            // - Dashboard mode: Continuous flagging while button held
+            // - Near-Miss mode: Button cycles detection mode (no manual flagging)
             // - Other modes: No manual flagging (prevents false flags during shutdown, etc.)
             static bool manual_flag_active = false;
             
@@ -962,8 +970,8 @@ void app_main(void)
             if (!usb_msc_active && oled_available) {
                 oled_display_mode_t current_mode = oled_display_get_mode();
                 
-                // Manual flagging ONLY allowed in Dashboard (0) and Near Miss (5) modes
-                if (current_mode == OLED_MODE_DASHBOARD || current_mode == OLED_MODE_NEAR_MISS) {
+                // Manual flagging ONLY allowed in Dashboard (0) mode
+                if (current_mode == OLED_MODE_DASHBOARD) {
                     // Continuous check: flag is active while button is held
                     manual_flag_active = sensor_manager_is_button_held();
                     
@@ -976,7 +984,7 @@ void app_main(void)
                     }
                     last_flag_state = manual_flag_active;
                 } else {
-                    // In other modes (WiFi, GPS, IMU, USB, Shutdown), no manual flagging
+                    // In other modes (Near-Miss, WiFi, GPS, IMU, USB, Shutdown), no manual flagging
                     manual_flag_active = false;
                 }
             } else {
@@ -990,7 +998,7 @@ void app_main(void)
             if (storage_manager_is_logging() && tof_count > 0 && imu_count > 0) {
                 log_entry_t log_entry = {
                     .timestamp_ms = current_time,
-                    .flag_manual = manual_flag_active ? 1 : 0,  // Continuous while held in Dashboard/Near Miss modes
+                    .flag_manual = manual_flag_active ? 1 : 0,  // Continuous while held in Dashboard mode only
                     .flag_auto = near_miss_active ? 1 : 0  // Use near_miss_active (persists) not near_miss_detected (one frame only)
                 };
                 
@@ -1050,7 +1058,7 @@ void app_main(void)
             // Only update if we have valid sensor data (prevents glitching after USB mode exit)
             if (oled_available && tof_count > 0 && imu_count > 0) {
                 static uint32_t last_oled_update = 0;
-                uint32_t oled_interval_ms = 1000 / config.oled_refresh_hz;
+                uint32_t oled_interval_ms = 1000 / config->oled_refresh_hz;
                 
                 if ((current_time - last_oled_update) >= oled_interval_ms) {
                     oled_display_update(&tof_data, &imu_data, min_dist);
@@ -1077,10 +1085,10 @@ void app_main(void)
                     if (last_volume == 255 || abs(current_volume - last_volume) > 5) {
                         last_volume = current_volume;
                         
-                        // Show volume popup on OLED
-                        if (oled_available) {
-                            oled_display_show_volume_popup(current_volume);
-                        }
+                        // Volume popup disabled for cleaner display
+                        // if (oled_available) {
+                        //     oled_display_show_volume_popup(current_volume);
+                        // }
                         
                         // Log volume change
                         ESP_LOGI(TAG, "🔊 Volume: %d%%", current_volume);
@@ -1094,18 +1102,21 @@ void app_main(void)
                 }
             }
             
-            // Check button status (check frequently for responsiveness)
-            static uint32_t last_button_check = 0;
-            if ((current_time - last_button_check) >= 50) { // Check every 50ms (20Hz)
-                last_button_check = current_time;
+            // NOTE: Button checking moved outside of (!usb_msc_active) block
+            // See below after the block ends
+            
+            // Context-aware button handling for Dashboard mode (manual flagging)
+            // This is the ONLY mode that needs button checking inside the normal mode block
+            // because it's tied to the manual_flag_active variable used in logging
+            if (oled_available) {
+                oled_display_mode_t current_mode = oled_display_get_mode();
                 
-                // Get current display mode to determine button behavior
-                oled_display_mode_t current_mode = oled_available ? oled_display_get_mode() : 0;
-                
-                // Context-aware button handling
-                if (current_mode == 0 || current_mode == 5) {  // Dashboard or Near-Miss mode
+                if (current_mode == 0) {  // Dashboard mode
                     // Button 2 (GPIO 3): Manual event flagging
-                    if (sensor_manager_is_button_held()) {
+                    // Check button state for manual flagging
+                    bool button_held = sensor_manager_is_button_held();
+                    
+                    if (button_held) {
                         uint32_t duration = sensor_manager_get_button_duration();
                         
                         // Blue LED while button is held
@@ -1131,9 +1142,48 @@ void app_main(void)
                             vTaskDelay(pdMS_TO_TICKS(100));  // 100ms flash
                         }
                     }
+                }
+            }
+            
+            // Check mode switch button (only if OLED is enabled)
+            if (oled_available) {
+                check_mode_button();
+            }
+        } // End of normal mode (!usb_msc_active)
+        
+        // =====================================================================
+        // BUTTON HANDLING FOR ALL MODES (Outside USB check for universal access)
+        // =====================================================================
+        // Check button status (check frequently for responsiveness)
+        // This is outside the (!usb_msc_active) block so buttons work in ALL modes
+        static uint32_t last_button_check = 0;
+        if ((current_time - last_button_check) >= 50) { // Check every 50ms (20Hz)
+            last_button_check = current_time;
+            
+            // Get current display mode to determine button behavior
+            oled_display_mode_t current_mode = oled_available ? oled_display_get_mode() : 0;
+            
+            // Check button state ONCE and store result (prevents state being consumed by first check)
+            bool button_pressed = sensor_manager_is_button_pressed();
+            bool button_held = sensor_manager_is_button_held();
+            
+            // Context-aware button handling (excluding Dashboard which is handled above)
+            if (current_mode == 5 && oled_available) {  // Near-Miss mode
+                    // Button 2 (GPIO 3): Cycle detection mode
+                    if (button_pressed) {
+                        ESP_LOGI(TAG, "🔄 Detection mode cycle triggered from button");
+                        
+                        // Purple LED during mode change
+                        if (led_strip != NULL) {
+                            led_strip_set_pixel(led_strip, 0, 128, 0, 128);  // Purple
+                            led_strip_refresh(led_strip);
+                        }
+                        
+                        oled_display_handle_action_button();
+                    }
                 } else if (current_mode == 6 && oled_available) {  // WiFi Settings mode
                     // Button 2 (GPIO 3): Trigger WiFi sync
-                    if (sensor_manager_is_button_pressed()) {
+                    if (button_pressed) {
                         ESP_LOGI(TAG, "🌐 WiFi sync triggered from button");
                         
                         // Blue LED during sync
@@ -1146,7 +1196,7 @@ void app_main(void)
                     }
                 } else if (current_mode == 3 && oled_available) {  // IMU Focus mode
                     // Button 2 (GPIO 3): Trigger IMU rescan
-                    if (sensor_manager_is_button_pressed()) {
+                    if (button_pressed) {
                         ESP_LOGI(TAG, "🔄 IMU rescan triggered from button");
                         
                         // Yellow LED during rescan
@@ -1159,7 +1209,7 @@ void app_main(void)
                     }
                 } else if (current_mode == 4 && oled_available) {  // GPS mode
                     // Button 2 (GPIO 3): Trigger GPS reconnect
-                    if (sensor_manager_is_button_pressed()) {
+                    if (button_pressed) {
                         ESP_LOGI(TAG, "📡 GPS reconnect triggered from button");
                         
                         // Green LED during reconnect
@@ -1172,9 +1222,11 @@ void app_main(void)
                     }
                 } else if (current_mode == 7 && oled_available) {  // USB Transfer mode
                     // Button 2 (GPIO 3): Toggle USB MSC mode
+                    // NOTE: This handler runs when USB is INACTIVE (to activate USB)
+                    // When USB is ACTIVE, the handler inside the USB mode block handles EXIT
                     // Use button hold detection for reliable edge detection (fixes toggle issue)
                     static bool last_usb_button_state = false;
-                    bool current_usb_button_state = sensor_manager_is_button_held();
+                    bool current_usb_button_state = button_held;
                     
                     // Detect button release (falling edge) - more reliable than is_button_pressed()
                     // This fixes the issue where button state is cleared before handler returns
@@ -1209,7 +1261,7 @@ void app_main(void)
                     last_usb_button_state = current_usb_button_state;
                 } else if (current_mode == 8 && oled_available) {  // Shutdown mode
                     // Button 2 (GPIO 3): Confirm shutdown
-                    if (sensor_manager_is_button_pressed()) {
+                    if (button_pressed) {
                         ESP_LOGW(TAG, "🔴 Shutdown button pressed");
                         
                         // Red LED during shutdown
@@ -1269,12 +1321,6 @@ void app_main(void)
                 }
                 // Other modes: Button 2 does nothing
             }
-            
-            // Check mode switch button (only if OLED is enabled)
-            if (oled_available) {
-                check_mode_button();
-            }
-        } // End of normal mode (!usb_msc_active)
         
         // Small delay to prevent CPU spinning (check sensors frequently in normal mode)
         vTaskDelay(pdMS_TO_TICKS(5));  // 200Hz loop rate for responsive LED

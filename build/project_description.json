@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "proxitof",
-    "project_version":    "a8d6717-dirty",
+    "project_version":    "cada8aa-dirty",
     "project_path":       "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32",
     "idf_path":           "C:/Users/ervan/esp/v5.5.2/esp-idf",
     "build_dir":          "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build",

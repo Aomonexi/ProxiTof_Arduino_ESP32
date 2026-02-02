@@ -590,8 +590,28 @@ esp_err_t sensor_manager_read_tof(tof_data_t *data)
     
     // Copy distance data (4x4 grid in row-major order)
     // Use VL53L8CX_NB_TARGET_PER_ZONE to access correct data index
-    for (int i = 0; i < 16; i++) {
-        data->distances[i] = results.distance_mm[VL53L8CX_NB_TARGET_PER_ZONE * i];
+    // 
+    // IMPORTANT: Sensor is mounted backwards, so we flip the matrix:
+    // - Flip vertically (up-down): row 0 ↔ row 3, row 1 ↔ row 2
+    // - Flip horizontally (left-right): col 0 ↔ col 3, col 1 ↔ col 2
+    //
+    // Original sensor layout:        Flipped layout (what we want):
+    //   0  1  2  3                      15 14 13 12
+    //   4  5  6  7                      11 10  9  8
+    //   8  9 10 11                       7  6  5  4
+    //  12 13 14 15                       3  2  1  0
+    //
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 4; col++) {
+            int sensor_index = row * 4 + col;  // Original sensor index
+            
+            // Flip both vertically and horizontally
+            int flipped_row = 3 - row;  // Flip vertically
+            int flipped_col = 3 - col;  // Flip horizontally
+            int output_index = flipped_row * 4 + flipped_col;
+            
+            data->distances[output_index] = results.distance_mm[VL53L8CX_NB_TARGET_PER_ZONE * sensor_index];
+        }
     }
     
     return ESP_OK;

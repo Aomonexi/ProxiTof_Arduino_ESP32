@@ -85,6 +85,14 @@ bool config_file_exists(void);
  */
 const system_config_t* config_manager_get_config(void);
 
+/**
+ * Reload configuration from SD card
+ * Updates the global in-memory configuration
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t config_manager_reload(void);
+
 #ifdef __cplusplus
 }
 #endif

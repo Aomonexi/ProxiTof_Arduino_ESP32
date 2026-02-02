@@ -164,6 +164,12 @@ extern "C" float ml_inference_predict(const float features[25]) {
     }
     
     // Run inference (ESP-NN accelerates FullyConnected and ReLU automatically!)
+    // Extra null check to satisfy compiler's static analysis
+    if (interpreter == nullptr) {
+        ESP_LOGE(TAG, "Interpreter is null before Invoke()!");
+        return 0.0f;
+    }
+    
     TfLiteStatus invoke_status = interpreter->Invoke();
     if (invoke_status != kTfLiteOk) {
         ESP_LOGE(TAG, "Invoke() failed!");
