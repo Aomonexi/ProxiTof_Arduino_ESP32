@@ -41,6 +41,10 @@ void config_load_defaults(system_config_t *config) {
     config->oled_flip = false;
     // Near-Miss Detection defaults
     config->detection_mode = 0;  // 0=Hybrid (default)
+    // GPS Dynamic Model defaults
+    config->gps_dynamic_model = 10;  // 10=Bike (default for cycling safety device)
+    // GPS Update Rate defaults
+    config->gps_update_rate = 5;  // 5 Hz (optimal for cycling - smooth tracking, good battery life)
 }
 
 bool config_file_exists(void) {
@@ -159,6 +163,20 @@ esp_err_t config_load_from_sd(system_config_t *config) {
             } else {
                 ESP_LOGW(TAG, "Invalid detection mode: %d (using default)", mode);
             }
+        } else if (strcmp(key, "GPS_DYNAMIC_MODEL") == 0) {
+            int model = atoi(value);
+            if (model >= 0 && model <= 10) {
+                config->gps_dynamic_model = model;
+            } else {
+                ESP_LOGW(TAG, "Invalid GPS dynamic model: %d (using default)", model);
+            }
+        } else if (strcmp(key, "GPS_UPDATE_RATE") == 0) {
+            int rate = atoi(value);
+            if (rate >= 1 && rate <= 25) {
+                config->gps_update_rate = rate;
+            } else {
+                ESP_LOGW(TAG, "Invalid GPS update rate: %d Hz (using default)", rate);
+            }
         } else {
             ESP_LOGW(TAG, "Unknown config key: %s", key);
         }
@@ -228,6 +246,27 @@ esp_err_t config_save_to_sd(const system_config_t *config) {
     
     fprintf(file, "# Near-Miss Detection Configuration\n");
     fprintf(file, "DETECTION_MODE=%d  # 0=Hybrid, 1=Algorithm, 2=Neural Network\n", config->detection_mode);
+    fprintf(file, "\n");
+    
+    fprintf(file, "# GPS Dynamic Model Configuration\n");
+    fprintf(file, "# Controls GPS tracking optimization for different movement types\n");
+    fprintf(file, "# ALL models 0-10 are functional and can be set here\n");
+    fprintf(file, "# 0=Portable, 1=Reserved, 2=Stationary, 3=Pedestrian, 4=Automotive\n");
+    fprintf(file, "# 5=Sea, 6=Airborne<1g, 7=Airborne<2g, 8=Airborne<4g, 9=Wrist, 10=Bike\n");
+    fprintf(file, "# Bike mode (10) is optimized for cycling: quick turns, moderate speed, stop-and-go\n");
+    fprintf(file, "# Pedestrian mode (3) for walking data collection\n");
+    fprintf(file, "# Press and HOLD ACTION button in GPS mode to cycle between modes\n");
+    fprintf(file, "GPS_DYNAMIC_MODEL=%d\n", config->gps_dynamic_model);
+    fprintf(file, "\n");
+    
+    fprintf(file, "# GPS Update Rate Configuration\n");
+    fprintf(file, "# Controls how often GPS provides position updates\n");
+    fprintf(file, "# 1 Hz  = 1 update/second (default, best battery life)\n");
+    fprintf(file, "# 5 Hz  = 5 updates/second (optimal for cycling, smooth tracking) ← RECOMMENDED\n");
+    fprintf(file, "# 10 Hz = 10 updates/second (high precision, more power)\n");
+    fprintf(file, "# 25 Hz = 25 updates/second (maximum rate, research only)\n");
+    fprintf(file, "# Valid range: 1-25 Hz\n");
+    fprintf(file, "GPS_UPDATE_RATE=%d\n", config->gps_update_rate);
     fprintf(file, "\n");
     
     fprintf(file, "# Common Timezone Examples:\n");

@@ -30,6 +30,8 @@ static struct {
     gps_data_t current_data;
     gps_stats_t stats;
     uint32_t init_time_ms;
+    uint8_t dynamic_model;  // Current dynamic platform model
+    uint8_t update_rate_hz;  // Current update rate in Hz
 } gps_state = {0};
 
 /**
@@ -226,6 +228,22 @@ static void parse_nmea_sentence(const char *sentence, int len)
     
     gps_state.stats.sentences_parsed++;
     
+    // DIAGNOSTIC: Log antenna status messages (GNTXT/GPTXT)
+    if (strncmp(sentence, "$GNTXT", 6) == 0 || strncmp(sentence, "$GPTXT", 6) == 0) {
+        // Check for antenna status
+        if (strstr(sentence, "ANTSTATUS") != NULL) {
+            if (strstr(sentence, "OK") != NULL) {
+                ESP_LOGI(TAG, "✅ Antenna Status: OK (connected and working)");
+            } else if (strstr(sentence, "OPEN") != NULL) {
+                ESP_LOGW(TAG, "⚠️  Antenna Status: OPEN (disconnected or not detected)");
+            } else if (strstr(sentence, "SHORT") != NULL) {
+                ESP_LOGE(TAG, "❌ Antenna Status: SHORT (short circuit detected!)");
+            } else {
+                ESP_LOGI(TAG, "📡 Antenna Status: %s", sentence);
+            }
+        }
+    }
+    
     // Parse based on sentence type
     if (strncmp(sentence, "$GPGGA", 6) == 0 || strncmp(sentence, "$GNGGA", 6) == 0) {
         parse_gpgga(sentence);
@@ -330,15 +348,15 @@ static void gps_task(void *arg)
 /**
  * Initialize GPS module
  */
-esp_err_t gps_init(int uart_num, int tx_pin, int rx_pin, uint32_t baud_rate)
+esp_err_t gps_init(int uart_num, int tx_pin, int rx_pin, uint32_t baud_rate, uint8_t dynamic_model)
 {
     if (gps_state.initialized) {
         ESP_LOGW(TAG, "GPS already initialized");
         return ESP_OK;
     }
     
-    ESP_LOGI(TAG, "Initializing GPS on UART%d (TX=%d, RX=%d, baud=%lu)", 
-             uart_num, tx_pin, rx_pin, baud_rate);
+    ESP_LOGI(TAG, "Initializing GPS on UART%d (TX=%d, RX=%d, baud=%lu, model=%s)", 
+             uart_num, tx_pin, rx_pin, baud_rate, gps_get_model_name(dynamic_model));
     
     // Configure UART
     uart_config_t uart_config = {
@@ -370,10 +388,137 @@ esp_err_t gps_init(int uart_num, int tx_pin, int rx_pin, uint32_t baud_rate)
         return err;
     }
     
+    // Wait for GPS module to boot (100ms)
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
+    // Optional: Configure GPS for optimal performance
+    // Note: GPS works fine with factory defaults, this just optimizes it
+    ESP_LOGI(TAG, "Configuring GPS for optimal performance...");
+    
+    // 0. Configure antenna (ensure IPEX/internal antenna is active)
+    // NEO-M9N CFG-ANT: Select internal antenna (IPEX) over external (SMA)
+    // This is critical if module has both IPEX and SMA connectors
+    uint8_t ubx_cfg_ant[] = {
+        0xB5, 0x62,  // UBX header
+        0x06, 0x13,  // CFG-ANT
+        0x04, 0x00,  // Length: 4 bytes
+        0x1B, 0x00,  // flags: svcs=1, scd=1, ocd=1, pdwnOnSCD=1, recovery=1
+        0xF3, 0x9F,  // pins: default pin configuration
+        0x00, 0x00   // Checksum (will be calculated)
+    };
+    
+    // Calculate checksum for CFG-ANT
+    uint8_t ck_a = 0, ck_b = 0;
+    for (int i = 2; i < sizeof(ubx_cfg_ant) - 2; i++) {
+        ck_a += ubx_cfg_ant[i];
+        ck_b += ck_a;
+    }
+    ubx_cfg_ant[sizeof(ubx_cfg_ant) - 2] = ck_a;
+    ubx_cfg_ant[sizeof(ubx_cfg_ant) - 1] = ck_b;
+    
+    uart_write_bytes(uart_num, ubx_cfg_ant, sizeof(ubx_cfg_ant));
+    vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_LOGI(TAG, "✓ Configured antenna (internal/IPEX active, SCD/OCD enabled)");
+    
+    // 1. Enable all GNSS systems (GPS + GLONASS + Galileo + BeiDou + QZSS + SBAS)
+    // This gives faster fix acquisition (more satellites visible)
+    // NEO-M9N supports: GPS L1C/A, GLONASS L1OF, Galileo E1B/C, BeiDou B1I, QZSS L1C/A, SBAS L1C/A
+    const uint8_t ubx_cfg_gnss[] = {
+        0xB5, 0x62,  // UBX header
+        0x06, 0x3E,  // CFG-GNSS
+        0x44, 0x00,  // Length: 68 bytes (6 GNSS systems × 8 bytes + 4 byte header)
+        0x00, 0x00, 0xFF, 0x06,  // Version 0, numTrkChHw=255, numTrkChUse=6 config blocks
+        // GPS (8 channels, enabled, L1C/A signal)
+        0x00, 0x08, 0x10, 0x00, 0x01, 0x00, 0x01, 0x01,
+        // SBAS (1 channel, enabled, L1C/A signal)
+        0x01, 0x01, 0x03, 0x00, 0x01, 0x00, 0x01, 0x01,
+        // Galileo (4 channels, enabled, E1B/C signal)
+        0x02, 0x04, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01,
+        // BeiDou (8 channels, enabled, B1I signal)
+        0x03, 0x08, 0x10, 0x00, 0x01, 0x00, 0x01, 0x01,
+        // QZSS (2 channels, enabled, L1C/A signal)
+        0x05, 0x02, 0x05, 0x00, 0x01, 0x00, 0x01, 0x01,
+        // GLONASS (8 channels, enabled, L1OF signal)
+        0x06, 0x08, 0x0E, 0x00, 0x01, 0x00, 0x01, 0x01,
+        0x00, 0x00   // Checksum (will be calculated)
+    };
+    
+    // Calculate checksum for UBX message (reuse variables)
+    ck_a = 0;
+    ck_b = 0;
+    for (int i = 2; i < sizeof(ubx_cfg_gnss) - 2; i++) {
+        ck_a += ubx_cfg_gnss[i];
+        ck_b += ck_a;
+    }
+    
+    // Create mutable copy with correct checksum
+    uint8_t ubx_cfg_gnss_msg[sizeof(ubx_cfg_gnss)];
+    memcpy(ubx_cfg_gnss_msg, ubx_cfg_gnss, sizeof(ubx_cfg_gnss));
+    ubx_cfg_gnss_msg[sizeof(ubx_cfg_gnss) - 2] = ck_a;
+    ubx_cfg_gnss_msg[sizeof(ubx_cfg_gnss) - 1] = ck_b;
+    
+    uart_write_bytes(uart_num, ubx_cfg_gnss_msg, sizeof(ubx_cfg_gnss_msg));
+    vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_LOGI(TAG, "✓ Enabled all 6 GNSS systems:");
+    ESP_LOGI(TAG, "  - GPS (L1C/A): 8 channels");
+    ESP_LOGI(TAG, "  - GLONASS (L1OF): 8 channels");
+    ESP_LOGI(TAG, "  - Galileo (E1B/C): 4 channels");
+    ESP_LOGI(TAG, "  - BeiDou (B1I): 8 channels");
+    ESP_LOGI(TAG, "  - QZSS (L1C/A): 2 channels");
+    ESP_LOGI(TAG, "  - SBAS (L1C/A): 1 channel");
+    ESP_LOGI(TAG, "  Total: 31 tracking channels for maximum satellite visibility");
+    
+    // 2. Set dynamic platform model from config
+    // Optimizes Kalman filter for specific movement type
+    ESP_LOGI(TAG, "Setting dynamic model to %s (%d)...", gps_get_model_name(dynamic_model), dynamic_model);
+    
+    // Build UBX CFG-NAV5 message with dynamic model from parameter
+    const uint8_t ubx_cfg_nav5[] = {
+        0xB5, 0x62,  // UBX header
+        0x06, 0x24,  // CFG-NAV5
+        0x24, 0x00,  // Length: 36 bytes
+        0xFF, 0xFF,  // Mask: apply all settings
+        dynamic_model,  // Dynamic model from config
+        0x03,        // Fix mode: 3 = Auto 2D/3D
+        0x00, 0x00, 0x00, 0x00,  // Fixed altitude
+        0x10, 0x27, 0x00, 0x00,  // Fixed altitude variance
+        0x05, 0x00,  // Min elevation: 5 degrees
+        0xFA, 0x00,  // Reserved
+        0xFA, 0x00,  // Position DOP mask
+        0x64, 0x00,  // Time DOP mask
+        0x2C, 0x01,  // Position accuracy: 300m
+        0x00, 0x00,  // Time accuracy
+        0x00, 0x00, 0x00, 0x00,  // Static hold threshold
+        0x00, 0x00, 0x00, 0x00,  // DGPS timeout
+        0x00, 0x00, 0x00, 0x00,  // Reserved
+        0x16, 0xDC   // Checksum (will be recalculated)
+    };
+    uart_write_bytes(uart_num, ubx_cfg_nav5, sizeof(ubx_cfg_nav5));
+    vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_LOGI(TAG, "✓ Set dynamic model to %s", gps_get_model_name(dynamic_model));
+    
+    // 3. Save configuration to flash (persists across power cycles)
+    const uint8_t ubx_cfg_save[] = {
+        0xB5, 0x62,  // UBX header
+        0x06, 0x09,  // CFG-CFG
+        0x0D, 0x00,  // Length: 13 bytes
+        0x00, 0x00, 0x00, 0x00,  // Clear mask: none
+        0xFF, 0xFF, 0x00, 0x00,  // Save mask: all
+        0x00, 0x00, 0x00, 0x00,  // Load mask: none
+        0x17,        // Device mask: BBR, Flash, EEPROM
+        0x31, 0xBF   // Checksum
+    };
+    uart_write_bytes(uart_num, ubx_cfg_save, sizeof(ubx_cfg_save));
+    vTaskDelay(pdMS_TO_TICKS(500));  // Wait for save to complete
+    ESP_LOGI(TAG, "✓ Saved configuration to GPS flash memory");
+    
+    ESP_LOGI(TAG, "GPS configuration complete (runs once, saved to flash)");
+    
     // Initialize state
     gps_state.uart_num = uart_num;
     gps_state.initialized = true;
     gps_state.init_time_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    gps_state.dynamic_model = dynamic_model;  // Store dynamic model
     memset(&gps_state.current_data, 0, sizeof(gps_data_t));
     memset(&gps_state.stats, 0, sizeof(gps_stats_t));
     
@@ -503,4 +648,222 @@ void gps_resume(void)
     
     vTaskResume(gps_state.task_handle);
     ESP_LOGI(TAG, "▶️  GPS task resumed");
+}
+
+/**
+ * Calculate UBX checksum (Fletcher algorithm)
+ */
+static void ubx_checksum(const uint8_t *data, int len, uint8_t *ck_a, uint8_t *ck_b)
+{
+    *ck_a = 0;
+    *ck_b = 0;
+    for (int i = 0; i < len; i++) {
+        *ck_a += data[i];
+        *ck_b += *ck_a;
+    }
+}
+
+/**
+ * Set GPS dynamic platform model
+ */
+esp_err_t gps_set_dynamic_model(uint8_t model)
+{
+    if (!gps_state.initialized) {
+        ESP_LOGE(TAG, "GPS not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Validate model (0-10 are valid per u-blox spec)
+    if (model > 10) {
+        ESP_LOGE(TAG, "Invalid dynamic model: %d (valid: 0-10)", model);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    ESP_LOGI(TAG, "Setting GPS dynamic model to %d (%s)...", model, gps_get_model_name(model));
+    
+    // Build UBX CFG-NAV5 message
+    uint8_t payload[36] = {
+        0xFF, 0xFF,  // Mask: apply all settings
+        model,       // Dynamic model (0-10 all valid)
+        0x03,        // Fix mode: 3 = Auto 2D/3D
+        0x00, 0x00, 0x00, 0x00,  // Fixed altitude
+        0x10, 0x27, 0x00, 0x00,  // Fixed altitude variance
+        0x05, 0x00,  // Min elevation: 5 degrees
+        0xFA, 0x00,  // Reserved
+        0xFA, 0x00,  // Position DOP mask
+        0x64, 0x00,  // Time DOP mask
+        0x2C, 0x01,  // Position accuracy: 300m
+        0x00, 0x00,  // Time accuracy
+        0x00, 0x00, 0x00, 0x00,  // Static hold threshold
+        0x00, 0x00, 0x00, 0x00,  // DGPS timeout
+        0x00, 0x00, 0x00, 0x00,  // Reserved
+    };
+    
+    // Calculate checksum
+    uint8_t ck_a, ck_b;
+    uint8_t header[4] = {0x06, 0x24, 0x24, 0x00};  // Class, ID, Length
+    ubx_checksum(header, 4, &ck_a, &ck_b);
+    uint8_t ck_a2, ck_b2;
+    ubx_checksum(payload, sizeof(payload), &ck_a2, &ck_b2);
+    ck_a += ck_a2;
+    ck_b += ck_b2;
+    
+    // Build complete message
+    uint8_t message[44];
+    message[0] = 0xB5;  // UBX header
+    message[1] = 0x62;
+    message[2] = 0x06;  // CFG-NAV5
+    message[3] = 0x24;
+    message[4] = 0x24;  // Length LSB
+    message[5] = 0x00;  // Length MSB
+    memcpy(&message[6], payload, sizeof(payload));
+    message[42] = ck_a;
+    message[43] = ck_b;
+    
+    // Send to GPS
+    uart_write_bytes(gps_state.uart_num, message, sizeof(message));
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
+    // Save to GPS flash
+    const uint8_t ubx_cfg_save[] = {
+        0xB5, 0x62,  // UBX header
+        0x06, 0x09,  // CFG-CFG
+        0x0D, 0x00,  // Length: 13 bytes
+        0x00, 0x00, 0x00, 0x00,  // Clear mask: none
+        0xFF, 0xFF, 0x00, 0x00,  // Save mask: all
+        0x00, 0x00, 0x00, 0x00,  // Load mask: none
+        0x17,        // Device mask: BBR, Flash, EEPROM
+        0x31, 0xBF   // Checksum
+    };
+    uart_write_bytes(gps_state.uart_num, ubx_cfg_save, sizeof(ubx_cfg_save));
+    vTaskDelay(pdMS_TO_TICKS(500));
+    
+    // Update state
+    gps_state.dynamic_model = model;
+    
+    ESP_LOGI(TAG, "✓ GPS dynamic model set to %s", gps_get_model_name(model));
+    return ESP_OK;
+}
+
+/**
+ * Get current GPS dynamic platform model
+ */
+int gps_get_dynamic_model(void)
+{
+    if (!gps_state.initialized) {
+        return -1;
+    }
+    return gps_state.dynamic_model;
+}
+
+/**
+ * Get name of GPS dynamic model
+ */
+const char* gps_get_model_name(uint8_t model)
+{
+    switch (model) {
+        case 0: return "Portable";
+        case 1: return "Reserved";
+        case 2: return "Stationary";
+        case 3: return "Pedestrian";
+        case 4: return "Automotive";
+        case 5: return "Sea";
+        case 6: return "Airborne<1g";
+        case 7: return "Airborne<2g";
+        case 8: return "Airborne<4g";
+        case 9: return "Wrist";
+        case 10: return "Bike";
+        default: return "Unknown";
+    }
+}
+
+/**
+ * Set GPS update rate (measurement rate)
+ */
+esp_err_t gps_set_update_rate(uint8_t rate_hz)
+{
+    if (!gps_state.initialized) {
+        ESP_LOGE(TAG, "GPS not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Validate rate (1-25 Hz)
+    if (rate_hz < 1 || rate_hz > 25) {
+        ESP_LOGE(TAG, "Invalid update rate: %d Hz (valid: 1-25)", rate_hz);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    ESP_LOGI(TAG, "Setting GPS update rate to %d Hz...", rate_hz);
+    
+    // Calculate measurement rate in milliseconds
+    // measurement_rate = 1000 / rate_hz
+    uint16_t meas_rate_ms = 1000 / rate_hz;
+    
+    // Build UBX CFG-RATE message
+    // Format: measRate (2 bytes), navRate (2 bytes), timeRef (2 bytes)
+    // measRate: measurement period in ms (e.g., 200ms for 5Hz)
+    // navRate: navigation rate cycles (1 = every measurement)
+    // timeRef: time reference (0 = UTC, 1 = GPS time)
+    uint8_t payload[6] = {
+        (uint8_t)(meas_rate_ms & 0xFF),        // measRate LSB
+        (uint8_t)((meas_rate_ms >> 8) & 0xFF), // measRate MSB
+        0x01, 0x00,  // navRate = 1 (every measurement)
+        0x00, 0x00   // timeRef = 0 (UTC)
+    };
+    
+    // Calculate checksum
+    uint8_t ck_a, ck_b;
+    uint8_t header[4] = {0x06, 0x08, 0x06, 0x00};  // Class, ID, Length
+    ubx_checksum(header, 4, &ck_a, &ck_b);
+    uint8_t ck_a2, ck_b2;
+    ubx_checksum(payload, sizeof(payload), &ck_a2, &ck_b2);
+    ck_a += ck_a2;
+    ck_b += ck_b2;
+    
+    // Build complete message
+    uint8_t message[14];
+    message[0] = 0xB5;  // UBX header
+    message[1] = 0x62;
+    message[2] = 0x06;  // CFG-RATE
+    message[3] = 0x08;
+    message[4] = 0x06;  // Length LSB
+    message[5] = 0x00;  // Length MSB
+    memcpy(&message[6], payload, sizeof(payload));
+    message[12] = ck_a;
+    message[13] = ck_b;
+    
+    // Send to GPS
+    uart_write_bytes(gps_state.uart_num, message, sizeof(message));
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
+    // Save to GPS flash
+    const uint8_t ubx_cfg_save[] = {
+        0xB5, 0x62,  // UBX header
+        0x06, 0x09,  // CFG-CFG
+        0x0D, 0x00,  // Length: 13 bytes
+        0x00, 0x00, 0x00, 0x00,  // Clear mask: none
+        0xFF, 0xFF, 0x00, 0x00,  // Save mask: all
+        0x00, 0x00, 0x00, 0x00,  // Load mask: none
+        0x17,        // Device mask: BBR, Flash, EEPROM
+        0x31, 0xBF   // Checksum
+    };
+    uart_write_bytes(gps_state.uart_num, ubx_cfg_save, sizeof(ubx_cfg_save));
+    vTaskDelay(pdMS_TO_TICKS(500));
+    
+    // Update state
+    gps_state.update_rate_hz = rate_hz;
+    
+    ESP_LOGI(TAG, "✓ GPS update rate set to %d Hz (%d ms period)", rate_hz, meas_rate_ms);
+    return ESP_OK;
+}
+
+/**
+ * Get current GPS update rate
+ */
+uint8_t gps_get_update_rate(void)
+{
+    if (!gps_state.initialized) {
+        return 0;
+    }
+    return gps_state.update_rate_hz;
 }

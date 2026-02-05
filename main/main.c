@@ -39,9 +39,8 @@ static const char *TAG = "MAIN";
 #define MODE_BUTTON_DEBOUNCE_MS 200
 
 // GPS Configuration (Neo-M9N)
-// CRITICAL: GPIO 43/44 are UART0 (console) pins - cannot use for GPS!
 // Using free GPIO pins: 38 (TX) and 47 (RX)
-// GPIO 48 is used by WS2812 LED, so we use 38 instead
+// GPIO 43/44 are UART0 console, so we use 38/47 instead
 #define GPS_UART_NUM UART_NUM_1     // UART1
 #define GPS_TX_PIN GPIO_NUM_38      // ESP32 TX → GPS RX (FREE GPIO)
 #define GPS_RX_PIN GPIO_NUM_47      // ESP32 RX ← GPS TX (FREE GPIO)
@@ -113,7 +112,15 @@ static bool check_mode_button(void)
         if ((current_time - last_mode_button_press) >= MODE_BUTTON_DEBOUNCE_MS) {
             last_mode_button_press = current_time;
             
-            // Cycle to next display mode
+            // Check if we're in GPS mode cycling - if so, exit cycling instead of changing modes
+            if (oled_display_is_gps_cycling_active()) {
+                ESP_LOGI(TAG, "🔄 MODE button pressed - Exiting GPS mode cycling (returning to GPS status)");
+                oled_display_save_gps_model();  // This exits cycling mode
+                last_mode_button_state = current_state;
+                return false;  // Don't change mode, just exit cycling
+            }
+            
+            // Normal mode cycling
             oled_display_mode_t current_mode = oled_display_get_mode();
             oled_display_mode_t next_mode = (oled_display_mode_t)((current_mode + 1) % OLED_MODE_MAX);
             oled_display_set_mode(next_mode);
@@ -227,7 +234,7 @@ void app_main(void)
     
     // Declare all variables at the top of the function
     esp_err_t err;
-    const system_config_t *config;  // Pointer to global config (not a local copy!)
+    const system_config_t *config = config_manager_get_config();  // Get pointer to global config early
     sensor_health_t health;
     display_config_t display_config;
     tof_data_t tof_data;
@@ -264,17 +271,29 @@ void app_main(void)
     // GPS MODULE INITIALIZATION (Neo-M9N)
     // =========================================================================
     ESP_LOGI(TAG, "Initializing GPS module (Neo-M9N)...");
-    ESP_LOGI(TAG, "⚠️  IMPORTANT: GPIO 43/44 are UART0 (console) - using GPIO 38/47 instead!");
+    ESP_LOGI(TAG, "Using UART1 with GPIO 38/47 (free pins, not console)");
     ESP_LOGI(TAG, "Wiring: TX=GPIO38 (ESP32→GPS RX), RX=GPIO47 (ESP32←GPS TX)");
     ESP_LOGI(TAG, "Power: 3.3V (Neo-M9N operates at 3.3V, NOT 5V!)");
     ESP_LOGI(TAG, "UART crossover wiring is CORRECT (TX→RX, RX→TX)");
-    ESP_LOGI(TAG, "Using UART1 with GPIO 38/47 (NOT the console pins 43/44)");
+    ESP_LOGI(TAG, "Dynamic Model: %s (from config)", gps_get_model_name(config->gps_dynamic_model));
     
-    err = gps_init(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, GPS_BAUD_RATE);
+    err = gps_init(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, GPS_BAUD_RATE, config->gps_dynamic_model);
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "✓ GPS initialized (waiting for satellite fix)");
+        
+        // Set GPS update rate from config
+        ESP_LOGI(TAG, "Setting GPS update rate to %d Hz (from config)...", config->gps_update_rate);
+        esp_err_t rate_err = gps_set_update_rate(config->gps_update_rate);
+        if (rate_err == ESP_OK) {
+            ESP_LOGI(TAG, "✓ GPS update rate configured: %d Hz", config->gps_update_rate);
+        } else {
+            ESP_LOGW(TAG, "⚠️  Failed to set GPS update rate: %s", esp_err_to_name(rate_err));
+            ESP_LOGW(TAG, "💡 GPS will use default 1 Hz rate");
+        }
+        
         ESP_LOGI(TAG, "💡 GPS fix may take 1-5 minutes outdoors");
-        ESP_LOGI(TAG, "💡 Check GPS mode (Mode 6) to see status");
+        ESP_LOGI(TAG, "💡 Check GPS mode (Mode 4) to see status");
+        ESP_LOGI(TAG, "💡 Hold ACTION button in GPS mode to cycle dynamic models");
     } else {
         ESP_LOGW(TAG, "❌ GPS initialization failed: %s", esp_err_to_name(err));
         ESP_LOGW(TAG, "💡 Check wiring: TX=44, RX=43, VCC=5V, GND=GND");
@@ -361,8 +380,8 @@ void app_main(void)
         ESP_LOGI(TAG, "✓ Configuration loaded from SD card");
     }
     
-    // Get pointer to global config (will always reflect latest values after reload)
-    config = config_manager_get_config();
+    // Config pointer already initialized at top of function
+    // (config = config_manager_get_config() was called earlier)
     
     config_print(config);
     ESP_LOGI(TAG, "");
@@ -823,6 +842,16 @@ void app_main(void)
                     // Get current detection mode from config
                     int detection_mode = config->detection_mode;
                     
+                    // Debug: Log detection mode changes
+                    static int last_detection_mode = -1;
+                    if (detection_mode != last_detection_mode) {
+                        const char* mode_names[] = {"Hybrid (Algo+ML)", "Algorithm Only", "Neural Network Only"};
+                        const char* mode_name = (detection_mode >= 0 && detection_mode <= 2) ? 
+                                               mode_names[detection_mode] : "Unknown";
+                        ESP_LOGI(TAG, "🔄 Detection mode changed to: %d (%s)", detection_mode, mode_name);
+                        last_detection_mode = detection_mode;
+                    }
+                    
                     // Run ML inference if:
                     // - ML is ready (model loaded)
                     // - Mode is Hybrid (0) or Neural Network (2)
@@ -873,15 +902,40 @@ void app_main(void)
                     switch (detection_mode) {
                         case 0:  // Hybrid: OR logic (either algorithm or ML)
                             near_miss_detected = algo_detect || ml_detect;
+                            // Debug: Log detection results every 300 frames (5 seconds)
+                            static uint32_t debug_hybrid_count = 0;
+                            debug_hybrid_count++;
+                            if (debug_hybrid_count % 300 == 0) {
+                                ESP_LOGI(TAG, "🔀 Hybrid Mode: algo=%s, ml=%s, result=%s", 
+                                        algo_detect ? "DETECT" : "clear", 
+                                        ml_detect ? "DETECT" : "clear",
+                                        near_miss_detected ? "NEAR-MISS" : "clear");
+                            }
                             break;
                         case 1:  // Algorithm only
                             near_miss_detected = algo_detect;
+                            // Debug: Log algorithm-only results every 300 frames
+                            static uint32_t debug_algo_count = 0;
+                            debug_algo_count++;
+                            if (debug_algo_count % 300 == 0) {
+                                ESP_LOGI(TAG, "🧮 Algorithm Mode: result=%s", 
+                                        near_miss_detected ? "NEAR-MISS" : "clear");
+                            }
                             break;
                         case 2:  // Neural Network only
                             near_miss_detected = ml_detect;
+                            // Debug: Log ML-only results every 300 frames
+                            static uint32_t debug_ml_only_count = 0;
+                            debug_ml_only_count++;
+                            if (debug_ml_only_count % 300 == 0) {
+                                ESP_LOGI(TAG, "🧠 Neural Network Mode: result=%s (prob=%.2f%%)", 
+                                        near_miss_detected ? "NEAR-MISS" : "clear",
+                                        ml_probability * 100.0f);
+                            }
                             break;
                         default:
                             near_miss_detected = algo_detect;  // Fallback to algorithm
+                            ESP_LOGW(TAG, "⚠️ Unknown detection mode %d, using algorithm fallback", detection_mode);
                             break;
                     }
                     
@@ -1208,17 +1262,60 @@ void app_main(void)
                         oled_display_handle_action_button();
                     }
                 } else if (current_mode == 4 && oled_available) {  // GPS mode
-                    // Button 2 (GPIO 3): Trigger GPS reconnect
-                    if (button_pressed) {
-                        ESP_LOGI(TAG, "📡 GPS reconnect triggered from button");
-                        
-                        // Green LED during reconnect
-                        if (led_strip != NULL) {
-                            led_strip_set_pixel(led_strip, 0, 0, 255, 0);  // Green
-                            led_strip_refresh(led_strip);
+                    // Check if we're in GPS mode cycling state
+                    if (oled_display_is_gps_cycling_active()) {
+                        // In cycling mode - handle ACTION and MODE buttons
+                        if (button_pressed) {
+                            // ACTION button: Cycle to next GPS model
+                            ESP_LOGI(TAG, "🔄 GPS model cycle triggered from button");
+                            
+                            // Cyan LED during cycling
+                            if (led_strip != NULL) {
+                                led_strip_set_pixel(led_strip, 0, 0, 255, 255);  // Cyan
+                                led_strip_refresh(led_strip);
+                            }
+                            
+                            oled_display_cycle_gps_model();
                         }
                         
-                        oled_display_handle_action_button();
+                        // Check MODE button to save and exit
+                        // MODE button is GPIO 20, check its state directly
+                        static bool last_mode_button_in_gps_cycling = true;  // Pull-up, HIGH when not pressed
+                        bool current_mode_button = (gpio_get_level(MODE_BUTTON_PIN) == 0);  // Active LOW
+                        
+                        // Detect button press (falling edge)
+                        if (current_mode_button && !last_mode_button_in_gps_cycling) {
+                            ESP_LOGI(TAG, "💾 GPS model save triggered from MODE button");
+                            
+                            // Green LED during save
+                            if (led_strip != NULL) {
+                                led_strip_set_pixel(led_strip, 0, 0, 255, 0);  // Green
+                                led_strip_refresh(led_strip);
+                            }
+                            
+                            oled_display_save_gps_model();
+                            
+                            ESP_LOGI(TAG, "✓ GPS model saved and cycling mode exited");
+                        }
+                        
+                        last_mode_button_in_gps_cycling = current_mode_button;
+                    } else {
+                        // Not in cycling mode - check if button is currently held
+                        // Don't use button_pressed here because we need to detect hold
+                        // The OLED handler will do the hold detection
+                        if (button_held) {
+                            // Button is being held - call handler which will detect duration
+                            ESP_LOGI(TAG, "📡 GPS button held - checking duration...");
+                            
+                            // Green LED during GPS action
+                            if (led_strip != NULL) {
+                                led_strip_set_pixel(led_strip, 0, 0, 255, 0);  // Green
+                                led_strip_refresh(led_strip);
+                            }
+                            
+                            // This will detect hold vs quick press internally
+                            oled_display_handle_action_button();
+                        }
                     }
                 } else if (current_mode == 7 && oled_available) {  // USB Transfer mode
                     // Button 2 (GPIO 3): Toggle USB MSC mode

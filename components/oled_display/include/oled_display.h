@@ -142,6 +142,29 @@ esp_err_t oled_display_cycle_detection_mode(void);
  */
 const char* oled_display_get_detection_mode_name(int mode);
 
+/**
+ * Check if GPS mode cycling is active
+ * 
+ * @return true if in GPS mode cycling state
+ */
+bool oled_display_is_gps_cycling_active(void);
+
+/**
+ * Cycle to next GPS dynamic model
+ * Cycles through: Bike → Pedestrian → Portable → Automotive → Bike
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t oled_display_cycle_gps_model(void);
+
+/**
+ * Save GPS model and exit cycling mode
+ * Saves the selected model to config file and GPS module
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t oled_display_save_gps_model(void);
+
 #ifdef __cplusplus
 }
 #endif

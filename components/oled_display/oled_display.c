@@ -99,6 +99,32 @@ static uint32_t volume_popup_last_update = 0;
 static uint8_t volume_popup_value = 0;
 static bool volume_popup_active = false;
 
+// GPS mode cycling state
+static bool gps_mode_cycling_active = false;
+static uint8_t gps_mode_cycling_model = 0;  // Current model being cycled
+static uint32_t gps_mode_cycling_start_time = 0;
+
+/**
+ * Cycle to next valid GPS dynamic model
+ * Cycles through practical models for this device (excludes Reserved and Sea)
+ * All models 0-10 are functional, but UI cycling shows most useful ones
+ */
+static uint8_t cycle_gps_model(uint8_t current_model) {
+    // Cycle through practical models (skip 1=Reserved, 5=Sea)
+    switch (current_model) {
+        case 0:  return 2;   // Portable → Stationary
+        case 2:  return 3;   // Stationary → Pedestrian
+        case 3:  return 4;   // Pedestrian → Automotive
+        case 4:  return 6;   // Automotive → Airborne<1g
+        case 6:  return 7;   // Airborne<1g → Airborne<2g
+        case 7:  return 8;   // Airborne<2g → Airborne<4g
+        case 8:  return 9;   // Airborne<4g → Wrist
+        case 9:  return 10;  // Wrist → Bike
+        case 10: return 0;   // Bike → Portable
+        default: return 10;  // Invalid → Bike (default)
+    }
+}
+
 /**
  * Calculate moving average for jerk (noise filtering)
  */
@@ -158,7 +184,7 @@ static void fb_write_text(int page, const char *text, bool invert) {
  * @param x X position in pixels (0-127)
  * @param width Bar width in pixels
  * @param distance Distance value (0-4000mm)
- * @param max_distance Maximum distance (2000mm)
+ * @param max_distance Maximum distance (4000mm)
  */
 static void fb_draw_bar(int page, int x, int width, uint16_t distance, uint16_t max_distance) {
     if (page < 0 || page >= 8) return;
@@ -169,6 +195,8 @@ static void fb_draw_bar(int page, int x, int width, uint16_t distance, uint16_t 
     }
     
     // Calculate fill level (closer = fuller bar)
+    // At 4m: 0% filled (empty)
+    // At 0m: 100% filled (solid)
     float fill_percent = 1.0f - ((float)distance / (float)max_distance);
     if (fill_percent < 0.0f) fill_percent = 0.0f;
     if (fill_percent > 1.0f) fill_percent = 1.0f;
@@ -180,7 +208,7 @@ static void fb_draw_bar(int page, int x, int width, uint16_t distance, uint16_t 
         int fb_index = page * 128 + x + i;
         if (fb_index < FRAME_BUFFER_SIZE) {
             if (i < fill_width) {
-                // Filled portion - solid bar
+                // Filled portion - solid bar (closer objects)
                 frame_buffer[fb_index] = 0xFF;
             } else {
                 // Empty portion - just border (top and bottom pixels)
@@ -504,8 +532,8 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                     int x = col * 32;
                     int page = 2 + row;  // Pages 2-5 for the 4 rows
                     
-                    // Draw bar in frame buffer
-                    fb_draw_bar(page, x, 28, distance, 2000);
+                    // Draw bar in frame buffer (max 4000mm = 4m)
+                    fb_draw_bar(page, x, 28, distance, 4000);
                 }
             }
             
@@ -795,6 +823,24 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
             break;
             
         case OLED_MODE_GPS:
+            // Check if we're in GPS mode cycling state
+            if (gps_mode_cycling_active) {
+                // Show GPS mode cycling UI
+                clear_frame_buffer();
+                fb_write_text(0, "GPS Mode Cycling", true);
+                fb_write_text(2, "Current:", false);
+                char model_line[32];
+                snprintf(model_line, sizeof(model_line), " %s", gps_get_model_name(gps_mode_cycling_model));
+                fb_write_text(3, model_line, false);
+                fb_write_text(5, "ACTION: Next", false);
+                fb_write_text(6, "MODE: Save&Exit", false);
+                
+                // Show available models (all 6 models)
+                fb_write_text(7, "Port/Stat/Ped/Auto", false);
+                break;
+            }
+            
+            // Normal GPS display (not in cycling mode)
             // Yellow zone - GPS Status Header with Satellite Progress Bar
             {
                 gps_data_t gps_data;
@@ -1197,43 +1243,96 @@ esp_err_t oled_display_handle_action_button(void) {
             return ret;
             
         case OLED_MODE_GPS:
-            // Trigger GPS reconnect
-            ESP_LOGI(TAG, "GPS reconnect requested from display");
+            // Check if button is held (2+ seconds) for mode cycling
+            // or quick press for GPS reconnect
             
-            // Show reconnecting message
-            clear_frame_buffer();
-            fb_write_text(0, "GPS Reconnect", true);
-            fb_write_text(2, "Reinitializing..", false);
-            update_display_differential();
-            vTaskDelay(pdMS_TO_TICKS(500));
+            // Get current GPS dynamic model from config
+            const system_config_t *cfg = config_manager_get_config();
             
-            // Deinitialize and reinitialize GPS
-            gps_deinit();
-            vTaskDelay(pdMS_TO_TICKS(200));
+            // Check if button is still held after 2 seconds
+            uint32_t hold_start = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            bool button_held = false;
             
-            // Reinitialize with correct pins: GPIO 38 (TX), 47 (RX), 38400 baud
-            esp_err_t gps_ret = gps_init(UART_NUM_1, 38, 47, 38400);
-            
-            if (gps_ret == ESP_OK) {
-                // Success
-                clear_frame_buffer();
-                fb_write_text(0, "GPS Reconnect", true);
-                fb_write_text(2, "SUCCESS!", false);
-                fb_write_text(3, "Searching sats..", false);
-                update_display_differential();
-            } else {
-                // Failed
-                clear_frame_buffer();
-                fb_write_text(0, "GPS Reconnect", true);
-                fb_write_text(2, "FAILED", false);
-                fb_write_text(3, "Check wiring", false);
-                update_display_differential();
+            // Wait up to 2 seconds to see if button is held
+            while ((xTaskGetTickCount() * portTICK_PERIOD_MS - hold_start) < 2000) {
+                if (!sensor_manager_is_button_held()) {
+                    // Button released - it's a quick press
+                    break;
+                }
+                vTaskDelay(pdMS_TO_TICKS(50));
             }
             
-            // Wait 2 seconds to show result
-            vTaskDelay(pdMS_TO_TICKS(2000));
+            // Check if button is still held after 2 seconds
+            if (sensor_manager_is_button_held() && 
+                (xTaskGetTickCount() * portTICK_PERIOD_MS - hold_start) >= 2000) {
+                button_held = true;
+            }
             
-            return gps_ret;
+            if (button_held) {
+                // HOLD DETECTED - Enter GPS mode cycling
+                ESP_LOGI(TAG, "GPS mode cycling activated (button held)");
+                
+                gps_mode_cycling_active = true;
+                gps_mode_cycling_model = cfg->gps_dynamic_model;
+                gps_mode_cycling_start_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                
+                // Show mode cycling UI
+                clear_frame_buffer();
+                fb_write_text(0, "GPS Mode Cycling", true);
+                fb_write_text(2, "Current:", false);
+                char model_line[32];
+                snprintf(model_line, sizeof(model_line), " %s", gps_get_model_name(gps_mode_cycling_model));
+                fb_write_text(3, model_line, false);
+                fb_write_text(5, "ACTION: Next", false);
+                fb_write_text(6, "MODE: Save&Exit", false);
+                update_display_differential();
+                
+                // Wait for button release
+                while (sensor_manager_is_button_held()) {
+                    vTaskDelay(pdMS_TO_TICKS(50));
+                }
+                
+                return ESP_OK;
+                
+            } else {
+                // QUICK PRESS - GPS Reconnect
+                ESP_LOGI(TAG, "GPS reconnect requested from display");
+                
+                // Show reconnecting message
+                clear_frame_buffer();
+                fb_write_text(0, "GPS Reconnect", true);
+                fb_write_text(2, "Reinitializing..", false);
+                update_display_differential();
+                vTaskDelay(pdMS_TO_TICKS(500));
+                
+                // Deinitialize and reinitialize GPS
+                gps_deinit();
+                vTaskDelay(pdMS_TO_TICKS(200));
+                
+                // Reinitialize with correct pins: GPIO 38 (TX), 47 (RX), 38400 baud, dynamic model from config
+                esp_err_t gps_ret = gps_init(UART_NUM_1, 38, 47, 38400, cfg->gps_dynamic_model);
+                
+                if (gps_ret == ESP_OK) {
+                    // Success
+                    clear_frame_buffer();
+                    fb_write_text(0, "GPS Reconnect", true);
+                    fb_write_text(2, "SUCCESS!", false);
+                    fb_write_text(3, "Searching sats..", false);
+                    update_display_differential();
+                } else {
+                    // Failed
+                    clear_frame_buffer();
+                    fb_write_text(0, "GPS Reconnect", true);
+                    fb_write_text(2, "FAILED", false);
+                    fb_write_text(3, "Check wiring", false);
+                    update_display_differential();
+                }
+                
+                // Wait 2 seconds to show result
+                vTaskDelay(pdMS_TO_TICKS(2000));
+                
+                return gps_ret;
+            }
             
         case OLED_MODE_IMU_FOCUS:
             // Trigger IMU rescan
@@ -1544,4 +1643,75 @@ const char* oled_display_get_detection_mode_name(int mode)
         case 2: return "Neural Net";
         default: return "Unknown";
     }
+}
+
+/**
+ * Check if GPS mode cycling is active
+ */
+bool oled_display_is_gps_cycling_active(void)
+{
+    return gps_mode_cycling_active;
+}
+
+/**
+ * Cycle to next GPS dynamic model
+ */
+esp_err_t oled_display_cycle_gps_model(void)
+{
+    if (!gps_mode_cycling_active) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Cycle to next model
+    gps_mode_cycling_model = cycle_gps_model(gps_mode_cycling_model);
+    
+    ESP_LOGI(TAG, "GPS model cycled to: %s (%d)", 
+             gps_get_model_name(gps_mode_cycling_model), gps_mode_cycling_model);
+    
+    return ESP_OK;
+}
+
+/**
+ * Save GPS model and exit cycling mode
+ */
+esp_err_t oled_display_save_gps_model(void)
+{
+    if (!gps_mode_cycling_active) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    ESP_LOGI(TAG, "Saving GPS model: %s (%d)", 
+             gps_get_model_name(gps_mode_cycling_model), gps_mode_cycling_model);
+    
+    // Get config
+    system_config_t config;
+    const system_config_t *current_config = config_manager_get_config();
+    memcpy(&config, current_config, sizeof(system_config_t));
+    
+    // Update GPS dynamic model
+    config.gps_dynamic_model = gps_mode_cycling_model;
+    
+    // Save to SD card
+    esp_err_t err = config_save_to_sd(&config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save GPS model to config: %s", esp_err_to_name(err));
+        return err;
+    }
+    
+    // Reload config to update global state
+    config_manager_reload();
+    
+    // Apply to GPS module
+    err = gps_set_dynamic_model(gps_mode_cycling_model);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to apply GPS model to module: %s", esp_err_to_name(err));
+        // Continue anyway - it will apply on next GPS init
+    }
+    
+    // Exit cycling mode
+    gps_mode_cycling_active = false;
+    
+    ESP_LOGI(TAG, "GPS model saved and applied: %s", gps_get_model_name(gps_mode_cycling_model));
+    
+    return ESP_OK;
 }

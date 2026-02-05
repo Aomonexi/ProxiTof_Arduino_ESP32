@@ -36,6 +36,10 @@ typedef struct {
     bool oled_flip;
     // Near-Miss Detection Mode
     int detection_mode;  // 0=Hybrid, 1=Algorithm, 2=Neural Network
+    // GPS Dynamic Model Configuration
+    int gps_dynamic_model;  // 0=Portable, 2=Stationary, 3=Pedestrian, 4=Automotive, 5=Sea, 6=Airborne<1g, 7=Airborne<2g, 8=Airborne<4g, 9=Wrist, 10=Bike
+    // GPS Update Rate Configuration
+    int gps_update_rate;  // 1-25 Hz (1=default, 5=optimal for cycling, 10=high precision)
 } system_config_t;
 
 /**

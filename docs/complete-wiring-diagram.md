@@ -1,6 +1,6 @@
 # ProxiTof Complete Wiring Reference - CONSOLIDATED
 
-**Last Updated**: January 28, 2026  
+**Last Updated**: February 4, 2026  
 **Board**: ESP32-S3-DevKitC-1 (N16R8 - 16MB Flash, 8MB PSRAM)  
 **Status**: All Components Documented and Operational
 
@@ -15,7 +15,7 @@
 | **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Working | **Conflict-free pins** |
 | **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Working | Battery-backed time |
 | **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21, CS=0 | ✅ Working | 128x64 @ 60Hz (4-wire SPI) |
-| **Neo-M9N GPS** | UART | **TX=38, RX=47** | ✅ Implemented | **CORRECTED** pins (NOT 43/44!) |
+| **Neo-M9N GPS** | UART | **TX=38, RX=47** | ✅ Working | Location @ 5Hz (configurable) |
 | **Buzzer** | PWM | GPIO 45 | ✅ Ready | Near-miss audio alert |
 | **Potentiometer** | ADC | **GPIO 4 (ADC1_CH3)** | ✅ Ready | Volume control (0-3.3V) **MOVED from GPIO 46** |
 | **Flag Button** | GPIO | GPIO 3 (with pull-up) | ✅ Working | Manual event flagging |
@@ -165,9 +165,9 @@ D2                  ↔    GPIO 17 (Data Line 2)
 D3                  ↔    GPIO 18 (Data Line 3)
 ```
 
-**⚠️ UPDATED PIN ASSIGNMENT:**
-- **Conflict-free GPIOs** (no interference with existing sensors)
-- **Flexible assignment** via ESP32-S3 GPIO matrix
+**✅ VERIFIED PIN ASSIGNMENT:**
+- **Conflict-free GPIOs** (no interference with GPS or other sensors)
+- **GPIO 38/47 are FREE** for GPS UART
 - **4-bit parallel interface** (4x faster than SPI)
 - **FAT32 format required**
 
@@ -458,17 +458,17 @@ FLOATING       --> BT (Boot Mode - leave disconnected)
 - **BT = FLOATING** (disconnected)
 - This configures SPI mode
 
-### 3. SD Card Module (SDIO - 4-bit Mode)
+### 3. SD Card Module (SDMMC - 4-bit Mode)
 
 ```
 ESP32-S3          SD Card SDIO
 --------          ------------
-GPIO 39 (CLK)  --> CLK       (SDMMC Clock)
-GPIO 38 (CMD)  --> CMD       (Command/Response)
-GPIO 40 (D0)   --> D0        (Data Line 0)
-GPIO 41 (D1)   --> D1        (Data Line 1)
-GPIO 42 (D2)   --> D2        (Data Line 2)
-GPIO 43 (D3)   --> D3        (Data Line 3)
+GPIO 14 (CLK)  --> CLK       (SDMMC Clock)
+GPIO 15 (CMD)  --> CMD       (Command/Response)
+GPIO 2  (D0)   --> D0        (Data Line 0)
+GPIO 16 (D1)   --> D1        (Data Line 1)
+GPIO 17 (D2)   --> D2        (Data Line 2)
+GPIO 18 (D3)   --> D3        (Data Line 3)
 3.3V           --> VCC
 GND            --> GND
 ```
@@ -479,6 +479,7 @@ GND            --> GND
 - **Native SD protocol** (not SPI emulation)
 - SD card must be **FAT32 formatted**
 - Requires **SDIO breakout board** (not standard SPI SD module)
+- **GPIO 38/47 are FREE** for GPS (not used by SD card)
 
 ### 4. Button (GPIO)
 
@@ -553,6 +554,13 @@ GPIO 47 (RX)   <-- TX (GPS sends NMEA data to ESP32)
 GND            --> GND
 ```
 
+**Configuration:**
+- **UART**: UART1 (not console UART0)
+- **Baud Rate**: 38400 (Neo-M9N default)
+- **Update Rate**: 1 Hz default (can be increased to 5-25 Hz via UBX commands)
+- **Dynamic Model**: Configurable via config file (Bike/Pedestrian/Portable/Automotive)
+- **Multi-GNSS**: GPS + GLONASS + Galileo + BeiDou (automatic)
+
 **⚠️ POWER INPUT - IMPORTANT:**
 Your GPS breakout board determines the voltage:
 
@@ -585,11 +593,10 @@ ESP32 3.3V → GPS "VCC" or "3.3V" pin
 - Safe to connect directly to ESP32-S3 GPIO pins
 - No level shifters needed
 
-**⚠️ CRITICAL PIN CORRECTION:**
-- **OLD (WRONG)**: GPIO 43/44 - These are UART0 (console) pins!
-- **NEW (CORRECT)**: GPIO 38/47 - Free GPIO pins
-- **Why changed**: GPIO 43/44 are hardwired to USB-to-Serial chip for console
-- **Source**: [ESP32-S3 DevKitC Pinout Guide](https://randomnerdtutorials.com/esp32-s3-devkitc-pinout-guide/)
+**✅ VERIFIED PIN ASSIGNMENT:**
+- **GPIO 38/47 are FREE** (not used by SD card or other peripherals)
+- **GPIO 43/44 are UART0** (console) - DO NOT USE for GPS
+- **Crossover wiring is CORRECT** (TX→RX, RX→TX)
 
 **⚠️ UART Wiring Explanation (TX/RX Crossover)**:
 - **This is CORRECT!** UART connections are always crossover
@@ -597,6 +604,14 @@ ESP32 3.3V → GPS "VCC" or "3.3V" pin
 - ESP32 **RX** (receive) connects to GPS **TX** (transmit)
 - Think of it as: "My transmitter talks to your receiver"
 - **DO NOT connect TX to TX or RX to RX** - that won't work!
+
+**GPS Update Rate Recommendations:**
+- **1 Hz (default)**: Best for battery life, adequate for walking/cycling
+- **5 Hz**: Good balance for cycling, smooth position updates
+- **10 Hz**: High precision for fast movement, higher power consumption
+- **25 Hz**: Maximum rate, only needed for very fast movement or research
+
+**Note**: Current implementation uses default 1 Hz. To increase update rate, send UBX CFG-RATE command to GPS module (future enhancement).
 
 **Visual Explanation**:
 ```

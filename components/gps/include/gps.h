@@ -86,9 +86,10 @@ typedef struct {
  * @param tx_pin GPIO pin for TX (ESP32 → GPS RX)
  * @param rx_pin GPIO pin for RX (ESP32 ← GPS TX)
  * @param baud_rate Baud rate (default: 9600)
+ * @param dynamic_model GPS dynamic platform model (0=Portable, 3=Pedestrian, 10=Bike, etc.)
  * @return ESP_OK on success
  */
-esp_err_t gps_init(int uart_num, int tx_pin, int rx_pin, uint32_t baud_rate);
+esp_err_t gps_init(int uart_num, int tx_pin, int rx_pin, uint32_t baud_rate, uint8_t dynamic_model);
 
 /**
  * Read latest GPS data
@@ -136,6 +137,56 @@ void gps_pause(void);
  * Use after exiting USB transfer mode
  */
 void gps_resume(void);
+
+/**
+ * Set GPS dynamic platform model
+ * Changes how GPS tracks movement (optimized for different vehicle types)
+ * 
+ * @param model Dynamic model:
+ *   0 = Portable (default, general purpose)
+ *   2 = Stationary (fixed position)
+ *   3 = Pedestrian (walking, 0-10 km/h)
+ *   4 = Automotive (driving, 0-100 km/h)
+ *   6 = Airborne <1g (flying)
+ *   10 = Bike (cycling, 0-30 km/h) ← Recommended for cycling
+ * @return ESP_OK on success
+ */
+esp_err_t gps_set_dynamic_model(uint8_t model);
+
+/**
+ * Get current GPS dynamic platform model
+ * 
+ * @return Current model (0-10), or -1 if GPS not initialized
+ */
+int gps_get_dynamic_model(void);
+
+/**
+ * Get name of GPS dynamic model
+ * 
+ * @param model Model number (0-10)
+ * @return Human-readable name (e.g., "Bike", "Pedestrian")
+ */
+const char* gps_get_model_name(uint8_t model);
+
+/**
+ * Set GPS update rate (measurement rate)
+ * Changes how often GPS provides position updates
+ * 
+ * @param rate_hz Update rate in Hz (1-10 recommended, max 25)
+ *   1 Hz  = 1 update/second (default, best battery life)
+ *   5 Hz  = 5 updates/second (optimal for cycling, smooth tracking)
+ *   10 Hz = 10 updates/second (high precision, more power)
+ *   25 Hz = 25 updates/second (maximum rate, research only)
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG if rate out of range
+ */
+esp_err_t gps_set_update_rate(uint8_t rate_hz);
+
+/**
+ * Get current GPS update rate
+ * 
+ * @return Current update rate in Hz, or 0 if GPS not initialized
+ */
+uint8_t gps_get_update_rate(void);
 
 #ifdef __cplusplus
 }

@@ -1182,114 +1182,224 @@ switch (detection_mode) {
 
 ---
 
-## Mode 4: GPS (NEW!)
+## Mode 4: GPS (Location & Status)
 
-**Purpose**: GPS location tracking and satellite status
+**Purpose**: Real-time GPS location, satellite status, and dynamic model configuration
 
-### Layout Diagram
+### Normal GPS Display (Default State)
 
-**With GPS Fix:**
+**Layout Diagram:**
+
 ```
 ┌────────────────────────────────────────────────────────┐
 │ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
 ├────────────────────────────────────────────────────────┤
-│ Page 0: GPS: 3D FIX (8sat)                             │ ← Fix status
-│ Page 1: HDOP: 1.2                                      │ ← Accuracy
+│ Page 0: GPS: 3D FIX (8sat)                             │ ← Fix type + satellites
+│ Page 1: HDOP:1.2 14:23:45                              │ ← Accuracy + UTC time
 ├────────────────────────────────────────────────────────┤
 │ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
 ├────────────────────────────────────────────────────────┤
-│ Page 2: Lat: 1.234567N                                │ ← Latitude
-│ Page 3: Lon: 103.123456E                              │ ← Longitude
-│ Page 4: Alt: 45.2m                                    │ ← Altitude
-│ Page 5: Spd: 12.5km/h                                 │ ← Speed
-│ Page 6: Hdg: 135deg                                   │ ← Heading
-│ Page 7: Age: 250ms                                    │ ← Data age
+│ Page 2: Lat: 14.123456N                                │ ← Latitude
+│ Page 3: Lon: 121.234567E                               │ ← Longitude
+│ Page 4: Alt: 45.2m                                     │ ← Altitude
+│ Page 5: Spd: 15.3km/h                                  │ ← Speed
+│ Page 6: Hdg: 180deg                                    │ ← Heading
+│ Page 7: Model: Bike                                    │ ← Dynamic model
 └────────────────────────────────────────────────────────┘
 ```
 
-**Without GPS Fix (Searching):**
+**When No Fix:**
+```
+Page 0: GPS: SEARCHING
+Page 1: [====    ]4/12     ← Satellite progress bar
+```
+
+### GPS Mode Cycling (Hold ACTION Button)
+
+**How to Enter:**
+1. Navigate to GPS mode (Mode 4)
+2. **HOLD** ACTION button for 2+ seconds
+3. Display changes to cycling UI
+
+**Cycling UI Layout:**
+
 ```
 ┌────────────────────────────────────────────────────────┐
 │ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
 ├────────────────────────────────────────────────────────┤
-│ Page 0: GPS: SEARCHING                                 │ ← Status
-│ Page 1: Parsed: 1234                                   │ ← Sentences parsed
+│ Page 0: GPS Mode Cycling (INVERTED)                    │
+│ Page 1: (empty)                                        │
 ├────────────────────────────────────────────────────────┤
 │ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
 ├────────────────────────────────────────────────────────┤
-│ Page 2: Waiting for                                   │
-│ Page 3: satellite fix...                              │
-│ Page 4:                                               │
-│ Page 5: This may take                                 │
-│ Page 6: 1-5 minutes                                   │
-│ Page 7: outdoors                                      │
+│ Page 2: Current:                                       │
+│ Page 3:  Bike                                          │ ← Current selection
+│ Page 4: (empty)                                        │
+│ Page 5: ACTION: Next                                   │ ← Tap to cycle
+│ Page 6: MODE: Save&Exit                                │ ← Press to save
+│ Page 7: Port/Stat/Ped/Auto                             │ ← Available models
 └────────────────────────────────────────────────────────┘
 ```
 
-### GPS Data Displayed
+### Available GPS Dynamic Models
 
-**Yellow Zone:**
+**Cycling Order:** Portable → Stationary → Pedestrian → Automotive → Airborne<1g → Bike → (repeat)
 
-**Page 0: Fix Status**
-- Format: `GPS: <status> (<satellites>sat)`
-- Status types:
-  - `3D FIX` - 4+ satellites (best)
-  - `2D FIX` - 3 satellites (good)
-  - `FIX` - 1-2 satellites (poor)
-  - `SEARCHING` - No fix yet
+| Model | Name | Best For | Speed Range |
+|-------|------|----------|-------------|
+| **0** | **Portable** | General purpose, handheld | 0-30 km/h |
+| **2** | **Stationary** | Fixed position, base station | 0 km/h |
+| **3** | **Pedestrian** | Walking, hiking | 0-10 km/h |
+| **4** | **Automotive** | Cars, motorcycles | 0-100 km/h |
+| **6** | **Airborne<1g** | Drones, light aircraft | 0-200 km/h |
+| **10** | **Bike** | Cycling (RECOMMENDED) | 0-30 km/h |
 
-**Page 1: HDOP (Horizontal Dilution of Precision)**
-- Format: `HDOP: <value>`
-- Lower is better:
-  - < 1.0 = Excellent
-  - 1.0-2.0 = Good
-  - 2.0-5.0 = Moderate
-  - > 5.0 = Poor
+**Note:** Models 7 (Airborne<2g), 8 (Airborne<4g), and 9 (Wrist) are available but not included in cycling to keep the list practical for this device.
 
-**Blue Zone (With Fix):**
+### Button Behavior in GPS Mode
 
-**Page 2: Latitude**
-- Format: `Lat: <degrees>N/S`
-- 6 decimal places (~0.1m precision)
-- N = North, S = South
+**Normal GPS Display:**
+- **ACTION button (quick press):** Reconnect GPS (refresh)
+- **ACTION button (HOLD 2+ seconds):** Enter GPS mode cycling
+- **MODE button:** Cycle to next mode (Near Miss)
 
-**Page 3: Longitude**
-- Format: `Lon: <degrees>E/W`
-- 6 decimal places (~0.1m precision)
-- E = East, W = West
+**GPS Mode Cycling Active:**
+- **ACTION button (tap):** Cycle to next GPS model
+- **MODE button:** Save selected model and exit cycling (return to GPS status)
 
-**Page 4: Altitude**
-- Format: `Alt: <meters>m`
-- Meters above sea level
-- 1 decimal place
+### Implementation Details
 
-**Page 5: Speed**
-- Format: `Spd: <speed>km/h`
-- Speed over ground
-- 1 decimal place
+**GPS Fix Types:**
+- **3D FIX:** 4+ satellites, full 3D position (lat/lon/alt)
+- **2D FIX:** 3 satellites, 2D position only (lat/lon)
+- **FIX:** Some fix but limited satellites
+- **SEARCHING:** No fix yet, acquiring satellites
 
-**Page 6: Heading**
-- Format: `Hdg: <degrees>deg`
-- Course over ground
-- 0-360 degrees (0=North, 90=East, 180=South, 270=West)
+**HDOP (Horizontal Dilution of Precision):**
+- **< 1.0:** Excellent accuracy
+- **1.0-2.0:** Good accuracy
+- **2.0-5.0:** Moderate accuracy
+- **> 5.0:** Poor accuracy
 
-**Page 7: Data Age**
-- Format: `Age: <time>ms` or `Age: <time>s`
-- Time since last GPS update
-- Helps detect stale data
+**Satellite Progress Bar:**
+- Shows number of satellites in view (0-12+)
+- Updates in real-time during acquisition
+- Format: `[====    ]4/12` (4 satellites acquired out of 12 visible)
 
-### Button Actions
+**Dynamic Model Configuration:**
+- Saved to config.txt: `GPS_DYNAMIC_MODEL=10`
+- Saved to GPS flash memory (persists across power cycles)
+- Optimizes Kalman filter for specific movement patterns
+- **Bike mode (10)** recommended for cycling safety device
 
-**Button 1 (GPIO 20):**
-- Action: Cycle to next mode
-- Next mode: Shutdown
+### GPS Data Display
 
-**Button 2 (GPIO 3):**
-- Action: Reconnect GPS
-- LED: Green during reconnect
-- Display: Shows "Reinitializing..." → "SUCCESS!" or "FAILED"
-- Duration: ~2 seconds
-- Result: GPS module reinitialized, starts searching for satellites again
+**Latitude/Longitude:**
+- Format: `Lat: 14.123456N` (6 decimal places = ~0.1m precision)
+- Direction: N/S for latitude, E/W for longitude
+
+**Altitude:**
+- Format: `Alt: 45.2m` (meters above sea level)
+- Accuracy: ±5-10m typical
+
+**Speed:**
+- Format: `Spd: 15.3km/h` (kilometers per hour)
+- Calculated from GPS velocity vector
+
+**Heading:**
+- Format: `Hdg: 180deg` (0-360 degrees)
+- 0° = North, 90° = East, 180° = South, 270° = West
+
+**Dynamic Model:**
+- Format: `Model: Bike`
+- Shows currently active GPS tracking mode
+
+### Quick Reference
+
+**To Change GPS Model:**
+1. Navigate to GPS mode (Mode 4)
+2. HOLD ACTION button (2+ seconds)
+3. TAP ACTION to cycle through models
+4. Press MODE to save and exit
+
+**To Reconnect GPS:**
+1. Navigate to GPS mode (Mode 4)
+2. Quick press ACTION button
+3. GPS will reinitialize connection
+
+**To Check GPS Status:**
+- Satellite count: Top line (e.g., "8sat")
+- Fix quality: HDOP value (lower is better)
+- Position accuracy: Check HDOP < 2.0 for good accuracy
+
+### GPS Mode Cycling Feature (NEW!)
+
+**Purpose:** Change GPS dynamic model on-the-fly without editing config file
+
+**Available Models:**
+- **Bike (10)** - Optimized for cycling (default)
+- **Pedestrian (3)** - Optimized for walking
+- **Portable (0)** - General purpose
+- **Automotive (4)** - Optimized for cars/motorcycles
+
+**How to Use:**
+1. Navigate to GPS mode (Mode 4)
+2. **Hold ACTION button** for 2+ seconds
+3. Display shows "GPS Mode Cycling" screen
+4. **Press ACTION** to cycle through models
+5. **Press MODE** button to save and exit
+6. Model is saved to config file and applied to GPS module
+
+**Cycling Mode Display:**
+```
+┌────────────────────────────────────────────────────────┐
+│ YELLOW ZONE (Pages 0-1, 16 pixels tall)               │
+├────────────────────────────────────────────────────────┤
+│ Page 0: GPS Mode Cycling                               │ ← INVERTED
+│ Page 1:                                                │
+├────────────────────────────────────────────────────────┤
+│ BLUE ZONE (Pages 2-7, 48 pixels tall)                 │
+├────────────────────────────────────────────────────────┤
+│ Page 2: Current:                                       │
+│ Page 3:  Bike                                          │ ← Current model
+│ Page 4:                                                │
+│ Page 5: ACTION: Next                                   │ ← Instructions
+│ Page 6: MODE: Save&Exit                                │ ← Instructions
+│ Page 7: Bike/Ped/Port/Auto                            │ ← Available models
+└────────────────────────────────────────────────────────┘
+```
+
+**LED Indicators:**
+- **Green** - Quick press (GPS reconnect)
+- **Cyan** - Hold detected (entering cycling mode)
+- **Cyan** - Cycling models (ACTION pressed)
+- **Green** - Saving model (MODE pressed)
+
+**Persistence:**
+- Selected model is saved to `/sdcard/config.txt`
+- Setting: `GPS_DYNAMIC_MODEL=10` (or 0, 3, 4)
+- Loads automatically on boot
+- Applied to GPS module immediately
+
+**Use Cases:**
+
+**Use Case 1: Switch from Cycling to Walking**
+1. Hold ACTION in GPS mode
+2. Cycle to "Pedestrian" model
+3. Press MODE to save
+4. GPS optimizes for walking speed/movement
+
+**Use Case 2: Test Different Models**
+1. Hold ACTION in GPS mode
+2. Cycle through all models
+3. Observe GPS behavior (fix time, accuracy)
+4. Save the best performing model
+
+**Use Case 3: Field Configuration**
+1. No need to edit config file on PC
+2. Change model directly on device
+3. Instant feedback on display
+4. Perfect for field testing
 
 ### GPS Reconnect Feature
 
@@ -1300,8 +1410,8 @@ switch (detection_mode) {
 - After moving to a new location
 
 **How to Use:**
-1. Navigate to GPS mode (Mode 6)
-2. Press ACTION button (GPIO 3)
+1. Navigate to GPS mode (Mode 4)
+2. **Quick press** ACTION button (GPIO 3) - release within 2 seconds
 3. Wait for result (2 seconds)
 4. GPS will restart and search for satellites
 
@@ -1386,7 +1496,7 @@ GPS GND → GND
 
 ### Testing Checklist
 
-- [ ] GPS mode appears in cycle (after WiFi Settings)
+- [ ] GPS mode appears in cycle (Mode 4)
 - [ ] Display shows "SEARCHING" initially
 - [ ] Satellite count increases over time
 - [ ] Fix acquired within 5 minutes outdoors
@@ -1396,6 +1506,14 @@ GPS GND → GND
 - [ ] Heading updates when turning
 - [ ] HDOP value is reasonable (< 5.0)
 - [ ] Data age stays < 1 second
+- [ ] **Quick press ACTION** triggers GPS reconnect
+- [ ] **Hold ACTION 2+ seconds** enters mode cycling
+- [ ] Cycling mode shows current model name
+- [ ] **ACTION in cycling mode** cycles through models
+- [ ] **MODE in cycling mode** saves and exits
+- [ ] Model persists after power cycle
+- [ ] Config file shows GPS_DYNAMIC_MODEL=X
+- [ ] GPS module applies new model immediately
 - [ ] No crashes or freezes
 
 ---
