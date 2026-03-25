@@ -44,7 +44,7 @@ static const char *TAG = "MAIN";
 #define GPS_UART_NUM UART_NUM_1     // UART1
 #define GPS_TX_PIN GPIO_NUM_38      // ESP32 TX → GPS RX (FREE GPIO)
 #define GPS_RX_PIN GPIO_NUM_47      // ESP32 RX ← GPS TX (FREE GPIO)
-#define GPS_BAUD_RATE 38400         // Neo-M9N default: 38400 baud, 8N1
+#define GPS_BAUD_RATE 38400         // Neo-M9N default: 38400 baud (per datasheet)
 
 // Buzzer Configuration (PWM Audio Alert)
 #define BUZZER_PIN GPIO_NUM_45      // PWM output for buzzer

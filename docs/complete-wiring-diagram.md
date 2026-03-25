@@ -1,6 +1,6 @@
 # ProxiTof Complete Wiring Reference - CONSOLIDATED
 
-**Last Updated**: February 4, 2026  
+**Last Updated**: March 24, 2026  
 **Board**: ESP32-S3-DevKitC-1 (N16R8 - 16MB Flash, 8MB PSRAM)  
 **Status**: All Components Documented and Operational
 
@@ -14,7 +14,7 @@
 | **BNO08x IMU** | SPI | MOSI=11, MISO=13, SCK=12, CS=10, INT=5, RST=6 | ✅ Working | 9-DOF @ 100Hz |
 | **SD Card** | **SDMMC (4-bit)** | CLK=14, CMD=15, D0=2, D1=16, D2=17, D3=18 | ✅ Working | **Conflict-free pins** |
 | **DS3231 RTC** | I2C | SDA=8, SCL=9 (shared with ToF) | ✅ Working | Battery-backed time |
-| **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21, CS=0 | ✅ Working | 128x64 @ 60Hz (4-wire SPI) |
+| **OLED Display** | SPI | SCK=7, MOSI=1, DC=35, RST=21 (no CS) | ✅ Working | 128x64 SSD1306 (4-wire SPI, 6-pin module) |
 | **Neo-M9N GPS** | UART | **TX=38, RX=47** | ✅ Working | Location @ 5Hz (configurable) |
 | **Buzzer** | PWM | GPIO 45 | ✅ Ready | Near-miss audio alert |
 | **Potentiometer** | ADC | **GPIO 4 (ADC1_CH3)** | ✅ Ready | Volume control (0-3.3V) **MOVED from GPIO 46** |
@@ -60,10 +60,11 @@ DS3231 RTC  ───────╫── GPIO 8  (SDA) ← Shared I2C     ║
                     ║                                  ║
                     ║              OLED Display (SPI)  ║
                     ║              ----------------    ║
-                    ║  GPIO 7  (SCK)  ──────────────── ║
-                    ║  GPIO 1  (MOSI) ──────────────── ║
+                    ║  GPIO 7  (SCK/SCL) ───────────── ║
+                    ║  GPIO 1  (MOSI/SDA) ──────────── ║
                     ║  GPIO 35 (DC)   ──────────────── ║
                     ║  GPIO 21 (RST)  ──────────────── ║
+                    ║  (No CS pin on this module)       ║
                     ║                                  ║
                     ║              Neo-M9N GPS (UART)  ║
                     ║              ----------------    ║
@@ -345,17 +346,16 @@ idf.py build flash monitor
 
 ## 📊 GPIO Pin Usage Summary
 
-### Used Pins (28 total)
+### Used Pins (27 total)
 | GPIO | Function | Component |
 |------|----------|-----------|
-| 0 | SPI CS | OLED Display |
-| 1 | SPI MOSI | OLED Display |
+| 1 | SPI MOSI (SDA on module) | OLED Display |
 | 2 | SDMMC D0 | SD Card |
 | 3 | Button Input | Flag Button |
 | 4 | **ADC (ADC1_CH3)** | **Potentiometer (Volume Control)** |
 | 5 | IMU INT | BNO08x |
 | 6 | IMU RST | BNO08x |
-| 7 | SPI SCK | OLED Display |
+| 7 | SPI SCK (SCL on module) | OLED Display |
 | 8 | I2C SDA | VL53L8CX + DS3231 |
 | 9 | I2C SCL | VL53L8CX + DS3231 |
 | 10 | SPI CS | BNO08x |
@@ -376,8 +376,8 @@ idf.py build flash monitor
 | 47 | UART RX | Neo-M9N GPS |
 | 48 | LED Data | WS2812 |
 
-### Available for Future Expansion (7+ pins)
-- GPIO 37, 39-42, 46
+### Available for Future Expansion (8+ pins)
+- GPIO 0, 37, 39-42, 46
 - Perfect for: Additional sensors, external buttons, displays
 
 ---
@@ -510,38 +510,37 @@ GND            --> GND
 - Controlled via RMT driver
 - No external components needed
 
-### 6. OLED Display (SSD1306 128x64 SPI)
+### 6. OLED Display (SSD1306 128x64 SPI — 6-Pin Module)
 
 ```
-ESP32-S3          OLED SSD1306 (7-pin)
---------          --------------------
+ESP32-S3          OLED SSD1306 (6-pin module)
+--------          ----------------------------
 GND            --> Pin 1: GND
-3.3V           --> Pin 2: VCC_IN (⚠️ 3.3V NOT 5V!)
-GPIO 7  (SCK)  --> Pin 3: D0 (Clock)
-GPIO 1  (MOSI) --> Pin 4: D1 (Data/MOSI)
+3.3V           --> Pin 2: VCC (⚠️ 3.3V NOT 5V!)
+GPIO 7  (SCK)  --> Pin 3: SCL (SPI Clock = D0)
+GPIO 1  (MOSI) --> Pin 4: SDA (SPI Data  = D1)
 GPIO 21 (RST)  --> Pin 5: RES (Reset)
-GPIO 35 (DC)   --> Pin 6: D/C (Data/Command)
-GPIO 0  (CS)   --> Pin 7: CS (Chip Select)
+GPIO 35 (DC)   --> Pin 6: DC  (Data/Command)
 ```
 
-**⚠️ IMPORTANT PIN MAPPING:**
-- **D0 on display = SCK (Clock)** - NOT "Data 0"!
-- **D1 on display = MOSI (Data)** - NOT "Data 1"!
-- **CS pin IS present** - Must be connected to GPIO 0
-- **No MISO needed** - Display is write-only (doesn't send data back)
+**⚠️ IMPORTANT — Module Pin Labels vs Actual Function:**
+
+This 0.96" yellow-blue dual-color SSD1306 module has 6 pins labeled `GND VCC SCL SDA RES DC` on the PCB. The labels "SCL" and "SDA" look like I2C, but this module is configured for 4-wire SPI mode (confirmed by onboard resistor configuration R3=1, R4=1). The actual mapping is:
+
+| Module Label | SSD1306 Chip Pin | Actual SPI Function |
+|--------------|------------------|---------------------|
+| SCL | D0 | SPI Clock (SCK) |
+| SDA | D1 | SPI Data (MOSI) |
+
+- There is **no CS pin** on this module — the code sets CS to -1
+- **No MISO needed** — display is write-only
+- **Do not confuse SCL/SDA with I2C** — this is a pure SPI connection
 
 **Notes:**
-- 7-pin SPI OLED module (not 4-wire I2C)
-- VCC must be 3.3V (NOT 5V!)
-- All 7 wires must be connected
-- SPI3 bus (separate from IMU on SPI2)
-- Real-time sensor visualization at 60 FPS
+- 6-pin SPI OLED module (not I2C)
+- VCC must be 3.3V (NOT 5V)
+- Uses SPI3 bus (separate from IMU on SPI2)
 - Dual-color zones: Top 16 pixels = YELLOW (alerts), Bottom 48 pixels = BLUE (data)
-
-**Critical Wiring:**
-- VCC = 3.3V (5V will damage display!)
-- All 7 pins must be connected (including CS)
-- D0 = Clock, D1 = Data (confusing labels but correct)
 
 ### 7. Neo-M9N GPS Module (UART) - GNSS Positioning
 
@@ -905,9 +904,9 @@ The BNO08x IMU uses a dedicated SPI interface:
 
 The SD card uses dedicated SDMMC pins for high-speed access:
 
-- **GPIO 39**: CLK (Clock up to 40MHz)
-- **GPIO 38**: CMD (Command/Response line)
-- **GPIO 40-43**: D0-D3 (4-bit parallel data)
+- **GPIO 14**: CLK (Clock up to 40MHz)
+- **GPIO 15**: CMD (Command/Response line)
+- **GPIO 2, 16, 17, 18**: D0-D3 (4-bit parallel data)
 
 ### Benefits of SDIO vs SPI
 
@@ -962,7 +961,7 @@ The SD card uses dedicated SDMMC pins for high-speed access:
 ### SD Card Not Mounting
 - Verify SD card is FAT32 formatted
 - Check SDMMC wiring (CLK, CMD, D0-D3)
-- Verify all SDMMC pins (GPIO 38-43) are connected
+- Verify all SDMMC pins (GPIO 14, 15, 2, 16, 17, 18) are connected
 - Try different SD card (Class 10 recommended)
 - Check 3.3V power supply
 - Ensure using SDIO breakout (not SPI SD module)
@@ -1000,6 +999,6 @@ Before powering on:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** December 9, 2024  
+**Document Version:** 1.1  
+**Last Updated:** March 24, 2026  
 **Hardware:** ESP32-S3-DevKitC-1, VL53L8CX, BNO08x, SD Card Module

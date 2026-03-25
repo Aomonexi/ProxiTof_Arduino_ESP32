@@ -99,6 +99,12 @@ static uint32_t volume_popup_last_update = 0;
 static uint8_t volume_popup_value = 0;
 static bool volume_popup_active = false;
 
+// EMA-smoothed distances for depth map display (reduces flicker from sudden changes)
+static float ema_distances[16] = {4000,4000,4000,4000,4000,4000,4000,4000,
+                                   4000,4000,4000,4000,4000,4000,4000,4000};
+static bool ema_initialized = false;
+#define EMA_ALPHA 0.7f  // 0.7 = responsive, 0.3 = smooth (higher = faster response)
+
 // GPS mode cycling state
 static bool gps_mode_cycling_active = false;
 static uint8_t gps_mode_cycling_model = 0;  // Current model being cycled
@@ -213,6 +219,138 @@ static void fb_draw_bar(int page, int x, int width, uint16_t distance, uint16_t 
             } else {
                 // Empty portion - just border (top and bottom pixels)
                 frame_buffer[fb_index] = 0x81;
+            }
+        }
+    }
+}
+
+/**
+ * Get dithering pattern byte for a distance value
+ * Returns a byte pattern where denser fill = closer object
+ * 8 levels from solid (closest) to empty (farthest)
+ * @param distance Distance in mm (0-4000+)
+ * @param col_x Column x position (used for alternating patterns)
+ */
+static uint8_t get_dither_pattern(uint16_t distance, int col_x) {
+    if (distance > 4000) return 0x00;  // Invalid/out-of-range: empty
+    
+    // 8 dithering levels based on distance thresholds
+    if (distance < 500) {
+        // Level 0: Solid fill — very close object
+        return 0xFF;
+    } else if (distance < 1000) {
+        // Level 1: Dense checkerboard (alternating columns)
+        return (col_x & 1) ? 0xAA : 0x55;
+    } else if (distance < 1500) {
+        // Level 2: Medium checkerboard
+        return (col_x & 1) ? 0x88 : 0x22;
+    } else if (distance < 2000) {
+        // Level 3: Horizontal lines
+        return 0x24;  // Two thin horizontal lines per page
+    } else if (distance < 2500) {
+        // Level 4: Sparse dots (alternating columns)
+        return (col_x & 1) ? 0x44 : 0x00;
+    } else if (distance < 3000) {
+        // Level 5: Very sparse dots
+        return (col_x & 3) == 0 ? 0x10 : 0x00;
+    } else if (distance < 3500) {
+        // Level 6: Single dot per 8 columns
+        return (col_x & 7) == 0 ? 0x08 : 0x00;
+    } else {
+        // Level 7: Empty — far away / nothing
+        return 0x00;
+    }
+}
+
+/**
+ * Draw 4x4 dithered depth map in pages 2-5
+ * Each ToF zone becomes a 32x8 pixel block with density-based shading
+ * Includes crosshair marker on the closest zone
+ * Uses EMA-smoothed distances to reduce flicker
+ */
+static void fb_draw_depth_map(const tof_data_t *tof_data) {
+    // Update EMA filter for each zone
+    for (int i = 0; i < 16; i++) {
+        float raw = (float)tof_data->distances[i];
+        // Clamp invalid readings
+        if (raw > 4000.0f || raw <= 0.0f) raw = 4001.0f;
+        
+        if (!ema_initialized) {
+            ema_distances[i] = raw;
+        } else {
+            if (raw > 4000.0f) {
+                // Slowly fade to max when reading becomes invalid
+                ema_distances[i] = ema_distances[i] * 0.9f + 4001.0f * 0.1f;
+            } else {
+                ema_distances[i] = EMA_ALPHA * raw + (1.0f - EMA_ALPHA) * ema_distances[i];
+            }
+        }
+    }
+    ema_initialized = true;
+    
+    // Find the zone with minimum distance (for crosshair)
+    int min_zone = 0;
+    float min_dist = ema_distances[0];
+    for (int i = 1; i < 16; i++) {
+        if (ema_distances[i] < min_dist) {
+            min_dist = ema_distances[i];
+            min_zone = i;
+        }
+    }
+    
+    // Draw 4x4 dithered blocks
+    for (int row = 0; row < 4; row++) {
+        int page = 2 + row;
+        for (int col = 0; col < 4; col++) {
+            int idx = row * 4 + col;
+            uint16_t smoothed = (uint16_t)ema_distances[idx];
+            int block_x = col * 32;
+            
+            // Fill 32 pixel columns with dither pattern
+            for (int px = 0; px < 32; px++) {
+                int fb_idx = page * 128 + block_x + px;
+                if (fb_idx < FRAME_BUFFER_SIZE) {
+                    frame_buffer[fb_idx] = get_dither_pattern(smoothed, px);
+                }
+            }
+            
+            // Draw thin separator lines between blocks (1px vertical line)
+            if (col > 0) {
+                int sep_idx = page * 128 + block_x;
+                if (sep_idx < FRAME_BUFFER_SIZE) {
+                    // XOR a dotted vertical separator so it's visible on any background
+                    frame_buffer[sep_idx] ^= 0x55;
+                }
+            }
+        }
+    }
+    
+    // Draw crosshair on the closest zone
+    if (min_dist <= 4000.0f) {
+        int min_row = min_zone / 4;
+        int min_col = min_zone % 4;
+        int cx = min_col * 32 + 16;  // Center x of the block
+        int page = 2 + min_row;
+        
+        // Horizontal crosshair: toggle center 8 pixels with middle-row pattern
+        // In SSD1306, each byte is 8 vertical pixels, so we use bit 3 and 4 (middle)
+        for (int px = -4; px <= 4; px++) {
+            int x = cx + px;
+            if (x >= 0 && x < 128) {
+                int fb_idx = page * 128 + x;
+                if (fb_idx < FRAME_BUFFER_SIZE) {
+                    // XOR bits 3-4 (middle of the 8-pixel column) for horizontal line
+                    frame_buffer[fb_idx] ^= 0x18;
+                }
+            }
+        }
+        
+        // Vertical crosshair: toggle center column with full byte
+        if (cx >= 0 && cx < 128) {
+            int fb_idx = page * 128 + cx;
+            if (fb_idx < FRAME_BUFFER_SIZE) {
+                // XOR all bits for vertical line through center
+                frame_buffer[fb_idx] ^= 0xFF;
             }
         }
     }
@@ -518,24 +656,12 @@ esp_err_t oled_display_update(const tof_data_t *tof_data,
                 fb_write_text(1, status_line2, button_active);  // Invert entire line when button pressed
             }
             
-            // ===== BLUE ZONE (Bottom 48 pixels) - ToF Grid + IMU =====
+            // ===== BLUE ZONE (Bottom 48 pixels) - Depth Map + IMU =====
             
-            // Draw 4x4 grid of bar graphs (symmetric layout)
-            // Each bar: 28 pixels wide × 8 pixels tall (1 page)
-            // Spacing: 4 pixels between bars horizontally
-            for (int row = 0; row < 4; row++) {
-                for (int col = 0; col < 4; col++) {
-                    int idx = row * 4 + col;
-                    uint16_t distance = tof_data->distances[idx];
-                    
-                    // Symmetric positioning: 28px bar + 4px spacing = 32px per column
-                    int x = col * 32;
-                    int page = 2 + row;  // Pages 2-5 for the 4 rows
-                    
-                    // Draw bar in frame buffer (max 4000mm = 4m)
-                    fb_draw_bar(page, x, 28, distance, 4000);
-                }
-            }
+            // Draw 4x4 dithered depth map (like a depth camera view)
+            // Each ToF zone = 32x8px block, denser fill = closer object
+            // Crosshair marks the closest zone
+            fb_draw_depth_map(tof_data);
             
             // IMU summary at bottom (page 6-7)
             {

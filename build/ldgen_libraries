@@ -1,209 +1,209 @@
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/xtensa/libxtensa.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cxx/libcxx.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/newlib/libnewlib.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/freertos/libfreertos.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_hw_support/libesp_hw_support.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/heap/libheap.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/log/liblog.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/soc/libsoc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/hal/libhal.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_rom/libesp_rom.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_common/libesp_common.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/libesp_system.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/xtensa/libxtensa.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/spi_flash/libspi_flash.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/bootloader_support/libbootloader_support.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/libmbedtls.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_pm/libesp_pm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gpio/libesp_driver_gpio.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_timer/libesp_timer.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/lwip/liblwip.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/vfs/libvfs.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_uart/libesp_driver_uart.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_ringbuf/libesp_ringbuf.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_mm/libesp_mm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/vfs/libvfs.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_usb_serial_jtag/libesp_driver_usb_serial_jtag.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_vfs_console/libesp_vfs_console.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/library/libmbedtls.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/library/libmbedx509.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/library/libmbedcrypto.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/3rdparty/everest/libeverest.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/libp256m.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_security/libesp_security.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/efuse/libefuse.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_partition/libesp_partition.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/app_update/libapp_update.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_app_format/libesp_app_format.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_mm/libesp_mm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_gdbstub/libesp_gdbstub.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/driver/libdriver.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gptimer/libesp_driver_gptimer.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_spi/libesp_driver_spi.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdmmc/libesp_driver_sdmmc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sdmmc/libsdmmc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_tsens/libesp_driver_tsens.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2c/libesp_driver_i2c.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_ledc/libesp_driver_ledc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_twai/libesp_driver_twai.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_adc/libesp_adc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_client/libesp_http_client.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_event/libesp_event.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/tcp_transport/libtcp_transport.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp-tls/libesp-tls.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/http_parser/libhttp_parser.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_server/libesp_http_server.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/nvs_flash/libnvs_flash.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/libmbedtls.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_wifi/libesp_wifi.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_phy/libesp_phy.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_netif/libesp_netif.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wpa_supplicant/libwpa_supplicant.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_coex/libesp_coex.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_ota/libesp_https_ota.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_security/libesp_security.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/pthread/libpthread.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gpio/libesp_driver_gpio.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_pm/libesp_pm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_app_format/libesp_app_format.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/app_update/libapp_update.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_partition/libesp_partition.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/efuse/libefuse.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/bootloader_support/libbootloader_support.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/spi_flash/libspi_flash.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/libesp_system.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_common/libesp_common.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_rom/libesp_rom.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/hal/libhal.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/log/liblog.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/heap/libheap.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/soc/libsoc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_hw_support/libesp_hw_support.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/freertos/libfreertos.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/newlib/libnewlib.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/pthread/libpthread.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cxx/libcxx.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_timer/libesp_timer.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gptimer/libesp_driver_gptimer.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_ringbuf/libesp_ringbuf.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_uart/libesp_driver_uart.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/app_trace/libapp_trace.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_event/libesp_event.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/nvs_flash/libnvs_flash.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_phy/libesp_phy.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_usb_serial_jtag/libesp_driver_usb_serial_jtag.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_vfs_console/libesp_vfs_console.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/lwip/liblwip.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_netif/libesp_netif.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wpa_supplicant/libwpa_supplicant.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_coex/libesp_coex.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_wifi/libesp_wifi.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_spi/libesp_driver_spi.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_gdbstub/libesp_gdbstub.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/unity/libunity.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cmock/libcmock.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/unity/libunity.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/console/libconsole.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sdmmc/libsdmmc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdmmc/libesp_driver_sdmmc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_tsens/libesp_driver_tsens.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2c/libesp_driver_i2c.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_ledc/libesp_driver_ledc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_twai/libesp_driver_twai.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/driver/libdriver.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/http_parser/libhttp_parser.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp-tls/libesp-tls.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_adc/libesp_adc.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_cam/libesp_driver_cam.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_touch_sens/libesp_driver_touch_sens.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_eth/libesp_eth.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_hid/libesp_hid.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/tcp_transport/libtcp_transport.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_client/libesp_http_client.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_server/libesp_http_server.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_ota/libesp_https_ota.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_server/libesp_https_server.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_lcd/libesp_lcd.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protobuf-c/libprotobuf-c.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protocomm/libprotocomm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protobuf-c/libprotobuf-c.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/console/libconsole.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_local_ctrl/libesp_local_ctrl.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protocomm/libprotocomm.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_server/libesp_https_server.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espcoredump/libespcoredump.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wear_levelling/libwear_levelling.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/fatfs/libfatfs.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wear_levelling/libwear_levelling.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/json/libjson.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mqtt/libmqtt.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/nvs_sec_provider/libnvs_sec_provider.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/perfmon/libperfmon.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rt/librt.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/spiffs/libspiffs.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/touch_element/libtouch_element.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb/libusb.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/json/libjson.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rjrp44__vl53l8cx/librjrp44__vl53l8cx.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__led_strip/libespressif__led_strip.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp32_BNO08x/libesp32_BNO08x.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cmock/libcmock.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sensor_manager/libsensor_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rjrp44__vl53l8cx/librjrp44__vl53l8cx.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__led_strip/libespressif__led_strip.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp32_BNO08x/libesp32_BNO08x.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rtc_ds3231/librtc_ds3231.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/time_sync/libtime_sync.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/libsmart_time.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rtc_ds3231/librtc_ds3231.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/time_sync/libtime_sync.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sensor_manager/libsensor_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/libconfig_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/fatfs/libfatfs.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/libstorage_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/libsmart_time.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/libconfig_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/libdata_processor.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/libespressif__tinyusb.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp_tinyusb/libespressif__esp_tinyusb.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/libespressif__tinyusb.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb/libusb.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_flash_partition/libusb_flash_partition.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/libstorage_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp_tinyusb/libespressif__esp_tinyusb.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/display_manager/libdisplay_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_interface/libusb_interface.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_flash_partition/libusb_flash_partition.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/display_manager/libdisplay_manager.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/gps/libgps.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ssd1306/libssd1306.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/liboled_display.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/gps/libgps.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ssd1306/libssd1306.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/libbuzzer.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-nn/libespressif__esp-nn.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-tflite-micro/libespressif__esp-tflite-micro.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-nn/libespressif__esp-nn.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ml_inference/libml_inference.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-tflite-micro/libespressif__esp-tflite-micro.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/libmain.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/libdata_processor.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_interface/libusb_interface.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/liboled_display.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/libbuzzer.a
-D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ml_inference/libml_inference.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/xtensa/libxtensa.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cxx/libcxx.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/newlib/libnewlib.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/freertos/libfreertos.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_hw_support/libesp_hw_support.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/heap/libheap.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/log/liblog.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/soc/libsoc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/hal/libhal.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_rom/libesp_rom.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_common/libesp_common.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/libesp_system.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/xtensa/libxtensa.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/spi_flash/libspi_flash.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/bootloader_support/libbootloader_support.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/libmbedtls.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_pm/libesp_pm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gpio/libesp_driver_gpio.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_timer/libesp_timer.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/lwip/liblwip.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/vfs/libvfs.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_uart/libesp_driver_uart.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_ringbuf/libesp_ringbuf.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_mm/libesp_mm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/vfs/libvfs.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_usb_serial_jtag/libesp_driver_usb_serial_jtag.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_vfs_console/libesp_vfs_console.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/library/libmbedtls.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/library/libmbedx509.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/library/libmbedcrypto.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/3rdparty/everest/libeverest.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/libp256m.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_security/libesp_security.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/efuse/libefuse.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_partition/libesp_partition.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/app_update/libapp_update.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_app_format/libesp_app_format.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_mm/libesp_mm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_gdbstub/libesp_gdbstub.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/driver/libdriver.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gptimer/libesp_driver_gptimer.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_spi/libesp_driver_spi.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdmmc/libesp_driver_sdmmc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sdmmc/libsdmmc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_tsens/libesp_driver_tsens.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2c/libesp_driver_i2c.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_ledc/libesp_driver_ledc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_twai/libesp_driver_twai.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_adc/libesp_adc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_client/libesp_http_client.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_event/libesp_event.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/tcp_transport/libtcp_transport.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp-tls/libesp-tls.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/http_parser/libhttp_parser.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_server/libesp_http_server.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/nvs_flash/libnvs_flash.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mbedtls/libmbedtls.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_wifi/libesp_wifi.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_phy/libesp_phy.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_netif/libesp_netif.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wpa_supplicant/libwpa_supplicant.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_coex/libesp_coex.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_ota/libesp_https_ota.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_security/libesp_security.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/pthread/libpthread.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gpio/libesp_driver_gpio.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_pm/libesp_pm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_app_format/libesp_app_format.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/app_update/libapp_update.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_partition/libesp_partition.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/efuse/libefuse.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/bootloader_support/libbootloader_support.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/spi_flash/libspi_flash.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_system/libesp_system.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_common/libesp_common.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_rom/libesp_rom.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/hal/libhal.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/log/liblog.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/heap/libheap.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/soc/libsoc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_hw_support/libesp_hw_support.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/freertos/libfreertos.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/newlib/libnewlib.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/pthread/libpthread.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cxx/libcxx.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_timer/libesp_timer.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_gptimer/libesp_driver_gptimer.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_ringbuf/libesp_ringbuf.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_uart/libesp_driver_uart.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/app_trace/libapp_trace.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_event/libesp_event.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/nvs_flash/libnvs_flash.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_phy/libesp_phy.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_usb_serial_jtag/libesp_driver_usb_serial_jtag.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_vfs_console/libesp_vfs_console.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/lwip/liblwip.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_netif/libesp_netif.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wpa_supplicant/libwpa_supplicant.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_coex/libesp_coex.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_wifi/libesp_wifi.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_spi/libesp_driver_spi.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_gdbstub/libesp_gdbstub.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/unity/libunity.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cmock/libcmock.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/unity/libunity.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/console/libconsole.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sdmmc/libsdmmc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdmmc/libesp_driver_sdmmc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_tsens/libesp_driver_tsens.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_i2c/libesp_driver_i2c.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_ledc/libesp_driver_ledc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_twai/libesp_driver_twai.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/driver/libdriver.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/http_parser/libhttp_parser.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp-tls/libesp-tls.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_adc/libesp_adc.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_cam/libesp_driver_cam.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_driver_touch_sens/libesp_driver_touch_sens.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_eth/libesp_eth.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_hid/libesp_hid.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/tcp_transport/libtcp_transport.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_client/libesp_http_client.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_http_server/libesp_http_server.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_ota/libesp_https_ota.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_server/libesp_https_server.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_lcd/libesp_lcd.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protobuf-c/libprotobuf-c.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protocomm/libprotocomm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protobuf-c/libprotobuf-c.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/console/libconsole.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_local_ctrl/libesp_local_ctrl.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/protocomm/libprotocomm.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp_https_server/libesp_https_server.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espcoredump/libespcoredump.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wear_levelling/libwear_levelling.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/fatfs/libfatfs.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wear_levelling/libwear_levelling.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/json/libjson.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/mqtt/libmqtt.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/nvs_sec_provider/libnvs_sec_provider.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/perfmon/libperfmon.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rt/librt.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/spiffs/libspiffs.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/touch_element/libtouch_element.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb/libusb.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/json/libjson.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rjrp44__vl53l8cx/librjrp44__vl53l8cx.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__led_strip/libespressif__led_strip.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp32_BNO08x/libesp32_BNO08x.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/cmock/libcmock.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sensor_manager/libsensor_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rjrp44__vl53l8cx/librjrp44__vl53l8cx.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__led_strip/libespressif__led_strip.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/esp32_BNO08x/libesp32_BNO08x.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rtc_ds3231/librtc_ds3231.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/time_sync/libtime_sync.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/libsmart_time.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/rtc_ds3231/librtc_ds3231.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/time_sync/libtime_sync.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/sensor_manager/libsensor_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/libconfig_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/fatfs/libfatfs.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/libstorage_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/smart_time/libsmart_time.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/config_manager/libconfig_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/libdata_processor.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/libespressif__tinyusb.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp_tinyusb/libespressif__esp_tinyusb.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__tinyusb/libespressif__tinyusb.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb/libusb.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_flash_partition/libusb_flash_partition.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/storage_manager/libstorage_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp_tinyusb/libespressif__esp_tinyusb.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/display_manager/libdisplay_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_interface/libusb_interface.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_flash_partition/libusb_flash_partition.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/display_manager/libdisplay_manager.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/gps/libgps.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ssd1306/libssd1306.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/liboled_display.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/gps/libgps.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ssd1306/libssd1306.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/libbuzzer.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-nn/libespressif__esp-nn.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-tflite-micro/libespressif__esp-tflite-micro.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-nn/libespressif__esp-nn.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ml_inference/libml_inference.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/espressif__esp-tflite-micro/libespressif__esp-tflite-micro.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/main/libmain.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/data_processor/libdata_processor.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/usb_interface/libusb_interface.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/oled_display/liboled_display.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/buzzer/libbuzzer.a
+F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/esp-idf/ml_inference/libml_inference.a

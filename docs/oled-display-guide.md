@@ -1,60 +1,55 @@
-# OLED Display - Complete Guide
+# OLED Display Guide
 
-**Consolidated Documentation**  
-**Original Dates**: January 25-30, 2026  
-**Last Updated**: January 31, 2026
+**Last Updated**: March 24, 2026
 
 ---
 
 ## Overview
 
-The ProxiTof system uses a 128×64 SSD1306 OLED display with SPI interface. The display features dual-color zones (yellow top, blue bottom) and supports 9 different display modes.
+The ProxiTof system uses a 128×64 SSD1306 OLED display with 4-wire SPI interface. The display features dual-color zones (yellow top 16px, blue bottom 48px) and supports 9 display modes.
 
 ### Hardware Specifications
-- **Display**: SSD1306 128×64 OLED
-- **Interface**: 4-wire SPI
-- **Colors**: Yellow (top 16px) + Blue (bottom 48px)
+- **Display**: SSD1306 128×64 OLED, 0.96" yellow-blue dual color
+- **Module**: 6-pin (GND, VCC, SCL, SDA, RES, DC)
+- **Interface**: 4-wire SPI (no CS pin)
+- **Colors**: Yellow (top 16px, pages 0-1) + Blue (bottom 48px, pages 2-7)
 - **Library**: nopnop2002/esp-idf-ssd1306
+- **Frame buffer**: 1024 bytes with differential updates (flicker-free)
 
 ---
 
 ## Wiring
 
-### SPI Connections
-| OLED Pin | ESP32-S3 GPIO | Function |
-|----------|---------------|----------|
-| GND | GND | Ground |
-| VCC | 3.3V | Power |
-| SCL/CLK | GPIO 12 | SPI Clock |
-| SDA/MOSI | GPIO 11 | SPI Data |
-| RES | GPIO 9 | Reset |
-| DC | GPIO 13 | Data/Command |
-| CS | GPIO 10 | Chip Select |
+### SPI Connections (from `oled_display.c`)
 
-### Configuration (sdkconfig)
-```
-CONFIG_SPI2_HOST=y
-CONFIG_MOSI_GPIO=11
-CONFIG_SCLK_GPIO=12
-CONFIG_CS_GPIO=10
-CONFIG_DC_GPIO=13
-CONFIG_RESET_GPIO=9
-```
+| Module Label | ESP32-S3 GPIO | SPI Function | SSD1306 Pin |
+|--------------|---------------|--------------|-------------|
+| GND | GND | Ground | GND |
+| VCC | 3.3V | Power (3.3V only) | VCC_IN |
+| SCL | GPIO 7 | SPI Clock (SCK) | D0 |
+| SDA | GPIO 1 | SPI Data (MOSI) | D1 |
+| RES | GPIO 21 | Reset | RES |
+| DC | GPIO 35 | Data/Command | D/C |
+
+> **Note on confusing pin labels:** This 6-pin 0.96" SSD1306 module has "SCL" and "SDA" printed on the PCB, which are typically I2C names. However, this module runs in 4-wire SPI mode. "SCL" is actually the SPI clock (D0 on the SSD1306 chip) and "SDA" is actually SPI MOSI data (D1 on the SSD1306 chip). There is no CS pin on this module. Do not confuse these with I2C — this is a pure SPI connection.
 
 ---
 
 ## Display Modes
 
 ### Mode 0: Dashboard (Default)
-Full overview with ToF grid, IMU data, and statistics.
+Full overview with dithered depth map, IMU summary, and status bar.
 ```
 ┌─────────────────────────┐
-│ ProxiTof    12:34:56    │ ← Yellow zone (status bar)
+│ ProxiTof    12:34:56    │ ← Yellow zone (status bar + time)
+│ LOG 3D 450mm            │ ← Logging/GPS/min distance
 ├─────────────────────────┤
-│ ToF Grid    │ IMU Data  │ ← Blue zone
-│ [4x4 bars]  │ Roll/Pitch│
-│             │ Accel     │
-│ Stats: Near-miss count  │
+│ ░░▒▒▓▓██ ░░▒▒▓▓██      │ ← Dithered depth map (4x4 zones)
+│ ░░▒▒▓▓██ ░░▒▒▓▓██      │   8 density levels, EMA smoothed
+│ ░░▒▒▓▓██ ░░▒▒▓▓██      │   Crosshair on closest zone
+│ ░░▒▒▓▓██ ░░▒▒▓▓██      │   Dotted separator lines
+│ R:+12 P:-5 Y:89        │ ← IMU roll/pitch/yaw
+│ A:0.1 -0.0 9.8         │ ← IMU acceleration
 └─────────────────────────┘
 ```
 
@@ -223,9 +218,9 @@ The SSD1306 display has two color zones:
 ## Troubleshooting
 
 ### Display Not Working
-1. Check SPI wiring (all 7 connections)
+1. Check SPI wiring (all 6 connections: GND, VCC, SCL, SDA, RES, DC)
 2. Verify `OLED_ENABLED=true` in config.txt
-3. Check power supply (3.3V)
+3. Check power supply (3.3V, not 5V)
 4. Try different GPIO pins if conflicts
 
 ### Display Glitches
@@ -261,18 +256,34 @@ OLED_TIMEOUT_SEC=300  # Turn off after 5 minutes
 
 ## Implementation Files
 
-- `components/oled_display/oled_display.c` - Display driver
+- `components/oled_display/oled_display.c` - Display driver (frame buffer, depth map, all modes)
 - `components/oled_display/include/oled_display.h` - API definitions
-- `components/oled_display/proxitof_logo.h` - Boot logo
-- `managed_components/ssd1306/` - SSD1306 library
+- `components/oled_display/proxitof_logo.h` - Boot logo bitmap
+- `managed_components/ssd1306/` - SSD1306 library (nopnop2002)
+
+---
+
+## Key Implementation Details
+
+### Depth Map (Dashboard Mode)
+- 4x4 dithered blocks (32x8px each) mapped to ToF zones
+- 8 density levels: solid → dense checkerboard → sparse dots → empty
+- EMA filter (alpha=0.7) smooths sudden distance jumps
+- XOR crosshair marks the closest zone
+- XOR dotted separator lines between columns
+
+### Frame Buffer
+- 1024-byte frame buffer with differential updates
+- Only changed pages are sent to display (reduces SPI traffic)
+- Eliminates flicker during updates
 
 ---
 
 ## Related Documentation
 
-- `docs/complete-wiring-diagram.md` - Full hardware wiring
-- `docs/GPIO_PIN_REFERENCE.md` - GPIO assignments
-- `docs/note-7-OLED_RESOLUTION_FINAL.md` - Resolution details
+- [complete-wiring-diagram.md](complete-wiring-diagram.md) - Full hardware wiring
+- [gpio-pin-reference.md](gpio-pin-reference.md) - GPIO assignments
+- [display-modes-and-layouts.md](display-modes-and-layouts.md) - Detailed mode layouts
 
 ---
 

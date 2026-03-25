@@ -2,34 +2,34 @@
 	"sources" : 
 	[
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/CMakeFiles/bootloader-complete.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
 		},
 		{
-			"file" : "D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+			"file" : "F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
 		}
 	],
 	"target" : 

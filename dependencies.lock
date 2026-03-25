@@ -78,7 +78,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.2
+    version: 5.5.1
   rjrp44/vl53l8cx:
     component_hash: 453314712a3e36ae9c6c4c169943f3be9cc15579071f4afb2bb662faed669f7f
     dependencies:

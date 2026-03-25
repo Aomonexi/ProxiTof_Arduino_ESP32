@@ -395,30 +395,60 @@ esp_err_t gps_init(int uart_num, int tx_pin, int rx_pin, uint32_t baud_rate, uin
     // Note: GPS works fine with factory defaults, this just optimizes it
     ESP_LOGI(TAG, "Configuring GPS for optimal performance...");
     
-    // 0. Configure antenna (ensure IPEX/internal antenna is active)
-    // NEO-M9N CFG-ANT: Select internal antenna (IPEX) over external (SMA)
-    // This is critical if module has both IPEX and SMA connectors
-    uint8_t ubx_cfg_ant[] = {
+    // 0. Configure antenna - Try BOTH configurations for modules with SMA+IPEX
+    // Some modules auto-detect, some need explicit configuration
+    ESP_LOGI(TAG, "Configuring antenna (trying both IPEX and SMA for compatibility)...");
+    
+    // Configuration 1: Enable IPEX (internal) antenna
+    // Pins: 0xF39F = internal antenna configuration
+    uint8_t ubx_cfg_ant_ipex[] = {
         0xB5, 0x62,  // UBX header
         0x06, 0x13,  // CFG-ANT
         0x04, 0x00,  // Length: 4 bytes
-        0x1B, 0x00,  // flags: svcs=1, scd=1, ocd=1, pdwnOnSCD=1, recovery=1
-        0xF3, 0x9F,  // pins: default pin configuration
+        0x1F, 0x00,  // flags: all features enabled (svcs, scd, ocd, pdwnOnSCD, recovery)
+        0xF3, 0x9F,  // pins: internal antenna (IPEX) configuration
         0x00, 0x00   // Checksum (will be calculated)
     };
     
-    // Calculate checksum for CFG-ANT
+    // Calculate checksum for IPEX config
     uint8_t ck_a = 0, ck_b = 0;
-    for (int i = 2; i < sizeof(ubx_cfg_ant) - 2; i++) {
-        ck_a += ubx_cfg_ant[i];
+    for (int i = 2; i < sizeof(ubx_cfg_ant_ipex) - 2; i++) {
+        ck_a += ubx_cfg_ant_ipex[i];
         ck_b += ck_a;
     }
-    ubx_cfg_ant[sizeof(ubx_cfg_ant) - 2] = ck_a;
-    ubx_cfg_ant[sizeof(ubx_cfg_ant) - 1] = ck_b;
+    ubx_cfg_ant_ipex[sizeof(ubx_cfg_ant_ipex) - 2] = ck_a;
+    ubx_cfg_ant_ipex[sizeof(ubx_cfg_ant_ipex) - 1] = ck_b;
     
-    uart_write_bytes(uart_num, ubx_cfg_ant, sizeof(ubx_cfg_ant));
-    vTaskDelay(pdMS_TO_TICKS(100));
-    ESP_LOGI(TAG, "✓ Configured antenna (internal/IPEX active, SCD/OCD enabled)");
+    uart_write_bytes(uart_num, ubx_cfg_ant_ipex, sizeof(ubx_cfg_ant_ipex));
+    vTaskDelay(pdMS_TO_TICKS(200));
+    ESP_LOGI(TAG, "✓ Sent IPEX antenna configuration");
+    
+    // Configuration 2: Also enable SMA (external) antenna as fallback
+    // Pins: 0xF31F = external antenna configuration
+    uint8_t ubx_cfg_ant_sma[] = {
+        0xB5, 0x62,  // UBX header
+        0x06, 0x13,  // CFG-ANT
+        0x04, 0x00,  // Length: 4 bytes
+        0x1F, 0x00,  // flags: all features enabled
+        0xF3, 0x1F,  // pins: external antenna (SMA) configuration
+        0x00, 0x00   // Checksum (will be calculated)
+    };
+    
+    // Calculate checksum for SMA config
+    ck_a = 0;
+    ck_b = 0;
+    for (int i = 2; i < sizeof(ubx_cfg_ant_sma) - 2; i++) {
+        ck_a += ubx_cfg_ant_sma[i];
+        ck_b += ck_a;
+    }
+    ubx_cfg_ant_sma[sizeof(ubx_cfg_ant_sma) - 2] = ck_a;
+    ubx_cfg_ant_sma[sizeof(ubx_cfg_ant_sma) - 1] = ck_b;
+    
+    uart_write_bytes(uart_num, ubx_cfg_ant_sma, sizeof(ubx_cfg_ant_sma));
+    vTaskDelay(pdMS_TO_TICKS(200));
+    ESP_LOGI(TAG, "✓ Sent SMA antenna configuration");
+    ESP_LOGI(TAG, "💡 Module will auto-select active antenna (IPEX or SMA)");
+    ESP_LOGI(TAG, "💡 Antenna supervisor enabled (detects OPEN/SHORT conditions)");
     
     // 1. Enable all GNSS systems (GPS + GLONASS + Galileo + BeiDou + QZSS + SBAS)
     // This gives faster fix acquisition (more satellites visible)

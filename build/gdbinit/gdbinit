@@ -1,2 +1,2 @@
-source D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/gdbinit/symbols
-source D:/Master Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/gdbinit/connect
+source F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/gdbinit/symbols
+source F:/Master's_Extension/Master's_Thesis/Proximity_Device/ProxiTof_Arduino_ESP32/build/gdbinit/connect
