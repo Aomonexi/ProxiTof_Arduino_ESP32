@@ -863,19 +863,175 @@ GND            --> Other end
 ## Complete System Diagram
 
 ```
-                    ESP32-S3-DevKitC-1
-                    ==================
-                    
-I2C Bus:            SPI Bus (IMU):              SDMMC Bus (SD):         GPIO:
---------            ---------------              ----------------        -----
-GPIO 8  ────────────> VL53L8CX ToF    GPIO 14 ──────────> SD Card CLK   GPIO 3  ────> Button
-GPIO 9  ────────────> DS3231 RTC      GPIO 15 ──────────> SD Card CMD   GPIO 48 ────> WS2812 LED
-GPIO 4  ────────────> (ToF LPN)       GPIO 2  ──────────> SD Card D0    
-                    GPIO 11 ──────────> BNO08x IMU (MOSI) GPIO 16 ──────────> SD Card D1
-                    GPIO 13 ──────────> BNO08x IMU (MISO) GPIO 17 ──────────> SD Card D2
-                    GPIO 12 ──────────> BNO08x IMU (SCK)  GPIO 18 ──────────> SD Card D3
-                    GPIO 10 ──────────> BNO08x IMU (CS)   
-                    GPIO 5  ──────────> BNO08x IMU (INT)  
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                         ESP32-S3-DevKitC-1  (N16R8)                            ║
+║                         16 MB Flash · 8 MB PSRAM · 240 MHz                     ║
+╠══════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                  ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐    ║
+║  │  I²C BUS  (GPIO 8 = SDA, GPIO 9 = SCL)                                 │    ║
+║  │                                                                          │    ║
+║  │   GPIO 8 (SDA) ──┬──────────────────────────────────────────────────   │    ║
+║  │   GPIO 9 (SCL) ──┼──────────────────────────────────────────────────   │    ║
+║  │                  │                                                       │    ║
+║  │          ┌───────┴───────┐              ┌──────────────────┐            │    ║
+║  │          │  VL53L8CX     │              │   DS3231 RTC     │            │    ║
+║  │          │  ToF Sensor   │              │  Battery-Backed  │            │    ║
+║  │          │  4×4 Matrix   │              │  Timekeeping     │            │    ║
+║  │          │  Addr: 0x29   │              │  Addr: 0x68      │            │    ║
+║  │          │               │              │                  │            │    ║
+║  │          │ SDA ──────────┤              │ SDA ─────────────┤            │    ║
+║  │          │ SCL ──────────┤              │ SCL ─────────────┤            │    ║
+║  │          │ VCC ── 3.3V   │              │ VCC ── 3.3V      │            │    ║
+║  │          │ GND ── GND    │              │ GND ── GND       │            │    ║
+║  │          │ LPN ── GPIO 36│              │ CR2032 battery   │            │    ║
+║  │          └───────────────┘              └──────────────────┘            │    ║
+║  └─────────────────────────────────────────────────────────────────────────┘    ║
+║                                                                                  ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐    ║
+║  │  SPI BUS — IMU  (GPIO 11=MOSI, GPIO 13=MISO, GPIO 12=SCK, GPIO 10=CS)  │    ║
+║  │                                                                          │    ║
+║  │          ┌───────────────────────────────┐                              │    ║
+║  │          │  BNO08x IMU                   │                              │    ║
+║  │          │  9-DOF Motion Sensor          │                              │    ║
+║  │          │  Roll · Pitch · Yaw           │                              │    ║
+║  │          │  Accel · Gyro · Mag           │                              │    ║
+║  │          │                               │                              │    ║
+║  │          │ DI  (MOSI) ── GPIO 11         │                              │    ║
+║  │          │ SDA (MISO) ── GPIO 13         │                              │    ║
+║  │          │ SCK        ── GPIO 12         │                              │    ║
+║  │          │ CS         ── GPIO 10         │                              │    ║
+║  │          │ INT        ── GPIO 5          │                              │    ║
+║  │          │ RST        ── GPIO 6          │                              │    ║
+║  │          │ P0         ── 3.3V  ┐ SPI     │                              │    ║
+║  │          │ P1         ── 3.3V  ┘ mode    │                              │    ║
+║  │          │ BT         ── FLOAT           │                              │    ║
+║  │          │ VCC        ── 3.3V            │                              │    ║
+║  │          │ GND        ── GND             │                              │    ║
+║  │          └───────────────────────────────┘                              │    ║
+║  └─────────────────────────────────────────────────────────────────────────┘    ║
+║                                                                                  ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐    ║
+║  │  SPI BUS — OLED  (GPIO 7=SCK, GPIO 1=MOSI, GPIO 35=DC, GPIO 21=RST)    │    ║
+║  │                                                                          │    ║
+║  │          ┌───────────────────────────────┐                              │    ║
+║  │          │  SSD1306 OLED  128×64         │                              │    ║
+║  │          │  0.96" Dual-colour            │                              │    ║
+║  │          │  Yellow (top) · Blue (bottom) │                              │    ║
+║  │          │  4-wire SPI · No CS pin       │                              │    ║
+║  │          │                               │                              │    ║
+║  │          │ SCL (D0/SCK) ── GPIO 7        │                              │    ║
+║  │          │ SDA (D1/MOSI)── GPIO 1        │                              │    ║
+║  │          │ RES (RST)    ── GPIO 21       │                              │    ║
+║  │          │ DC           ── GPIO 35       │                              │    ║
+║  │          │ VCC          ── 3.3V          │                              │    ║
+║  │          │ GND          ── GND           │                              │    ║
+║  │          └───────────────────────────────┘                              │    ║
+║  └─────────────────────────────────────────────────────────────────────────┘    ║
+║                                                                                  ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐    ║
+║  │  SDMMC BUS — 4-bit  (GPIO 14=CLK, 15=CMD, 2=D0, 16=D1, 17=D2, 18=D3)  │    ║
+║  │                                                                          │    ║
+║  │          ┌───────────────────────────────┐                              │    ║
+║  │          │  MicroSD Card                 │                              │    ║
+║  │          │  FAT32 · High-speed logging   │                              │    ║
+║  │          │  4-bit parallel SDMMC         │                              │    ║
+║  │          │                               │                              │    ║
+║  │          │ CLK ── GPIO 14                │                              │    ║
+║  │          │ CMD ── GPIO 15                │                              │    ║
+║  │          │ D0  ── GPIO 2                 │                              │    ║
+║  │          │ D1  ── GPIO 16                │                              │    ║
+║  │          │ D2  ── GPIO 17                │                              │    ║
+║  │          │ D3  ── GPIO 18                │                              │    ║
+║  │          │ VCC ── 3.3V                   │                              │    ║
+║  │          │ GND ── GND                    │                              │    ║
+║  │          └───────────────────────────────┘                              │    ║
+║  └─────────────────────────────────────────────────────────────────────────┘    ║
+║                                                                                  ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐    ║
+║  │  UART1  (GPIO 38=TX → GPS RX,  GPIO 47=RX ← GPS TX)                    │    ║
+║  │                                                                          │    ║
+║  │          ┌───────────────────────────────┐                              │    ║
+║  │          │  Neo-M9N GPS                  │                              │    ║
+║  │          │  Multi-GNSS · 2 m accuracy    │                              │    ║
+║  │          │  GPS+GLONASS+Galileo+BeiDou   │                              │    ║
+║  │          │                               │                              │    ║
+║  │          │ RX ←── GPIO 38 (ESP TX)       │                              │    ║
+║  │          │ TX ───► GPIO 47 (ESP RX)       │                              │    ║
+║  │          │ VCC ── 3.3V / 5V (see note)   │                              │    ║
+║  │          │ GND ── GND                    │                              │    ║
+║  │          └───────────────────────────────┘                              │    ║
+║  └─────────────────────────────────────────────────────────────────────────┘    ║
+║                                                                                  ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐    ║
+║  │  GPIO / PWM / ADC                                                        │    ║
+║  │                                                                          │    ║
+║  │  GPIO 3  ──────────────────────────────── [ FLAG BUTTON ]               │    ║
+║  │           (internal pull-up · active LOW)   One side → GPIO 3           │    ║
+║  │                                              Other side → GND            │    ║
+║  │                                                                          │    ║
+║  │  GPIO 20 ──────────────────────────────── [ MODE BUTTON ]               │    ║
+║  │           (internal pull-up · active LOW)   One side → GPIO 20          │    ║
+║  │                                              Other side → GND            │    ║
+║  │                                                                          │    ║
+║  │  GPIO 45 ──────────────────────────────── [ BUZZER ]                    │    ║
+║  │           (PWM · LEDC · 2 kHz)              IN  → GPIO 45               │    ║
+║  │                                              VCC → 3.3V or 5V           │    ║
+║  │                                              GND → GND                  │    ║
+║  │                                                                          │    ║
+║  │  GPIO 4  ──────────────────────────────── [ POTENTIOMETER 10 kΩ ]       │    ║
+║  │           (ADC1_CH3 · 0–3.3 V)              Wiper (middle) → GPIO 4     │    ║
+║  │                                              End 1 → 3.3V               │    ║
+║  │                                              End 2 → GND                │    ║
+║  │                                                                          │    ║
+║  │  GPIO 48 ──────────────────────────────── [ WS2812 RGB LED ]            │    ║
+║  │           (RMT · built-in on DevKitC-1)     Built-in — no wiring needed │    ║
+║  │                                                                          │    ║
+║  └─────────────────────────────────────────────────────────────────────────┘    ║
+║                                                                                  ║
+╠══════════════════════════════════════════════════════════════════════════════════╣
+║  POWER                                                                           ║
+║  USB-C 5V ──► ESP32-S3 onboard 3.3V LDO ──► 3.3V rail                         ║
+║                                              ├── VL53L8CX  (~25 mA)            ║
+║                                              ├── DS3231    (~1 mA)             ║
+║                                              ├── BNO08x    (~5 mA)             ║
+║                                              ├── SSD1306   (~10 mA)            ║
+║                                              ├── SD Card   (~100 mA peak)      ║
+║                                              └── Neo-M9N   (~25 mA)            ║
+║  Total typical: ~80–120 mA · Peak: ~300 mA                                      ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Pin Summary Table
+
+| GPIO | Signal | Component | Interface |
+|------|--------|-----------|-----------|
+| 1 | MOSI / SDA | OLED Display | SPI |
+| 2 | D0 | SD Card | SDMMC |
+| 3 | FLAG button | Flag Button | GPIO input |
+| 4 | ADC1_CH3 | Potentiometer | ADC |
+| 5 | IMU INT | BNO08x | SPI |
+| 6 | IMU RST | BNO08x | SPI |
+| 7 | SCK / SCL | OLED Display | SPI |
+| 8 | SDA | VL53L8CX + DS3231 | I²C |
+| 9 | SCL | VL53L8CX + DS3231 | I²C |
+| 10 | CS | BNO08x | SPI |
+| 11 | MOSI | BNO08x | SPI |
+| 12 | SCK | BNO08x | SPI |
+| 13 | MISO | BNO08x | SPI |
+| 14 | CLK | SD Card | SDMMC |
+| 15 | CMD | SD Card | SDMMC |
+| 16 | D1 | SD Card | SDMMC |
+| 17 | D2 | SD Card | SDMMC |
+| 18 | D3 | SD Card | SDMMC |
+| 20 | MODE button | Mode Button | GPIO input |
+| 21 | RST | OLED Display | SPI |
+| 35 | DC | OLED Display | SPI |
+| 36 | LPN | VL53L8CX | GPIO output |
+| 38 | UART1 TX | Neo-M9N GPS | UART |
+| 45 | PWM | Buzzer | LEDC |
+| 47 | UART1 RX | Neo-M9N GPS | UART |
+| 48 | LED data | WS2812 RGB LED | RMT |                    GPIO 5  ──────────> BNO08x IMU (INT)  
                     GPIO 6  ──────────> BNO08x IMU (RST)
 
 Power:
