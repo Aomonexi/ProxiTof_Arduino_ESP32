@@ -103,7 +103,7 @@ static bool volume_popup_active = false;
 static float ema_distances[16] = {4000,4000,4000,4000,4000,4000,4000,4000,
                                    4000,4000,4000,4000,4000,4000,4000,4000};
 static bool ema_initialized = false;
-#define EMA_ALPHA 0.7f  // 0.7 = responsive, 0.3 = smooth (higher = faster response)
+#define EMA_ALPHA 0.9f  // 0.9 = very responsive, 0.3 = smooth (higher = faster response)
 
 // GPS mode cycling state
 static bool gps_mode_cycling_active = false;
@@ -279,8 +279,8 @@ static void fb_draw_depth_map(const tof_data_t *tof_data) {
             ema_distances[i] = raw;
         } else {
             if (raw > 4000.0f) {
-                // Slowly fade to max when reading becomes invalid
-                ema_distances[i] = ema_distances[i] * 0.9f + 4001.0f * 0.1f;
+                // Quickly fade to max when reading becomes invalid
+                ema_distances[i] = ema_distances[i] * 0.3f + 4001.0f * 0.7f;
             } else {
                 ema_distances[i] = EMA_ALPHA * raw + (1.0f - EMA_ALPHA) * ema_distances[i];
             }

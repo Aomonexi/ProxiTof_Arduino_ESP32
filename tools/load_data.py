@@ -8,7 +8,8 @@ import os
 
 def load_csv_files(data_dir='../data/raw'):
     """Load all CSV files from directory"""
-    csv_files = glob.glob(os.path.join(data_dir, '*.csv'))
+    csv_files = glob.glob(os.path.join(data_dir, '*.csv')) + \
+                glob.glob(os.path.join(data_dir, '*.CSV'))
     
     if not csv_files:
         print(f"❌ No CSV files found in {data_dir}")
@@ -21,7 +22,8 @@ def load_csv_files(data_dir='../data/raw'):
     for csv_file in csv_files:
         print(f"Loading {os.path.basename(csv_file)}...")
         try:
-            df = pd.read_csv(csv_file)
+            # Skip comment lines starting with '#'
+            df = pd.read_csv(csv_file, comment='#')
             dfs.append(df)
         except Exception as e:
             print(f"  ⚠️  Error loading {csv_file}: {e}")
@@ -45,7 +47,7 @@ def inspect_data(df):
     
     # Check for required columns
     required_cols = ['timestamp_ms', 'flag_manual']
-    tof_cols = [f'tof_{i:02d}' for i in range(16)]
+    tof_cols = [f'tof_{row}{col}' for row in range(4) for col in range(4)]
     imu_cols = ['roll', 'pitch', 'yaw', 'accel_x', 'accel_y', 'accel_z', 
                 'gyro_x', 'gyro_y', 'gyro_z']
     

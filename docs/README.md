@@ -44,6 +44,7 @@
 |----------|-------------|
 | [complete-wiring-diagram.md](complete-wiring-diagram.md) | All component connections |
 | [gpio-pin-reference.md](gpio-pin-reference.md) | GPIO pin assignments (verified from code) |
+| [sensor-integration-guide.md](sensor-integration-guide.md) | All sensors — ToF, IMU, GPS, RTC, buzzer: how they work, wiring, data flow |
 
 ---
 
@@ -74,6 +75,7 @@
 | Document | Description |
 |----------|-------------|
 | [near-miss-detection-algorithm.md](near-miss-detection-algorithm.md) | Detection algorithm details |
+| [mathematical-formulations.md](mathematical-formulations.md) | All mathematical formulas — filters, features, detection logic, thresholds |
 | [near-miss-definition-and-ml-pipeline.md](near-miss-definition-and-ml-pipeline.md) | Definition and ML pipeline |
 | [hybrid-detection-strategy.md](hybrid-detection-strategy.md) | Hybrid (algorithm + ML) strategy |
 | [priority-based-detection.md](priority-based-detection.md) | Priority-based detection |

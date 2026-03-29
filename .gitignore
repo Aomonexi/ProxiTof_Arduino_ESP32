@@ -3,6 +3,7 @@
 .vscode/
 .clang_complete
 .gcc-flags.json
+.kiro/
 
 # ESP-IDF Build artifacts
 build/
@@ -36,6 +37,7 @@ __pycache__/
 .Python
 env/
 venv/
+venv_ml/
 
 # Logs
 *.log
@@ -45,6 +47,21 @@ venv/
 *.bak
 *.old
 
-# SD card test data (optional - uncomment if needed)
+# SD card / training data — raw CSV files can be large (>100MB)
+# Keep the README files but ignore all CSV data
+data/raw/*.CSV
+data/raw/*.csv
+data/processed/combined_data.csv
+
+# Large processed numpy arrays
+data/processed/*.npy
+data/processed/*.pkl
+data/processed/*.npz
+
+# Trained model files (large binaries)
+models/*.h5
+models/*.keras
+models/*.tflite
+
+# SD card test data (old entry — superseded above)
 # data/*.csv
-# data/20*/

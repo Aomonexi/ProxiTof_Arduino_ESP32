@@ -268,6 +268,31 @@ static esp_err_t init_tof_sensor(void)
         return ESP_FAIL;
     }
     
+    // Set integration time to limit how long the sensor waits for a return signal.
+    // In AUTONOMOUS mode, this controls the max time per measurement frame.
+    // 10ms is enough for targets up to ~4m while keeping the sensor responsive
+    // when zones have no target (open air / outdoors).
+    // NOTE: Integration time has NO effect in CONTINUOUS mode (per ST docs),
+    // so we MUST use AUTONOMOUS mode for this to work.
+    status = vl53l8cx_set_integration_time_ms(&tof_dev, 10);
+    if (status != VL53L8CX_STATUS_OK) {
+        ESP_LOGW(TAG, "Set integration time failed (status=%d), using default", status);
+        // Non-fatal: sensor will still work with default timing
+    } else {
+        ESP_LOGI(TAG, "✓ Integration time set to 10ms (faster no-target recovery)");
+    }
+    
+    // Use AUTONOMOUS ranging mode so integration time is respected.
+    // In CONTINUOUS mode, integration time is always maximum (per ST docs),
+    // which causes the sensor to block when zones have no return signal.
+    // AUTONOMOUS mode uses the configured integration time, preventing freezes.
+    status = vl53l8cx_set_ranging_mode(&tof_dev, VL53L8CX_RANGING_MODE_AUTONOMOUS);
+    if (status != VL53L8CX_STATUS_OK) {
+        ESP_LOGW(TAG, "Set ranging mode failed (status=%d), using default", status);
+    } else {
+        ESP_LOGI(TAG, "✓ Ranging mode set to AUTONOMOUS (respects integration time)");
+    }
+    
     ESP_LOGI(TAG, "✓ Configuration complete");
     
     // Wait for sensor to stabilize after configuration
@@ -536,29 +561,43 @@ esp_err_t sensor_manager_read_tof(tof_data_t *data)
         return ESP_ERR_INVALID_ARG;
     }
     
-    // Static variables for error tracking
+    // Static variables for error tracking and no-data watchdog
     static uint32_t last_error_log = 0;
     static uint32_t consecutive_errors = 0;
+    static uint32_t last_valid_frame_time = 0;  // Watchdog: time of last successful frame
     
-    // Check if data is ready
+    uint32_t now = sensor_manager_get_timestamp();
+    
+    // Initialize watchdog timestamp on first call
+    if (last_valid_frame_time == 0) {
+        last_valid_frame_time = now;
+    }
+    
+    // Check if data is ready (with timing guard)
     uint8_t is_ready = 0;
+    uint32_t t_start = sensor_manager_get_timestamp();
     uint8_t status = vl53l8cx_check_data_ready(&tof_dev, &is_ready);
+    uint32_t t_elapsed = sensor_manager_get_timestamp() - t_start;
+    
+    // If the I2C call took too long, the sensor is likely struggling
+    if (t_elapsed > 50) {
+        ESP_LOGW(TAG, "ToF data_ready check took %lu ms (expected <5ms)", t_elapsed);
+    }
+    
     if (status != VL53L8CX_STATUS_OK) {
-        // Log error but don't increment error count for every failed check
-        // Status 133 might indicate I2C communication issues
-        uint32_t now = sensor_manager_get_timestamp();
-        
         consecutive_errors++;
         
         if (now - last_error_log > 1000) {  // Log error once per second
-            ESP_LOGE(TAG, "Failed to check ToF data ready (status=%d, consecutive_errors=%lu)", status, consecutive_errors);
+            ESP_LOGE(TAG, "Failed to check ToF data ready (status=%d, consecutive_errors=%lu, i2c_time=%lu ms)", 
+                     status, consecutive_errors, t_elapsed);
             last_error_log = now;
             
             // Try recovery if we have many consecutive errors
-            if (consecutive_errors > 50) {  // About 1 second of errors at high poll rate
+            if (consecutive_errors > 20) {
                 ESP_LOGW(TAG, "Too many consecutive ToF errors, attempting recovery...");
                 if (recover_tof_sensor() == ESP_OK) {
-                    consecutive_errors = 0;  // Reset error count on successful recovery
+                    consecutive_errors = 0;
+                    last_valid_frame_time = now;  // Reset watchdog after recovery
                 } else {
                     health.tof_healthy = false;
                     health.tof_error_count++;
@@ -572,17 +611,44 @@ esp_err_t sensor_manager_read_tof(tof_data_t *data)
     consecutive_errors = 0;
     
     if (!is_ready) {
+        // =====================================================================
+        // NO-DATA WATCHDOG
+        // At 60Hz, a new frame should arrive every ~17ms.
+        // If no frame has arrived for >300ms (~18 missed frames), the sensor
+        // has stalled — is_ready=0 is not an error so consecutive_errors won't
+        // catch this. Proactively recover before the data goes stale.
+        // =====================================================================
+        uint32_t no_data_duration = now - last_valid_frame_time;
+        if (no_data_duration > 300) {
+            ESP_LOGW(TAG, "ToF no-data watchdog: no frame for %lu ms, triggering recovery", no_data_duration);
+            if (recover_tof_sensor() == ESP_OK) {
+                last_valid_frame_time = now;  // Reset watchdog
+            } else {
+                health.tof_healthy = false;
+                health.tof_error_count++;
+            }
+        }
         return ESP_ERR_NOT_FOUND;  // No new data available (normal at high polling rates)
     }
     
-    // Get ranging data
+    // Get ranging data (with timing guard)
     VL53L8CX_ResultsData results;
+    t_start = sensor_manager_get_timestamp();
     status = vl53l8cx_get_ranging_data(&tof_dev, &results);
+    t_elapsed = sensor_manager_get_timestamp() - t_start;
+    
+    if (t_elapsed > 50) {
+        ESP_LOGW(TAG, "ToF get_ranging_data took %lu ms (expected <10ms)", t_elapsed);
+    }
+    
     if (status != VL53L8CX_STATUS_OK) {
-        ESP_LOGE(TAG, "Failed to get ToF data (status=%d)", status);
+        ESP_LOGE(TAG, "Failed to get ToF data (status=%d, i2c_time=%lu ms)", status, t_elapsed);
         health.tof_error_count++;
         return ESP_FAIL;
     }
+    
+    // Successful frame — reset the no-data watchdog
+    last_valid_frame_time = sensor_manager_get_timestamp();
     
     // Fill output structure
     data->timestamp_ms = sensor_manager_get_timestamp();
@@ -601,6 +667,14 @@ esp_err_t sensor_manager_read_tof(tof_data_t *data)
     //   8  9 10 11                       7  6  5  4
     //  12 13 14 15                       3  2  1  0
     //
+    // VL53L8CX target_status values:
+    //   5 = valid measurement, 9 = valid measurement (sigma OK)
+    //   Other values = no target / error / wrap-around
+    // When a zone has no valid target, we report TOF_MAX_VALID_DISTANCE_MM
+    // to prevent downstream issues (display freezes, false near-miss triggers).
+    //
+    #define TOF_MAX_VALID_DISTANCE_MM  3800  // Cap at 3800mm — clear margin below 4m sensor limit
+    
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
             int sensor_index = row * 4 + col;  // Original sensor index
@@ -610,7 +684,26 @@ esp_err_t sensor_manager_read_tof(tof_data_t *data)
             int flipped_col = 3 - col;  // Flip horizontally
             int output_index = flipped_row * 4 + flipped_col;
             
-            data->distances[output_index] = results.distance_mm[VL53L8CX_NB_TARGET_PER_ZONE * sensor_index];
+            int data_index = VL53L8CX_NB_TARGET_PER_ZONE * sensor_index;
+            uint8_t target_stat = results.target_status[data_index];
+            int16_t raw_distance_signed = results.distance_mm[data_index];
+            
+            uint16_t distance;
+            
+            // Check target_status: 5 and 9 mean valid ranging measurement
+            // Any other status means no target or error — clamp to max
+            if ((target_stat == 5 || target_stat == 9) && raw_distance_signed > 0) {
+                distance = (uint16_t)raw_distance_signed;
+                // Also clamp valid readings that exceed sensor range
+                if (distance > TOF_MAX_VALID_DISTANCE_MM) {
+                    distance = TOF_MAX_VALID_DISTANCE_MM;
+                }
+            } else {
+                // No valid target: report max distance instead of garbage 65xxx values
+                distance = TOF_MAX_VALID_DISTANCE_MM;
+            }
+            
+            data->distances[output_index] = distance;
         }
     }
     

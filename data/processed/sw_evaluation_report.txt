@@ -1,0 +1,36 @@
+======================================================================
+SLIDING WINDOW 1D-CNN - EVALUATION REPORT
+Offline Comparative Experiment
+======================================================================
+
+Window size  : 10 frames (~0.67s at 15 Hz)
+Model        : 1D-CNN  Conv1D(32) → Conv1D(16) → GAP → Dense(16) → 2
+Threshold    : 0.7
+Test windows : 21758
+Near-miss    : 1978
+
+Sliding Window Results
+----------------------------------------
+  precision   : 0.9382
+  recall      : 0.6678
+  f1          : 0.7803
+  accuracy    : 0.9658
+  auc_roc     : 0.9835
+  fpr         : 0.0044
+  F1 95% CI  : [0.7652, 0.7955]
+  TP=1321  TN=19693  FP=87  FN=657
+
+Comparison: Single-Frame MLP vs Sliding Window CNN
+------------------------------------------------------------
+  Metric         Single-Frame   Sliding Window    Delta
+----------------------------------------------------
+  Precision            0.6519           0.9382  +0.2863
+  Recall               0.6436           0.6678  +0.0242
+  F1-Score             0.6478           0.7803  +0.1325
+  Accuracy             0.9364           0.9658  +0.0294
+  AUC-ROC              0.9264           0.9835  +0.0571
+
+NOTE: This model is OFFLINE only.
+      Deployed firmware uses the single-frame MLP.
+      See: docs/sliding-window-comparative-study.md
+======================================================================

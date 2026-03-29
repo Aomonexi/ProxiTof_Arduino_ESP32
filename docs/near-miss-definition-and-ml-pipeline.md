@@ -311,7 +311,7 @@ Total samples: ~2,160,000 (60 Hz × 10 hours)
 ├─────────────────────────────────────────────────────────────┤
 │  Framework: TensorFlow 2.20+                                │
 │  Architecture: LSTM or 1D-CNN                               │
-│  Input: 29 features × 60 timesteps (1 second window)        │
+│  Input: 25 raw features (16 ToF + 9 IMU), z-score normalized │
 │  Output: Binary classification (near-miss / normal)         │
 │  Loss: Binary crossentropy                                  │
 │  Metrics: Precision, Recall, F1-Score, AUC-ROC              │
@@ -350,7 +350,7 @@ Total samples: ~2,160,000 (60 Hz × 10 hours)
 import tensorflow as tf
 
 model = tf.keras.Sequential([
-    # Input: (batch, 60 timesteps, 29 features)
+    # Input: (batch, 25 features) - raw sensor values only
     tf.keras.layers.Input(shape=(60, 29)),
     
     # Convolutional layers for temporal feature extraction
@@ -449,7 +449,7 @@ def load_and_preprocess(csv_files):
     gyro_cols = ['gyro_x', 'gyro_y', 'gyro_z']
     data['angular_velocity'] = np.sqrt((data[gyro_cols]**2).sum(axis=1))
     
-    # Create feature matrix (29 features)
+    # Create feature matrix (25 raw features — derived features are NOT used for ML)
     feature_cols = (
         [f'tof_{i:02d}' for i in range(16)] +
         ['roll', 'pitch', 'yaw'] +

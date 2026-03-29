@@ -209,13 +209,15 @@ void DataProcessor::extractFeatures(const synced_data_t& data, feature_vector_t&
 uint16_t DataProcessor::calculateMinDistance(const uint16_t distances[16]) const {
     // Property 55: Minimum distance calculation
     // Requirement 14.1: Calculate minimum distance across ToF 4x4 grid
+    // NOTE: 3800mm is the clamped "no target" value — exclude it from min calculation
     
-    uint16_t min_dist = distances[0];
-    for (int i = 1; i < 16; i++) {
-        if (distances[i] < min_dist) {
+    uint16_t min_dist = 3800;  // Start at max (no-target value)
+    for (int i = 0; i < 16; i++) {
+        if (distances[i] > 0 && distances[i] < 3800 && distances[i] < min_dist) {
             min_dist = distances[i];
         }
     }
+    // If all zones report no target, return 3800 to indicate "clear"
     return min_dist;
 }
 
@@ -226,6 +228,15 @@ float DataProcessor::calculateApproachRate(uint16_t current_min, uint16_t previo
     // Requirement 14.2: Calculate approach rate from consecutive ToF frames
     
     if (delta_time_ms == 0) {
+        return 0.0f;
+    }
+    
+    // If either reading is the "no target" sentinel (3800mm), skip calculation.
+    // A transition between a real reading and 3800mm is NOT an approach/retreat —
+    // it just means the target left or entered the sensor's range.
+    // Without this guard, a 300mm → 3800mm transition would compute a false
+    // approach rate of ~218,000 mm/s, triggering spurious near-miss alerts.
+    if (current_min >= 3800 || previous_min >= 3800) {
         return 0.0f;
     }
     
@@ -279,9 +290,10 @@ bool DataProcessor::detectNearMiss(const feature_vector_t& features) {
     // =========================================================================
     // Distance = 0mm indicates sensor is blocked or facing surface directly
     // Distance < 20mm is too close to be a valid near-miss (sensor blocked)
+    // Distance >= 3800mm means no target in range (outdoors, open air)
     // This prevents false positives when device is on table or sensor is covered
-    if (features.min_distance_mm < 20) {
-        return false;  // Invalid reading - sensor blocked or too close
+    if (features.min_distance_mm < 20 || features.min_distance_mm >= 3800) {
+        return false;  // Invalid reading - sensor blocked, too close, or no target
     }
     
     // =========================================================================
@@ -414,6 +426,13 @@ uint16_t DataProcessor::applyDistanceFilter(uint16_t raw_distance) {
     // Smart adaptive filter:
     // - Filters out small noise (tilt, vibration) with moving average
     // - Preserves large rapid changes (fast-approaching objects like bikes)
+    // NOTE: 3800mm is the "no target" sentinel — pass it through unchanged
+    //       without updating the filter buffer, so it doesn't corrupt the
+    //       moving average for when a real target returns.
+    
+    if (raw_distance >= 3800) {
+        return 3800;  // No target — don't update filter state
+    }
     
     // Add new reading to circular buffer
     distanceFilterBuffer[distanceFilterIndex] = raw_distance;
@@ -424,7 +443,7 @@ uint16_t DataProcessor::applyDistanceFilter(uint16_t raw_distance) {
         distanceFilterCount++;
     }
     
-    // Calculate moving average
+    // Calculate moving average (only over valid non-sentinel samples)
     uint32_t sum = 0;
     for (int i = 0; i < distanceFilterCount; i++) {
         sum += distanceFilterBuffer[i];

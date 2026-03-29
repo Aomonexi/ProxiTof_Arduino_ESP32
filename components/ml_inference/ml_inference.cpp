@@ -38,13 +38,11 @@ static tflite::MicroInterpreter* interpreter = nullptr;
 static TfLiteTensor* input = nullptr;
 static TfLiteTensor* output = nullptr;
 
-// Tensor arena - optimized size for our small model (25→16→2)
-// Model has ~450 parameters = ~1.8KB weights
-// Input: 25 floats = 100 bytes
-// Hidden: 16 floats = 64 bytes
-// Output: 2 floats = 8 bytes
-// Total tensors: ~2KB, with overhead: 8KB should be plenty
-constexpr int kTensorArenaSize = 8 * 1024;  // 8KB (reduced from 10KB)
+// Tensor arena - sized for 25→32→16→2 architecture (selected model)
+// Model has ~1394 parameters = ~5.5KB weights
+// Activations: 32 + 16 + 2 floats = ~200 bytes
+// With TFLite overhead: 12KB is comfortable
+constexpr int kTensorArenaSize = 12 * 1024;  // 12KB
 
 // Align tensor arena to 16 bytes for SIMD operations (ESP-NN optimization)
 static uint8_t tensor_arena[kTensorArenaSize] __attribute__((aligned(16)));
@@ -75,7 +73,7 @@ extern "C" bool ml_inference_init(void) {
                  (unsigned long)model->version(), TFLITE_SCHEMA_VERSION);
         return false;
     }
-    ESP_LOGI(TAG, "✅ Model loaded (version %lu, size %d bytes)", 
+    ESP_LOGI(TAG, "✅ Model loaded (version %lu, size %d bytes, arch 25→32→16→2)", 
              (unsigned long)model->version(), model_data_len);
     
     // Register operations - ESP-NN automatically accelerates these!

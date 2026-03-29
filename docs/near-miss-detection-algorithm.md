@@ -853,7 +853,7 @@ static void update_led(uint16_t min_distance_mm,
 - ⏳ Awaiting field validation
 
 **ML Pipeline Preparation:**
-- ✅ Feature extraction complete (29 features)
+- ✅ Feature extraction complete (25 raw features for ML, 4 additional derived features for rule-based detection)
 - ✅ CSV logging with all features
 - ✅ Automatic event labeling (flag_auto)
 - ⏳ Dataset collection in progress
@@ -870,7 +870,7 @@ Status: Ready to begin
 
 **Phase 2: Model Training (Next)**
 ```
-Input: 29 features (25 raw + 4 derived)
+Input: 25 raw features (16 ToF + 9 IMU), z-score normalized
 Architecture: Neural network (TensorFlow)
 Output: Binary classification (near-miss / normal)
 Target: > 95% accuracy
@@ -925,7 +925,8 @@ Fusion: Combine both for optimal performance
    - Adaptive state management with grace periods
 
 3. **Comprehensive Feature Engineering**
-   - 29 total features (25 raw + 4 derived)
+   - 25 raw sensor features (16 ToF + 9 IMU) for ML input
+   - 4 additional derived features (min distance, approach rate, jerk, angular velocity) for rule-based detection
    - Physics-based derived features (jerk, approach rate)
    - Optimized for ML training and inference
 
@@ -1157,7 +1158,8 @@ Check Priority 3: Individual Conditions?
    - Open-source reference implementation
 
 2. **Comprehensive Feature Set**
-   - 29 features covering spatial and temporal dynamics
+   - 25 raw features for ML inference (16 ToF + 9 IMU)
+   - 4 derived features for rule-based detection (computed in memory, not stored in CSV)
    - Validated feature extraction pipeline
    - Suitable for various ML architectures
 

@@ -25,9 +25,9 @@ timestamp_ms,tof_00,tof_01,tof_02,tof_03,tof_10,tof_11,tof_12,tof_13,tof_20,tof_
 - 1 timestamp
 - 16 ToF distances (4x4 grid)
 - 9 IMU values (3 orientation + 3 accel + 3 gyro)
-- 4 derived features
+- GPS fields (optional: latitude, longitude, speed, heading, satellites)
 - 2 flags (manual, auto)
-- 1 confidence score
+- Note: 4 derived features (min_distance, approach_rate, jerk, angular_velocity) are computed in memory for rule-based detection but NOT written to CSV. They can be recomputed from raw data during offline analysis.
 
 ### Example Data Row
 

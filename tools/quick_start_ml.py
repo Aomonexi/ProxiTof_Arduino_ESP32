@@ -37,7 +37,7 @@ def check_data():
         print("  2. Copy CSV files from SD card to ../data/raw/")
         return False
     
-    csv_files = [f for f in os.listdir(raw_dir) if f.endswith('.csv')]
+    csv_files = [f for f in os.listdir(raw_dir) if f.lower().endswith('.csv')]
     if not csv_files:
         print(f"❌ No CSV files found in {raw_dir}")
         print("\nPlease copy CSV files from SD card:")
@@ -72,10 +72,7 @@ def run_pipeline():
     try:
         from check_data_quality import check_directory
         if not check_directory('../data/raw'):
-            print("\n⚠️  Data quality issues detected")
-            response = input("Continue anyway? (y/n): ")
-            if response.lower() != 'y':
-                return False
+            print("\n⚠️  Data quality issues detected, continuing anyway...")
     except ImportError:
         print("⚠️  Data quality checker not available, skipping...")
     
@@ -145,7 +142,7 @@ def run_pipeline():
         
         # Save
         os.makedirs('../models', exist_ok=True)
-        model.save('../models/near_miss_model.h5')
+        model.save('../models/near_miss_model.keras')
         
         print("\n✅ Step 3 complete")
     except Exception as e:
@@ -163,7 +160,7 @@ def run_pipeline():
         from convert_to_tflite import convert_to_tflite, test_tflite_model, generate_c_header
         
         # Convert (float32)
-        convert_to_tflite('../models/near_miss_model.h5', 
+        convert_to_tflite('../models/near_miss_model.keras', 
                          '../models/near_miss_model.tflite', 
                          quantize=False)
         

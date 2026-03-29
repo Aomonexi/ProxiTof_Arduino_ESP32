@@ -1,0 +1,66 @@
+======================================================================
+PROXITOF EVALUATION REPORT - Chapter 7 Results
+======================================================================
+
+Table 7.1: Dataset Overview
+----------------------------------------
+  Total test samples            : 39015
+  Near-miss samples             : 3547
+  Safe samples                  : 35468
+  Class ratio (safe:nm)         : 10.0:1
+  Features per sample           : 25 (16 ToF + 9 IMU)
+  Ground truth source           : flag_manual (button press)
+  Total samples (train+test)    : 195074
+  Total near-miss (all)         : 17734
+  Total safe (all)              : 177340
+  Approx duration               : 3251s (54.2 min)
+  Train/test split              : 80/20
+
+Table 7.2: Detection Performance Comparison
+--------------------------------------------------------------------------------
+Mode             Prec   Recall       F1     Spec      FPR      Acc      AUC
+--------------------------------------------------------------------------------
+Algorithm      0.3191   0.0758   0.1226   0.9838   0.0162   0.9013   0.5298
+ML             0.6519   0.6436   0.6478   0.9656   0.0344   0.9364   0.9264
+Hybrid         0.5695   0.6467   0.6057   0.9511   0.0489   0.9234   0.7989
+
+Confusion Matrices (TP, TN, FP, FN)
+--------------------------------------------------
+  Algorithm   : TP=  269  TN=34894  FP=  574  FN= 3278
+  ML          : TP= 2283  TN=34249  FP= 1219  FN= 1264
+  Hybrid      : TP= 2294  TN=33734  FP= 1734  FN= 1253
+
+Table 7.3: Statistical Comparison (McNemar's Test)
+------------------------------------------------------------
+Comparison                      Chi2    p-value  Significant
+------------------------------------------------------------
+Algorithm vs ML             504.2910   0.000000          Yes
+Algorithm vs Hybrid         234.3786   0.000000          Yes
+ML vs Hybrid                481.0057   0.000000          Yes
+
+  Bonferroni-corrected alpha: 0.0167 (0.05 / 3 comparisons)
+
+Table 7.4: F1-Score with 95% Bootstrap Confidence Intervals
+--------------------------------------------------
+  Algorithm   : F1 = 0.1227  [0.1096, 0.1363]
+  ML          : F1 = 0.6477  [0.6356, 0.6604]
+  Hybrid      : F1 = 0.6057  [0.5931, 0.6179]
+
+Table 7.5: Embedded Performance
+----------------------------------------
+  Model architecture            : 25 -> 16 -> 2 (dense)
+  Model parameters              : ~450
+  Model size                    : ~2.4 KB
+  Tensor arena                  : 8 KB
+  Total ML RAM                  : ~12 KB
+  Inference time (ESP-NN)       : 5-15 ms
+  Target frame rate             : 60 Hz (16.7 ms budget)
+  CPU overhead (ML)             : 30-90% of frame budget
+  CPU overhead (Algo only)      : <1% of frame budget
+  ESP-NN acceleration           : SIMD (FullyConnected, ReLU)
+  Detection threshold           : P(near-miss) > 0.70
+  Flash usage (firmware)        : ~1.2 MB / 1.5 MB partition
+
+======================================================================
+END OF REPORT
+======================================================================

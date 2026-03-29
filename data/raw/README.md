@@ -18,7 +18,11 @@
    - Example: `data_20260131_143000.csv`
 
 3. **Train Model**
-   ```bash
+   ```powershell
+   # Activate the ML virtual environment (Python 3.12 required)
+   .\venv_ml\Scripts\activate
+
+   # Run training pipeline
    python tools/quick_start_ml.py
    ```
 
@@ -59,7 +63,8 @@ timestamp_ms,flag_manual,flag_auto,tof_00,tof_01,...,roll,pitch,yaw,accel_x,...
 ## Next Steps
 
 After copying files here:
-1. Run `python tools/quick_start_ml.py`
-2. Model generated in `components/ml_inference/include/model_data.h`
-3. Rebuild firmware: `idf.py build flash monitor`
-4. ML detection active!
+1. Activate ML environment: `.\venv_ml\Scripts\activate`
+2. Run `python tools/quick_start_ml.py`
+3. Model generated in `components/ml_inference/include/model_data.h`
+4. Rebuild firmware: `idf.py build flash monitor` (activate ESP-IDF env first)
+5. ML detection active!

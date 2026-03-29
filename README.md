@@ -154,8 +154,9 @@ See [Complete Wiring Diagram](docs/complete-wiring-diagram.md) for detailed wiri
 
 ### Development Environment
 
-- **ESP-IDF v5.5+** (Espressif IoT Development Framework)
-- **Python 3.13** (for ML training and USB tools)
+- **ESP-IDF v5.5.1** (Espressif IoT Development Framework)
+- **Python 3.13** (managed by ESP-IDF for build/flash tools — installed automatically)
+- **Python 3.12** (required for ML training — TensorFlow 2.x does not support 3.13+)
 - **Git** (for version control)
 
 This project uses ESP-IDF framework (not Arduino or PlatformIO) for optimal sensor support, ML performance, and advanced features like SDMMC interface.
@@ -166,20 +167,30 @@ See [ESP-IDF Installation Guide](docs/esp-idf-installation-guide.md) for detaile
 
 ```powershell
 # Windows - set up environment before each build session
-C:\Users\[username]\esp\v5.5.1\esp-idf\export.ps1
+& "C:\Users\[username]\esp\v5.5.1\esp-idf\export.ps1"
 
 # Verify
 idf.py --version
 ```
 
-### Python Environment Setup
+### Python Environment for ML Training and USB Tools
 
-```bash
-python -m venv venv
-venv\Scripts\activate          # Windows
-pip install -r requirements_proxitof_thesis.txt
-pip install pyserial            # For USB tool
+TensorFlow 2.x requires Python 3.12 or lower. The project uses a separate `venv_ml` virtual environment for ML training and USB tools.
+
+```powershell
+# One-time setup (requires Python 3.12 installed)
+py -3.12 -m venv venv_ml
+.\venv_ml\Scripts\activate
+pip install -r requirements_ml.txt
+
+# Before running any Python tool or training script
+.\venv_ml\Scripts\activate
+
+# Or run directly without activating
+.\venv_ml\Scripts\python.exe tools\quick_start_ml.py
 ```
+
+Note: The ESP-IDF environment (`export.ps1`) and the ML venv (`venv_ml`) are independent. ESP-IDF manages its own Python environment for build tools. You only need `venv_ml` for the Python scripts in `tools/`.
 
 ## Quick Start
 
@@ -269,9 +280,11 @@ Configurable via `config.txt` or OLED mode button:
 ### ML Pipeline
 
 1. Collect training data with manual button flags
-2. Train TensorFlow model: `python tools/quick_start_ml.py`
-3. Convert to TFLite: `python tools/convert_to_tflite.py`
-4. Flash model with firmware for real-time inference
+2. Copy CSV files from SD card to `data/raw/`
+3. Activate ML environment: `.\venv_ml\Scripts\activate`
+4. Train and convert model: `python tools/quick_start_ml.py`
+5. Rebuild and flash firmware: `idf.py build flash`
+6. ML detection is now active on device
 
 See [Near-Miss Detection Algorithm](docs/near-miss-detection-algorithm.md) and [ML Complete Guide](docs/ML_COMPLETE_GUIDE.md).
 
@@ -372,8 +385,8 @@ ProxiTof_Arduino_ESP32/
 ├── data/
 │   ├── config.txt                      # Default configuration template
 │   └── wifi_config.txt                 # WiFi template
-├── requirements_proxitof_thesis.txt     # Python ML dependencies
-├── PYTHON_SETUP.md                      # ML environment setup
+├── requirements_ml.txt                  # Python ML + USB tools dependencies (use with venv_ml)
+├── requirements_proxitof_thesis.txt     # Legacy/extended dependency list (not needed)
 ├── CMakeLists.txt                       # ESP-IDF project config
 ├── sdkconfig                            # ESP32 build configuration
 └── README.md                            # This file

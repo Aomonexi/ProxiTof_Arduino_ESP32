@@ -9,25 +9,26 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_auc_sco
 import matplotlib.pyplot as plt
 import os
 
-def create_model(input_size=25, hidden_size=16):
+def create_model(input_size=25, hidden_size=32):
     """
     Create neural network optimized for ESP-NN
-    
+
     Architecture:
     - Input: 25 features (16 ToF + 9 IMU)
-    - Hidden: 16 neurons (ReLU activation) - ESP-NN accelerated
+    - Hidden 1: 32 neurons (ReLU) - ESP-NN accelerated
+    - Hidden 2: 16 neurons (ReLU) - ESP-NN accelerated
     - Output: 2 classes (safe, near-miss) with softmax
-    
-    Why this architecture?
-    - Small enough to fit in ESP32 memory
-    - Uses ESP-NN accelerated operations (Dense, ReLU)
-    - Simple enough to run at 60Hz on ESP32
+
+    Selected architecture from architecture search (see docs/ml-architecture-search-results.md)
+    Best F1 (0.669), best precision (67.8%), 7.9 KB model size, fits ESP32-S3 comfortably.
     """
-    
+
     model = keras.Sequential([
         keras.layers.Input(shape=(input_size,), name='input'),
-        keras.layers.Dense(hidden_size, activation='relu', name='hidden'),
-        keras.layers.Dropout(0.2, name='dropout'),  # Prevent overfitting
+        keras.layers.Dense(hidden_size, activation='relu', name='hidden_1'),
+        keras.layers.Dropout(0.2, name='dropout_1'),
+        keras.layers.Dense(16, activation='relu', name='hidden_2'),
+        keras.layers.Dropout(0.1, name='dropout_2'),
         keras.layers.Dense(2, activation='softmax', name='output')
     ], name='near_miss_detector')
     
@@ -79,7 +80,7 @@ def train_model(X_train, y_train, X_test, y_test,
             verbose=1
         ),
         keras.callbacks.ModelCheckpoint(
-            os.path.join(output_dir, 'best_model.h5'),
+            os.path.join(output_dir, 'best_model.keras'),
             monitor='val_accuracy',
             save_best_only=True,
             verbose=1
@@ -247,8 +248,8 @@ if __name__ == '__main__':
     
     # Save final model
     output_dir = '../models'
-    model.save(os.path.join(output_dir, 'near_miss_model.h5'))
-    print(f"\n✅ Model saved to {output_dir}/near_miss_model.h5")
+    model.save(os.path.join(output_dir, 'near_miss_model.keras'))
+    print(f"\n✅ Model saved to {output_dir}/near_miss_model.keras")
     
     print(f"\n🎉 Training complete!")
     print(f"Next step: Run convert_to_tflite.py to convert for ESP32")
